@@ -1,0 +1,8 @@
+# ADScan - Python Dependencies
+# Install with: pip install -r requirements.txt
+
+# LDAP/LDAPS connectivity (required for LDAP-based checks)
+ldap3>=2.9.1
+
+# SMB connectivity and NTLM authentication (required for SMB checks and pass-the-hash)
+impacket>=0.11.0
