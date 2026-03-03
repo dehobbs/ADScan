@@ -57,6 +57,3 @@ python adscan.py -d corp.local -u alice -p 'Secret1' --protocol ldaps -o results
 ```
 
 ---
-## Disclaimer
-
-ADScan is intended for authorised security assessments only. Always obtain written permission before scanning an Active Directory environment. Unauthorised use may violate computer crime laws.
