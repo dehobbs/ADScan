@@ -1,6 +1,6 @@
 CHECK_NAME = "AdminSDHolder ACL"
 CHECK_ORDER = 63
-CHECK_CATEGORY = "Protected Object Control Plane"
+CHECK_CATEGORY = ["Privileged Accounts"]
 
 # Well-known SIDs / CN patterns for privileged principals (these are EXPECTED in the AdminSDHolder DACL)
 EXPECTED_PRIVILEGED = {

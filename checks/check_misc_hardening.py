@@ -11,6 +11,7 @@ Checks:
 
 CHECK_NAME = "Miscellaneous Hardening"
 CHECK_ORDER = 19
+CHECK_CATEGORY = ["Domain Hygiene"]
 
 def run_check(connector, verbose=False):
     findings = []

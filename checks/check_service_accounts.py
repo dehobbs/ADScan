@@ -9,7 +9,7 @@ Checks:
 
 CHECK_NAME = "Service Accounts"
 CHECK_ORDER = 18
-CHECK_CATEGORY = "Privileged Service Identity Management"
+CHECK_CATEGORY = ["Privileged Accounts"]
 
 def run_check(connector, verbose=False):
     findings = []

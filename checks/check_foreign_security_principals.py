@@ -1,6 +1,6 @@
 CHECK_NAME = "Foreign Security Principals in Privileged Groups"
 CHECK_ORDER = 67
-CHECK_CATEGORY = "Cross-Domain Privilege Exposure"
+CHECK_CATEGORY = ["Groups Hygiene"]
 
 # Sensitive local group names to check for FSP membership
 SENSITIVE_GROUPS = [

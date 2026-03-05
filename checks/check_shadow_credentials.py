@@ -1,6 +1,6 @@
 CHECK_NAME = "Shadow Credentials"
 CHECK_ORDER = 65
-CHECK_CATEGORY = "Certificate-Based Persistence & Abuse"
+CHECK_CATEGORY = ["Account Hygiene"]
 
 import base64
 import struct

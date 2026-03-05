@@ -1,6 +1,6 @@
 CHECK_NAME = "Orphaned AD Subnets"
 CHECK_ORDER = 70
-CHECK_CATEGORY = "AD Site & Network Topology Integrity"
+CHECK_CATEGORY = ["Network Hygiene"]
 
 def run_check(connector, verbose=False):
     findings = []

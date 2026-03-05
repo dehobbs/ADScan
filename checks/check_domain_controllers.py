@@ -18,7 +18,7 @@ Risk Deductions:
 
 CHECK_NAME = "Domain Controllers"
 CHECK_ORDER = 13
-CHECK_CATEGORY = "Tier 0 Infrastructure Health"
+CHECK_CATEGORY = ["Domain Hygiene"]
 
 _LEGACY_OS_KEYWORDS = [
     "windows server 2003", "windows server 2008",

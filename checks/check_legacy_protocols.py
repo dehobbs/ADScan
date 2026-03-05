@@ -10,7 +10,7 @@ Checks:
 
 CHECK_NAME = "Legacy Protocols"
 CHECK_ORDER = 21
-CHECK_CATEGORY = "Legacy Network Protocol Exposure"
+CHECK_CATEGORY = ["Protocol Security"]
 
 
 def run_check(connector, verbose=False):

@@ -14,7 +14,7 @@ Risk Deductions:
 
 CHECK_NAME = "DNS & Infrastructure"
 CHECK_ORDER = 12
-CHECK_CATEGORY = "Name Resolution & Network Poisoning Risk"
+CHECK_CATEGORY = ["Network Hygiene"]
 
 
 def _get_str(entry, attr, default=""):

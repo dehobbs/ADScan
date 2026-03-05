@@ -1,6 +1,6 @@
 CHECK_NAME = "SID History"
 CHECK_ORDER = 64
-CHECK_CATEGORY = "Privilege Escalation Controls"
+CHECK_CATEGORY = ["Account Hygiene"]
 
 # Well-known privileged group RIDs that trigger CRITICAL escalation
 PRIVILEGED_RIDS = {

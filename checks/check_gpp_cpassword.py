@@ -1,6 +1,6 @@
 CHECK_NAME = "GPP / cpassword (MS14-025)"
 CHECK_ORDER = 62
-CHECK_CATEGORY = "Credential Exposure in SYSVOL"
+CHECK_CATEGORY = ["Domain Hygiene"]
 
 import xml.etree.ElementTree as ET
 import base64

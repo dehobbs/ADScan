@@ -22,7 +22,7 @@ Risk Deductions:
 
 CHECK_NAME = "Kerberos Attack Surface"
 CHECK_ORDER = 5
-CHECK_CATEGORY = "Kerberos & Ticket Security"
+CHECK_CATEGORY = ["Kerberos"]
 
 # UAC flags
 _UAC_ACCOUNTDISABLE        = 0x2

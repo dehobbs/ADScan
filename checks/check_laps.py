@@ -14,9 +14,9 @@ Risk Deductions:
   Low     (-5) : Only legacy LAPS (ms-Mcs-AdmPwd) — not Windows LAPS
 """
 
-CHECK_NAME = "LAPS Coverage"
+CHECK_NAME = "LAPS Deployment"
 CHECK_ORDER = 11
-CHECK_CATEGORY = "Local Administrator Credential Control"
+CHECK_CATEGORY = ["Privileged Accounts"]
 
 _UAC_ACCOUNTDISABLE    = 0x2
 _UAC_SERVER_TRUST      = 0x2000   # DC

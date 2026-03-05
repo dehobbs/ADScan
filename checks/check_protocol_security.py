@@ -18,7 +18,7 @@ Risk Deductions:
 
 CHECK_NAME = "Protocol Security"
 CHECK_ORDER = 9
-CHECK_CATEGORY = "Authentication Protocol Hardening"
+CHECK_CATEGORY = ["Protocol Security"]
 
 _FUNC_LEVELS = {
     0: "Windows 2000",
