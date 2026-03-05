@@ -25,7 +25,7 @@ Risk Deductions:
 
 CHECK_NAME = "Privileged Accounts"
 CHECK_ORDER = 4
-CHECK_CATEGORY = "Privileged Identity Governance"
+CHECK_CATEGORY = ["Privileged Accounts"]
 
 from datetime import datetime, timezone, timedelta
 

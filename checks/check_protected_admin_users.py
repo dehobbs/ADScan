@@ -1,6 +1,6 @@
 CHECK_NAME = "Protected Admin Users"
 CHECK_ORDER = 60
-CHECK_CATEGORY = "Tier 0 Account Integrity"
+CHECK_CATEGORY = ["Privileged Accounts"]
 
 from datetime import datetime, timezone, timedelta
 

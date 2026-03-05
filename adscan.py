@@ -5,9 +5,9 @@ ADScan - Active Directory Vulnerability Scanner
 Main entry point for the scanner.
 
 Usage:
-    python adscan.py -d corp.local -dc 192.168.1.10 -u administrator -p Password123
-    python adscan.py -d corp.local -dc 192.168.1.10 -u administrator --hash aad3b435b51404eeaad3b435b51404ee:8846f7eaee8fb117ad06bdd830b7586c
-    python adscan.py -d corp.local -dc 192.168.1.10 -u administrator -p Password123 --protocol ldaps
+    python adscan.py -d corp.local -dc-ip 192.168.1.10 -u administrator -p Password123
+    python adscan.py -d corp.local -dc-ip 192.168.1.10 -u administrator --hash aad3b435b51404eeaad3b435b51404ee:8846f7eaee8fb117ad06bdd830b7586c
+    python adscan.py -d corp.local -dc-ip 192.168.1.10 -u administrator -p Password123 --protocol ldaps
 """
 
 import argparse
@@ -16,40 +16,28 @@ import importlib
 import pkgutil
 import os
 from datetime import datetime
+
 from lib.connector import ADConnector
 from lib.report import generate_report
 
 BANNER = r"""
-   _    ____  ____
-  / \  |  _ \/ ___|  ___  __ _ _ __
- / _ \ | | | \___ \ / __/ _` | '_ \
-/ ___ \| |_| |___) | (_| (_| | | | |
+    _    ____  ____
+   / \  | _ \/ ___|  ___  __ _ _ __
+  / _ \ | | | \___ \ / __/ _` | '_ \
+ / ___ \| |_| |___) | (_| (_| | | | |
 /_/   \_\____/|____/ \___\__,_|_| |_|
 
-Active Directory Vulnerability Scanner
-Version 1.0 | github.com/dehobbs/ADScan
+  Active Directory Vulnerability Scanner
+  Version 1.0 | github.com/dehobbs/ADScan
 """
 
 # Default output directory for reports
 REPORTS_DIR = "Reports"
+ARTIFACTS_DIR = os.path.join(REPORTS_DIR, "Artifacts")
 
 
 def load_checks():
-    """Dynamically load all check modules from the checks/ directory.
-
-    Each module must expose:
-        - CHECK_NAME (str):   Human-readable name of the check
-        - CHECK_ORDER (int):  Optional ordering priority (lower runs first)
-        - run_check(connector, verbose=False) -> list[dict] | None
-
-    Each finding dict must contain:
-        - title (str):          Short title of the finding
-        - severity (str):       critical / high / medium / low / info
-        - deduction (int):      Points to subtract from the score (0-100)
-        - description (str):    Detailed description
-        - recommendation (str): Remediation guidance
-        - details (list[str]):  Affected objects / raw evidence
-    """
+    """Dynamically load all check modules from the checks/ directory."""
     checks = []
     checks_path = os.path.join(os.path.dirname(__file__), "checks")
     for _finder, name, _ispkg in pkgutil.iter_modules([checks_path]):
@@ -65,18 +53,23 @@ def parse_args():
         formatter_class=argparse.RawTextHelpFormatter,
         epilog=(
             "Examples:\n"
-            "  %(prog)s -d corp.local -dc 192.168.1.10 -u admin -p Password1\n"
-            "  %(prog)s -d corp.local -dc 192.168.1.10 -u admin --hash :NThash\n"
-            "  %(prog)s -d corp.local -dc 192.168.1.10 -u admin -p Pass --protocol ldaps"
+            "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin -p Password1\n"
+            "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin --hash :NThash\n"
+            "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin -p Pass --protocol ldaps"
         ),
     )
 
     target_group = parser.add_argument_group("Target")
     target_group.add_argument(
-        "-d", "--domain", required=True, help="Target domain FQDN (e.g. corp.local)"
+        "-d", "--domain",
+        required=True,
+        help="Target domain FQDN (e.g. corp.local)"
     )
     target_group.add_argument(
-        "-dc", "--dc-host", required=True, help="Domain Controller IP or hostname"
+        "-dc-ip", "--dc-ip",
+        dest="dc_ip",
+        required=True,
+        help="Domain Controller IP or hostname"
     )
     target_group.add_argument(
         "--protocol",
@@ -97,20 +90,16 @@ def parse_args():
 
     output_group = parser.add_argument_group("Output")
     output_group.add_argument(
-        "-o",
-        "--output",
+        "-o", "--output",
         default=None,
         help=(
             f"Output HTML report path (default: {REPORTS_DIR}/adscan_report_<timestamp>.html)"
         ),
     )
     output_group.add_argument(
-        "--no-open",
+        "-v", "--verbose",
         action="store_true",
-        help="Do not prompt to open the report in a browser after the scan completes",
-    )
-    output_group.add_argument(
-        "-v", "--verbose", action="store_true", help="Verbose output (show affected objects)"
+        help="Verbose output (show affected objects)"
     )
 
     return parser.parse_args()
@@ -123,81 +112,47 @@ def ensure_reports_dir(path):
         os.makedirs(directory, exist_ok=True)
         print(f"[*] Created output directory: {directory}")
 
-
-def prompt_open_report(report_path, no_open=False):
-    """Ask the user if they want to open the finished report in Firefox."""
-    if no_open:
-        return
-    abs_path = os.path.abspath(report_path)
-    try:
-        answer = input("\n[?] Open the report in Firefox? [Y/n]: ").strip().lower()
-    except (EOFError, KeyboardInterrupt):
-        return
-    if answer not in ("", "y", "yes"):
-        print(f"[*] Report saved at: {abs_path}")
-        return
-    import subprocess, sys
-    file_url = abs_path.replace("\\", "/")
-    if not file_url.startswith("/"):
-        file_url = "/" + file_url
-    file_url = "file://" + file_url
-    # On Linux, check that a display server is available before launching Firefox
-    if sys.platform not in ("win32", "darwin"):
-        has_display = bool(
-            os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")
-        )
-        if not has_display:
-            print("[-] No display environment detected (DISPLAY / WAYLAND_DISPLAY not set).")
-            print(f"[*] Open the report manually in Firefox:")
-            print(f"    firefox '{abs_path}'")
-            return
-    print(f"[*] Opening in Firefox: {file_url}")
-    firefox_cmd = ["firefox", file_url] if sys.platform != "win32" else ["firefox.exe", file_url]
-    try:
-        subprocess.Popen(firefox_cmd)
-    except FileNotFoundError:
-        if sys.platform == "win32":
-            import glob
-            paths = glob.glob(r"C:\Program Files*\Mozilla Firefox\firefox.exe")
-            if paths:
-                subprocess.Popen([paths[0], file_url])
-            else:
-                print("[-] Firefox not found. Report saved at:", abs_path)
-        elif sys.platform == "darwin":
-            subprocess.Popen(["open", "-a", "Firefox", file_url])
-        else:
-            print("[-] Firefox not found. Report saved at:", abs_path)
 def main():
     print(BANNER)
     args = parse_args()
 
-    # Determine output path — default to Reports/<timestamp>.html
+    # Generate a single scan timestamp used for all artifact naming
+    scan_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    # Determine output path
     if args.output is None:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        args.output = os.path.join(REPORTS_DIR, f"adscan_report_{timestamp}.html")
+        args.output = os.path.join(REPORTS_DIR, f"adscan_report_{scan_timestamp}.html")
 
     # Make sure the output directory exists
     ensure_reports_dir(args.output)
 
+    # Create the Artifacts subdirectory for tool output (e.g. Certipy JSON)
+    os.makedirs(ARTIFACTS_DIR, exist_ok=True)
+
     protocols = ["ldap", "ldaps", "smb"] if args.protocol == "all" else [args.protocol]
 
-    print(f"[*] Target Domain  : {args.domain}")
-    print(f"[*] Domain Controller: {args.dc_host}")
-    print(f"[*] Username       : {args.username}")
-    print(f"[*] Auth Method    : {'NTLM Hash' if args.hash else 'Password'}")
-    print(f"[*] Protocol(s)    : {', '.join(p.upper() for p in protocols)}")
-    print(f"[*] Output File    : {args.output}")
+    print(f"[*] Target Domain    : {args.domain}")
+    print(f"[*] Domain Controller: {args.dc_ip}")
+    print(f"[*] Username         : {args.username}")
+    print(f"[*] Auth Method      : {'NTLM Hash' if args.hash else 'Password'}")
+    print(f"[*] Protocol(s)      : {', '.join(p.upper() for p in protocols)}")
+    print(f"[*] Output File      : {args.output}")
+    print(f"[*] Artifacts Dir    : {ARTIFACTS_DIR}")
     print()
 
     connector = ADConnector(
         domain=args.domain,
-        dc_host=args.dc_host,
+        dc_host=args.dc_ip,
         username=args.username,
         password=args.password,
         ntlm_hash=args.hash,
         protocols=protocols,
         verbose=args.verbose,
     )
+
+    # Attach scan metadata so individual checks can use consistent naming
+    connector.artifacts_dir = ARTIFACTS_DIR
+    connector.scan_timestamp = scan_timestamp
 
     if not connector.connect():
         print("[-] Failed to establish any connection to the Domain Controller.")
@@ -229,7 +184,8 @@ def main():
                             print(f"        - {detail}")
                         if len(finding["details"]) > 10:
                             print(f"        ... and {len(finding['details']) - 10} more")
-                    finding.setdefault("category", getattr(check, "CHECK_CATEGORY", "Uncategorized"))
+                    _cat = getattr(check, "CHECK_CATEGORY", "Uncategorized")
+                    finding.setdefault("category", _cat)
                     score = max(0, score - finding["deduction"])
                     findings.append(finding)
             else:
@@ -249,15 +205,15 @@ def main():
     generate_report(
         output_file=args.output,
         domain=args.domain,
-        dc_host=args.dc_host,
+        dc_host=args.dc_ip,
         username=args.username,
         protocols=protocols,
         findings=findings,
         score=score,
     )
 
-    print(f"[+] Report saved : {args.output}")
-    print(f"[+] Final Score  : {score}/100")
+    print(f"[+] Report saved  : {args.output}")
+    print(f"[+] Final Score   : {score}/100")
     grade = (
         "A" if score >= 90
         else "B" if score >= 75
@@ -265,10 +221,7 @@ def main():
         else "D" if score >= 40
         else "F"
     )
-    print(f"[+] Grade        : {grade}")
-
-    # Offer to open the report (unless --no-open was passed)
-    prompt_open_report(args.output, no_open=args.no_open)
+    print(f"[+] Grade         : {grade}")
 
 
 if __name__ == "__main__":

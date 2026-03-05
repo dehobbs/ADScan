@@ -17,7 +17,7 @@ Risk Criteria:
 
 CHECK_NAME = "Domain Password Policy"
 CHECK_ORDER = 1
-CHECK_CATEGORY = "Authentication Policy & Standards"
+CHECK_CATEGORY = ["Account Hygiene"]
 
 # LDAP attributes for the Default Domain Policy (stored on domainDNS object)
 _POLICY_ATTRS = [

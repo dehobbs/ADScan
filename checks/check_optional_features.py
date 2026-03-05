@@ -8,6 +8,7 @@ Checks:
 
 CHECK_NAME = "Optional Features"
 CHECK_ORDER = 16
+CHECK_CATEGORY = ["Domain Hygiene"]
 
 def run_check(connector, verbose=False):
     findings = []

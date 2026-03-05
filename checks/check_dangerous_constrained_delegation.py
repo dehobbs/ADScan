@@ -1,6 +1,6 @@
 CHECK_NAME = "Dangerous Constrained Delegation Targets"
 CHECK_ORDER = 69
-CHECK_CATEGORY = "Delegation to Tier 0 Assets"
+CHECK_CATEGORY = ["Kerberos"]
 
 # High-value service classes that, if combined with DC targets, represent full compromise
 HIGH_VALUE_SERVICE_CLASSES = {

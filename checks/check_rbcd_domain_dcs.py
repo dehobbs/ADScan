@@ -1,6 +1,6 @@
 CHECK_NAME = "RBCD on Domain Object / DCs"
 CHECK_ORDER = 72
-CHECK_CATEGORY = "Resource-Based Delegation Exposure"
+CHECK_CATEGORY = ["Kerberos"]
 
 # msDS-AllowedToActOnBehalfOfOtherIdentity contains a binary security descriptor
 # whose DACL lists principals that are allowed to perform S4U2Proxy against this object.

@@ -21,6 +21,7 @@ Risk Deductions:
 
 CHECK_NAME = "Group Policy Objects"
 CHECK_ORDER = 10
+CHECK_CATEGORY = ["Domain Hygiene"]
 
 _GPO_ATTRS = [
     "cn", "displayName", "distinguishedName",

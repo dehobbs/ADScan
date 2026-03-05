@@ -6,3 +6,29 @@ ldap3>=2.9.1
 
 # SMB connectivity and NTLM authentication (required for SMB checks and pass-the-hash)
 impacket>=0.11.0
+
+# ---------------------------------------------------------------------------
+# Certipy-AD - ADCS / PKI vulnerability scanner (required for check_adcs_certipy)
+# Install: pip install certipy-ad
+# GitHub:  https://github.com/ly4k/Certipy
+# ---------------------------------------------------------------------------
+certipy-ad>=4.8.2
+
+# Certipy dependencies (installed automatically with certipy-ad, listed for clarity)
+# Cryptography toolkit
+cryptography>=41.0.0
+
+# ASN.1 parsing (used by certipy for certificate parsing)
+pyasn1>=0.5.0
+pyasn1-modules>=0.3.0
+
+# DNS resolution
+dnspython>=2.4.0
+
+# HTTP/HTTPS requests (used by certipy for web enrollment checks)
+requests>=2.31.0
+
+# OpenSSL Python bindings
+pyOpenSSL>=23.2.0
+
+# LDAP3 is already listed above and shared with base ADScan checks

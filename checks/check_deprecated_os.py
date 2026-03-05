@@ -21,7 +21,7 @@ EOL reference dates (Microsoft):
 
 CHECK_NAME = "Deprecated Operating Systems"
 CHECK_ORDER = 20
-CHECK_CATEGORY = "End-of-Life Infrastructure Risk"
+CHECK_CATEGORY = ["Deprecated Operating Systems"]
 
 # Strings to match against operatingSystem attribute (case-insensitive substring)
 EOL_CRITICAL_WORKSTATIONS = [

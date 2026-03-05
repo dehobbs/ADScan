@@ -10,6 +10,7 @@ Checks:
 
 CHECK_NAME = "Replication Health"
 CHECK_ORDER = 17
+CHECK_CATEGORY = ["Domain Hygiene"]
 
 def run_check(connector, verbose=False):
     findings = []

@@ -1,6 +1,6 @@
 CHECK_NAME = "LAPS Coverage"
 CHECK_ORDER = 52
-CHECK_CATEGORY = "Endpoint Local Admin Coverage Metrics"
+CHECK_CATEGORY = ["Privileged Accounts"]
 
 def run_check(connector, verbose=False):
     """

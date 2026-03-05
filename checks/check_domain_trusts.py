@@ -52,7 +52,7 @@ Risk Deductions:
 
 CHECK_NAME = "Domain Trusts"
 CHECK_ORDER = 7
-CHECK_CATEGORY = "Inter-Domain Trust Security"
+CHECK_CATEGORY = ["Domain Hygiene"]
 
 # trustAttributes bit flags
 _TA_NON_TRANSITIVE          = 0x00000001

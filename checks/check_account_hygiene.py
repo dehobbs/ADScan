@@ -23,7 +23,7 @@ Risk Deductions:
 
 CHECK_NAME = "Account Hygiene"
 CHECK_ORDER = 8
-CHECK_CATEGORY = "Identity Lifecycle Hygiene"
+CHECK_CATEGORY = ["Account Hygiene"]
 
 from datetime import datetime, timezone, timedelta
 from collections import defaultdict

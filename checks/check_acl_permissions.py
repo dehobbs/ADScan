@@ -12,6 +12,7 @@ Checks:
 
 CHECK_NAME = "ACL / Permissions"
 CHECK_ORDER = 15
+CHECK_CATEGORY = ["Privileged Accounts"]
 
 def run_check(connector, verbose=False):
     findings = []

@@ -1,6 +1,6 @@
 CHECK_NAME = "RC4 / Legacy Kerberos Encryption"
 CHECK_ORDER = 66
-CHECK_CATEGORY = "Kerberos Encryption & Crypto Hygiene"
+CHECK_CATEGORY = ["Kerberos"]
 
 # msDS-SupportedEncryptionTypes bitmask values
 ENC_DES_CBC_CRC        = 0x0001

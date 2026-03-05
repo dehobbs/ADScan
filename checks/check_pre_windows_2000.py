@@ -1,6 +1,6 @@
 CHECK_NAME = "Pre-Windows 2000 Compatible Access"
 CHECK_ORDER = 68
-CHECK_CATEGORY = "Legacy Authentication Exposure"
+CHECK_CATEGORY = ["Domain Hygiene"]
 
 # Well-known SIDs for Everyone and Anonymous Logon
 SID_EVERYONE        = "S-1-1-0"

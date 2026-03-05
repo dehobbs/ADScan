@@ -17,7 +17,7 @@ Risk:
 
 CHECK_NAME = "Unconstrained Delegation"
 CHECK_ORDER = 2
-CHECK_CATEGORY = "High-Risk Delegation Exposure"
+CHECK_CATEGORY = ["Kerberos"]
 
 # userAccountControl flags
 _UAC_TRUSTED_FOR_DELEGATION = 0x80000   # Unconstrained delegation

@@ -21,7 +21,7 @@ Risk Scoring:
 
 CHECK_NAME = "Constrained Delegation"
 CHECK_ORDER = 3
-CHECK_CATEGORY = "Delegation Risk Management"
+CHECK_CATEGORY = ["Kerberos"]
 
 # userAccountControl flags
 _UAC_TRUSTED_TO_AUTH_FOR_DELEGATION = 0x1000000  # Protocol Transition / S4U2Self
