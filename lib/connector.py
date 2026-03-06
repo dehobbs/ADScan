@@ -51,6 +51,7 @@ class ADConnector:
         # Active connections
         self.ldap_conn = None
         self.smb_conn = None
+        self.debug_log = None   # Set by adscan.py to enable debug logging
         self.base_dn = self._domain_to_dn(domain)
 
         # Normalise NTLM hash  
@@ -119,10 +120,29 @@ class ADConnector:
                 search_filter=search_filter,
                 attributes=attrs,
             )
-            return self.ldap_conn.entries
+            entries = self.ldap_conn.entries
+            # Debug logging hook -- records every LDAP query for troubleshooting
+            dbg = getattr(self, "debug_log", None)
+            if dbg:
+                dbg.log_ldap(
+                    search_filter=search_filter,
+                    search_base=base,
+                    attributes=attrs,
+                    entry_count=len(entries),
+                )
+            return entries
         except Exception as e:
             if self.verbose:
                 print(f"  [WARN] LDAP search failed: {e}")
+            dbg = getattr(self, "debug_log", None)
+            if dbg:
+                dbg.log_ldap(
+                    search_filter=search_filter,
+                    search_base=base,
+                    attributes=attrs,
+                    entry_count=0,
+                    error=str(e),
+                )
             return []
 
     def smb_available(self):

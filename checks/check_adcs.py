@@ -813,6 +813,19 @@ def _run_certipy_check(connector, verbose=False):
 
     try:
         returncode, stdout, stderr = _run_certipy(creds, output_prefix, cwd=artifacts_dir)
+        # Log the subprocess call to the debug log (if enabled)
+        dbg = getattr(connector, "debug_log", None)
+        if dbg:
+            upn = f"{creds['username']}@{creds['domain']}"
+            dbg.log_subprocess(
+                cmd=["certipy", "find", "-u", upn, "-p", "<redacted>",
+                     "-dc-ip", creds["dc_ip"], "-json",
+                     "-output", output_prefix, "-vulnerable"],
+                cwd=str(artifacts_dir) if artifacts_dir else None,
+                returncode=returncode,
+                stdout=stdout,
+                stderr=stderr,
+            )
         if verbose:
             if stdout: print(f"  [Certipy stdout]\n{stdout[:2000]}")
             if stderr: print(f"  [Certipy stderr]\n{stderr[:1000]}")

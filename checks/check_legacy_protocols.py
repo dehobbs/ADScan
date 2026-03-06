@@ -3,7 +3,7 @@ checks/check_legacy_protocols.py - Legacy Protocol checks
 
 Checks:
   - SMBv1: Detected via impacket SMB dialect negotiation                        -15
-  - SMB signing: Not enforced on domain controllers / workstations              -10
+  - SMB signing: Moved to check_smb_signing.py (automated via NetExec)
   - Null session: LDAP anonymous bind acceptance                                -10
   - NTLMv1 / WDigest guidance (informational via registry path hints)           0
 """
@@ -82,37 +82,6 @@ def run_check(connector, verbose=False):
                 "details": smb1_detail,
             })
 
-    # SMB Signing guidance
-    try:
-        dc_computers = connector.ldap_search(
-            connector.base_dn,
-            "(&(objectClass=computer)(userAccountControl:1.2.840.113556.1.4.803:=8192))",
-            ["cn", "dNSHostName"],
-        ) or []
-        dc_count = len(dc_computers)
-    except Exception:
-        dc_count = 0
-
-    findings.append({
-        "title": "SMB Signing Enforcement -- Manual Review Required",
-        "severity": "info",
-        "deduction": 0,
-        "description": (
-            "SMB signing prevents man-in-the-middle (MITM) relay attacks such as NTLM relay. "
-            f"This environment has {dc_count} domain controller(s). "
-            "SMB signing is required on DCs by default but may not be enforced on member servers "
-            "and workstations, leaving them vulnerable to relay attacks."
-        ),
-        "recommendation": (
-            "Enforce SMB signing on all systems via GPO: "
-            "Computer Configuration > Windows Settings > Security Settings > "
-            "Local Policies > Security Options: "
-            "Microsoft network server: Digitally sign communications (always) = Enabled "
-            "Microsoft network client: Digitally sign communications (always) = Enabled "
-            "Verify with: Get-SmbServerConfiguration | Select RequireSecuritySignature"
-        ),
-        "details": [],
-    })
 
     # Null session / anonymous LDAP bind check
     findings.append({
