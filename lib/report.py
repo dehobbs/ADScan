@@ -72,7 +72,7 @@ def _finding_card(finding, idx):
         details_html = f"""
         <details style='margin-top:12px;'>
           <summary style='cursor:pointer;font-weight:600;color:{accent};'>
-            Affected Objects ({len(finding['details'])})
+            Affected Objects ({finding.get('affected_count', len(finding['details']))})
           </summary>
           <ul style='margin:8px 0 0 16px;padding:0;'>{items}{more}</ul>
         </details>"""
