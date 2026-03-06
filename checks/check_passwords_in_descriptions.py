@@ -19,6 +19,12 @@ CREDENTIAL_PATTERNS = [
     re.compile(r'(?i)temp\s*(pass|pw|password)'),
 ]
 
+# Pattern to match the actual credential value after a keyword=value separator
+# Used by _redact_desc to replace the value with [[REDACTED]]
+_REDACT_PATTERN = re.compile(
+    r'(?i)(password|passwd|pwd|pass|cred(?:ential)?|secret|login)\s*([=:\-])\s*(\S+)'
+)
+
 
 def _get_attr(entry, attr, default=""):
     """Safely read an ldap3 Entry attribute value."""
@@ -45,6 +51,21 @@ def _looks_like_credential(description):
         if m:
             return True, m.group(0)
     return False, None
+
+
+def _redact_desc(desc):
+    """Return a copy of desc with credential values replaced by [[REDACTED]].
+
+    For structured matches like 'pass=Secret123' the value portion is replaced.
+    For keyword-only matches the whole description is left as-is since there is
+    no isolated value to redact — the caller should still show the description
+    so the analyst can see context, but any structured credential value is masked.
+    """
+    redacted = _REDACT_PATTERN.sub(
+        lambda m: f"{m.group(1)}{m.group(2)}[[REDACTED]]",
+        desc
+    )
+    return redacted
 
 
 def run_check(connector, verbose=False):
@@ -128,9 +149,11 @@ def run_check(connector, verbose=False):
         detail_lines = []
         for f in flagged:
             tag = "[ADMIN] " if f["is_admin"] else ""
+            # Always redact the full description -- it contains credential material.
+            # The match keyword is also suppressed to avoid leaking the value.
             detail_lines.append(
                 f"{tag}{f['type'].upper()}: {f['sam']} ({f['status']}) "
-                f"| match: '{f['match']}' | desc: {f['desc']}"
+                f"| desc: [[REDACTED]]"
             )
 
         severity  = "critical" if admin_hits else "high"

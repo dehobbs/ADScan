@@ -5,9 +5,9 @@ ADScan - Active Directory Vulnerability Scanner
 Main entry point for the scanner.
 
 Usage:
-    python adscan.py -d corp.local -dc-ip 192.168.1.10 -u administrator -p Password123
-    python adscan.py -d corp.local -dc-ip 192.168.1.10 -u administrator --hash aad3b435b51404eeaad3b435b51404ee:8846f7eaee8fb117ad06bdd830b7586c
-    python adscan.py -d corp.local -dc-ip 192.168.1.10 -u administrator -p Password123 --protocol ldaps
+  python adscan.py -d corp.local -dc-ip 192.168.1.10 -u administrator -p Password123
+  python adscan.py -d corp.local -dc-ip 192.168.1.10 -u administrator --hash aad3b435b51404eeaad3b435b51404ee:8846f7eaee8fb117ad06bdd830b7586c
+  python adscan.py -d corp.local -dc-ip 192.168.1.10 -u administrator -p Password123 --protocol ldaps
 """
 
 import argparse
@@ -19,16 +19,18 @@ from datetime import datetime
 
 from lib.connector import ADConnector
 from lib.report import generate_report
+from lib.audit_log import AuditLogger
+from lib.debug_log import DebugLogger
 
 BANNER = r"""
-    _    ____  ____
-   / \  | _ \/ ___|  ___  __ _ _ __
-  / _ \ | | | \___ \ / __/ _` | '_ \
- / ___ \| |_| |___) | (_| (_| | | | |
+   _   ____  ____
+  / \ | _ \/ ___|
+ / _ \| | | \___ \
+/ ___ \| |_| |___) | (_| (_| | | | |
 /_/   \_\____/|____/ \___\__,_|_| |_|
 
-  Active Directory Vulnerability Scanner
-  Version 1.0 | github.com/dehobbs/ADScan
+Active Directory Vulnerability Scanner
+Version 1.0 | github.com/dehobbs/ADScan
 """
 
 # Default output directory for reports
@@ -61,14 +63,11 @@ def parse_args():
 
     target_group = parser.add_argument_group("Target")
     target_group.add_argument(
-        "-d", "--domain",
-        required=True,
+        "-d", "--domain", required=True,
         help="Target domain FQDN (e.g. corp.local)"
     )
     target_group.add_argument(
-        "-dc-ip", "--dc-ip",
-        dest="dc_ip",
-        required=True,
+        "-dc-ip", "--dc-ip", dest="dc_ip", required=True,
         help="Domain Controller IP or hostname"
     )
     target_group.add_argument(
@@ -79,26 +78,24 @@ def parse_args():
     )
 
     auth_group = parser.add_argument_group("Authentication")
-    auth_group.add_argument("-u", "--username", required=True, help="Username for authentication")
+    auth_group.add_argument("-u", "--username", required=True,
+                            help="Username for authentication")
     auth_creds = auth_group.add_mutually_exclusive_group(required=True)
     auth_creds.add_argument("-p", "--password", help="Password for authentication")
     auth_creds.add_argument(
-        "--hash",
-        metavar="NTLM_HASH",
+        "--hash", metavar="NTLM_HASH",
         help="NTLM hash for pass-the-hash (format: LM:NT or just NT)",
     )
 
     output_group = parser.add_argument_group("Output")
     output_group.add_argument(
-        "-o", "--output",
-        default=None,
+        "-o", "--output", default=None,
         help=(
             f"Output HTML report path (default: {REPORTS_DIR}/adscan_report_<timestamp>.html)"
         ),
     )
     output_group.add_argument(
-        "-v", "--verbose",
-        action="store_true",
+        "-v", "--verbose", action="store_true",
         help="Verbose output (show affected objects)"
     )
 
@@ -111,6 +108,7 @@ def ensure_reports_dir(path):
     if directory and not os.path.isdir(directory):
         os.makedirs(directory, exist_ok=True)
         print(f"[*] Created output directory: {directory}")
+
 
 def main():
     print(BANNER)
@@ -140,6 +138,21 @@ def main():
     print(f"[*] Artifacts Dir    : {ARTIFACTS_DIR}")
     print()
 
+    # ------------------------------------------------------------------ #
+    # Initialise audit logger + debug logger                               #
+    # ------------------------------------------------------------------ #
+    audit = AuditLogger(
+        domain=args.domain,
+        dc_host=args.dc_ip,
+        username=args.username,
+        auth_method="hash" if args.hash else "password",
+        scan_timestamp=scan_timestamp,
+    )
+    audit.start()
+
+    dbg = DebugLogger(scan_timestamp=scan_timestamp)
+    dbg.start()
+
     connector = ADConnector(
         domain=args.domain,
         dc_host=args.dc_ip,
@@ -153,6 +166,10 @@ def main():
     # Attach scan metadata so individual checks can use consistent naming
     connector.artifacts_dir = ARTIFACTS_DIR
     connector.scan_timestamp = scan_timestamp
+    # Attach debug logger:
+    #   - connector.ldap_search() calls dbg.log_ldap() automatically
+    #   - check files call connector.debug_log.log_subprocess() / log_smb() as needed
+    connector.debug_log = dbg
 
     if not connector.connect():
         print("[-] Failed to establish any connection to the Domain Controller.")
@@ -172,8 +189,14 @@ def main():
 
     for check in checks:
         print(f"\n[*] Running: {check.CHECK_NAME}")
+        # Mark the check boundary in the debug log
+        dbg.log_check_start(check.CHECK_NAME)
         try:
             result = check.run_check(connector, verbose=args.verbose)
+
+            # Record end of check in debug log
+            dbg.log_check_end(check.CHECK_NAME, result)
+
             if result:
                 for finding in result:
                     print(f"  [!] {finding['title']}")
@@ -190,8 +213,14 @@ def main():
                     findings.append(finding)
             else:
                 print(f"  [OK] No issues found.")
+
+            # Record this check in the audit log
+            audit.record_check(check.CHECK_NAME, result)
+
         except Exception as e:
             print(f"  [ERROR] {check.CHECK_NAME} raised an exception: {e}")
+            audit.record_check_error(check.CHECK_NAME, e)
+            dbg.log_error(context=check.CHECK_NAME, error=e)
             if args.verbose:
                 import traceback
                 traceback.print_exc()
@@ -215,13 +244,17 @@ def main():
     print(f"[+] Report saved  : {args.output}")
     print(f"[+] Final Score   : {score}/100")
     grade = (
-        "A" if score >= 90
-        else "B" if score >= 75
-        else "C" if score >= 60
-        else "D" if score >= 40
-        else "F"
+        "A" if score >= 90 else
+        "B" if score >= 75 else
+        "C" if score >= 60 else
+        "D" if score >= 40 else
+        "F"
     )
     print(f"[+] Grade         : {grade}")
+
+    # Finalise both loggers
+    audit.finish(score=score, report_path=os.path.abspath(args.output))
+    dbg.finish()
 
 
 if __name__ == "__main__":

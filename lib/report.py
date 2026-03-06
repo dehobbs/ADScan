@@ -63,7 +63,7 @@ def _finding_card(finding, idx):
     if finding.get("details"):
         items = "".join(
             f"<li style='margin:2px 0;font-family:monospace;font-size:0.85rem;'>"
-            f"{html_mod.escape(str(d))}</li>"
+            f"{html_mod.escape(str(d)).replace('[[REDACTED]]', '<span style=\"color:#e53e3e;font-weight:bold\">REDACTED</span>')}</li>"
             for d in finding["details"][:50]
         )
         more = ""
