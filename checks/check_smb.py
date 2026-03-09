@@ -441,6 +441,7 @@ def run_check(connector, verbose=False):
                 "Also set the client-side policy: "
                 "Microsoft network client: Digitally sign communications (always) = Enabled."
             ),
+            "affected_count": len(unsigned_hosts),
             "details": detail_lines,
         })
 
@@ -510,6 +511,7 @@ def run_check(connector, verbose=False):
                 "MS Security Guide > Configure SMBv1 Server = Disabled. "
                 "Verify with: Get-SmbServerConfiguration | Select EnableSMB1Protocol."
             ),
+            "affected_count": len(smbv1_hosts),
             "details": smbv1_detail_lines,
         })
 

@@ -5,22 +5,25 @@
 ldap3>=2.9.1
 
 # SMB connectivity and NTLM authentication (required for SMB checks and pass-the-hash)
-impacket>=0.11.0
+# impacket 0.12.0+ dropped the pyasn1<0.5.0 constraint that caused conflicts with certipy-ad
+impacket>=0.12.0
 
 # ---------------------------------------------------------------------------
 # Certipy-AD - ADCS / PKI vulnerability scanner (required for check_adcs_certipy)
 # Install: pip install certipy-ad
-# GitHub:  https://github.com/ly4k/Certipy
+# GitHub: https://github.com/ly4k/Certipy
 # ---------------------------------------------------------------------------
 certipy-ad>=4.8.2
 
 # Certipy dependencies (installed automatically with certipy-ad, listed for clarity)
+
 # Cryptography toolkit
 cryptography>=41.0.0
 
-# ASN.1 parsing (used by certipy for certificate parsing)
-pyasn1>=0.5.0
-pyasn1-modules>=0.3.0
+# ASN.1 parsing (used by certipy and impacket for certificate/protocol parsing)
+# >=0.4.8 allows pip to satisfy both impacket and certipy-ad requirements
+pyasn1>=0.4.8
+pyasn1-modules>=0.2.8
 
 # DNS resolution
 dnspython>=2.4.0
