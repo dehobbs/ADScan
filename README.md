@@ -18,7 +18,7 @@
 ## Installation
 
 ```bash
-git clone https://github.com/BrocktonPointSolutions/ADScan.git
+git clone https://github.com/dehobbs/ADScan.git
 cd ADScan
 pip install -r requirements.txt
 ```
