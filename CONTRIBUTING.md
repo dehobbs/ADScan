@@ -165,7 +165,7 @@ for entry in entries:
 ```
 
 Or use the dict-based pattern (entries returned as dicts when using
-`ldap3.RESTARTABLE` strategy — check the connector for the active strategy):
+`ldap3.RESTARTABLE` strategy; check the connector for the active strategy):
 
 ```python
 def _get_attr(entry, key):
@@ -217,7 +217,7 @@ engagements:
   finding with a title like `"My Check: No Issues Found"`. This provides
   visible evidence in the report that the check ran and passed.
 - Do not return multiple findings at the same severity for the same root
-  cause — collapse them into one finding with a `details` list.
+  cause; collapse them into one finding with a `details` list.
 
 ---
 
@@ -247,7 +247,7 @@ engagements:
 **6. Verify auto-discovery.**
    Run `python adscan.py -d test.local --dc-ip 127.0.0.1 -u user -p pass`
    (even against a non-existent target) and look for your `CHECK_NAME` in
-   the startup banner — it will appear even if the LDAP connection fails.
+   the startup banner; it will appear even if the LDAP connection fails.
 
 ---
 
@@ -344,7 +344,7 @@ def run_check(connector, verbose=False):
 
 ## Naming and ordering conventions
 
-**File naming:** `checks/check_<topic>.py` — lowercase, underscores, no spaces.
+**File naming:** `checks/check_<topic>.py`; lowercase, underscores, no spaces.
 
 **`CHECK_ORDER` allocation (built-in checks):**
 
@@ -362,7 +362,7 @@ def run_check(connector, verbose=False):
 | 90–99 | Infrastructure (domain controllers, replication, DNS, subnets) |
 | 100+  | Miscellaneous / custom checks |
 
-New checks in the 100+ range are safest — they will not collide with
+New checks in the 100+ range are safest; they will not collide with
 built-in checks added in future releases.
 
 **`CHECK_CATEGORY` values in current use:**
