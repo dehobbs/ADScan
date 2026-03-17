@@ -40,9 +40,9 @@ ADScan/
 │   ├── check_kerberos.py
 │   └── ...              # 37 built-in checks
 └── lib/
-    ├── connector.py     # ADConnector — LDAP/LDAPS/SMB connection manager
+    ├── connector.py     # ADConnector, LDAP/LDAPS/SMB connection manager
     ├── report.py        # HTML / JSON / CSV report generators
-    ├── scoring.py       # ScoringConfig — loads scoring.toml
+    ├── scoring.py       # ScoringConfig, loads scoring.toml
     ├── audit_log.py     # Structured audit trail
     └── debug_log.py     # Low-level LDAP query debug log
 ```
@@ -120,7 +120,7 @@ def run_check(connector, verbose=False):
 
 **Rules:**
 
-- Always return a `list`. An empty list means "nothing to report" — the check
+- Always return a `list`. An empty list means "nothing to report"; the check
   is silently skipped in the report.
 - Never `raise` exceptions out of `run_check`. Catch all exceptions and
   return a single info-severity finding with `deduction: 0` describing the
@@ -157,7 +157,7 @@ safely:
 
 ```python
 for entry in entries:
-    # Safe attribute access — always guard with try/except
+    # Safe attribute access; always guard with try/except
     try:
         sam = entry["sAMAccountName"].value
     except Exception:
