@@ -39,7 +39,7 @@ class ADConnector:
     """
 
     def __init__(self, domain, dc_host, username, password=None, ntlm_hash=None,
-                 protocols=None, verbose=False):
+                 protocols=None, verbose=False, timeout=30):
         self.domain = domain
         self.dc_host = dc_host
         self.username = username
@@ -47,6 +47,7 @@ class ADConnector:
         self.ntlm_hash = ntlm_hash
         self.protocols = protocols or ["ldap", "ldaps", "smb"]
         self.verbose = verbose
+        self.timeout = timeout
 
         # Active connections
         self.ldap_conn = None
@@ -181,6 +182,7 @@ class ADConnector:
                 use_ssl=use_ssl,
                 tls=tls,
                 get_info=ALL,
+                connect_timeout=self.timeout,
             )
 
             user = f"{self.domain}\\{self.username}"
@@ -206,7 +208,7 @@ class ADConnector:
     def _connect_smb(self):
         print(f"  [*] Connecting via SMB to {self.dc_host}:445 ...", end=" ")
         try:
-            smb = SMBConnection(self.dc_host, self.dc_host, sess_port=445)
+            smb = SMBConnection(self.dc_host, self.dc_host, sess_port=445, timeout=self.timeout)
 
             if self.password:
                 smb.login(self.username, self.password, self.domain)
