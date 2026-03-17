@@ -15,9 +15,7 @@ import sys
 import importlib
 import pkgutil
 import os
-import threading
 import traceback
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from lib.connector import ADConnector
 from lib.report import generate_report, generate_json_report, generate_csv_report
@@ -38,9 +36,6 @@ Version 1.0 | github.com/dehobbs/ADScan
 # Default output directory for reports
 REPORTS_DIR = "Reports"
 ARTIFACTS_DIR = os.path.join(REPORTS_DIR, "Artifacts")
-
-# Default number of parallel worker threads
-DEFAULT_WORKERS = 10
 
 
 def load_checks():
@@ -63,9 +58,7 @@ def parse_args():
             "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin -p Password1\n"
             "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin --hash :NThash\n"
             "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin -p Pass --protocol ldaps\n"
-            "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin          # prompts for password\n"
-            "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin -p Pass --workers 20\n"
-            "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin -p Pass --serial"
+            "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin          # prompts for password"
         ),
     )
 
@@ -118,23 +111,6 @@ def parse_args():
         help="Output format(s): html, json, csv, or all (default: html)",
     )
 
-    perf_group = parser.add_argument_group("Performance")
-    perf_group.add_argument(
-        "--workers",
-        type=int,
-        default=DEFAULT_WORKERS,
-        metavar="N",
-        help=(
-            f"Number of parallel worker threads for check execution "
-            f"(default: {DEFAULT_WORKERS}). Each worker opens its own DC connection."
-        ),
-    )
-    perf_group.add_argument(
-        "--serial",
-        action="store_true",
-        help="Disable parallel execution and run checks sequentially (original behaviour).",
-    )
-
     return parser.parse_args()
 
 
@@ -144,71 +120,6 @@ def ensure_reports_dir(path):
     if directory and not os.path.isdir(directory):
         os.makedirs(directory, exist_ok=True)
         print(f"[*] Created output directory: {directory}")
-
-
-def _make_connector(args, protocols):
-    """Create and return a fresh, connected ADConnector for one worker thread."""
-    c = ADConnector(
-        domain=args.domain,
-        dc_host=args.dc_ip,
-        username=args.username,
-        password=args.password,
-        ntlm_hash=args.hash,
-        protocols=protocols,
-        verbose=args.verbose,
-        timeout=args.timeout,
-    )
-    c.artifacts_dir = ARTIFACTS_DIR
-    return c
-
-
-def _run_check_worker(check, args, protocols, dbg, print_lock):
-    """
-    Worker function executed in each thread.
-
-    Opens its own ADConnector, runs the check, disconnects, and returns
-    (check_module, result_list, exception_or_None).
-    The connector is always disconnected on exit, even if an exception occurs.
-    """
-    connector = _make_connector(args, protocols)
-    connector.debug_log = dbg
-
-    if not connector.connect():
-        err = RuntimeError("Worker could not connect to the Domain Controller.")
-        return check, None, err
-
-    try:
-        dbg.log_check_start(check.CHECK_NAME)
-        result = check.run_check(connector, verbose=args.verbose)
-        dbg.log_check_end(check.CHECK_NAME, result)
-        return check, result, None
-    except Exception as exc:
-        dbg.log_error(context=check.CHECK_NAME, error=exc)
-        return check, None, exc
-    finally:
-        connector.disconnect()
-
-
-def _print_check_result(check, result, exc, args, print_lock):
-    """Print the outcome of one check under the print_lock."""
-    with print_lock:
-        print(f"\n[*] Completed: {check.CHECK_NAME}")
-        if exc is not None:
-            print(f"  [ERROR] {check.CHECK_NAME} raised an exception: {exc}")
-            if args.verbose:
-                traceback.print_exc()
-        elif result:
-            for finding in result:
-                print(f"  [!] {finding['title']}")
-                print(f"      Severity : {finding.get('severity', 'N/A').upper()}")
-                print(f"      Deduction: -{finding['deduction']} points")
-                if args.verbose and finding.get("details"):
-                    for detail in finding["details"][:10]:
-                        print(f"        - {detail}")
-                    if len(finding["details"]) > 10:
-                        print(f"        ... and {len(finding['details']) - 10} more")
-        else:
-            print(f"  [OK] No issues found.")
 
 
 def main():
@@ -246,8 +157,6 @@ def main():
 
     protocols = ["ldap", "ldaps", "smb"] if args.protocol == "all" else [args.protocol]
 
-    execution_mode = "serial" if args.serial else f"parallel ({args.workers} workers)"
-
     print(f"[*] Target Domain    : {args.domain}")
     print(f"[*] Domain Controller: {args.dc_ip}")
     print(f"[*] Username         : {args.username}")
@@ -257,7 +166,6 @@ def main():
     print(f"[*] Format(s)        : {args.format}")
     print(f"[*] Artifacts Dir    : {ARTIFACTS_DIR}")
     print(f"[*] Timeout          : {args.timeout}s")
-    print(f"[*] Execution        : {execution_mode}")
     print()
 
     # ------------------------------------------------------------------#
@@ -275,19 +183,30 @@ def main():
     dbg = DebugLogger(scan_timestamp=scan_timestamp)
     dbg.start()
 
-    # ------------------------------------------------------------------#
-    # Validate connectivity with a probe connector before spawning       #
-    # worker threads. This gives a clear error message if credentials    #
-    # are wrong rather than N identical failures from each worker.       #
-    # ------------------------------------------------------------------#
-    probe = _make_connector(args, protocols)
-    probe.debug_log = dbg
-    if not probe.connect():
+    connector = ADConnector(
+        domain=args.domain,
+        dc_host=args.dc_ip,
+        username=args.username,
+        password=args.password,
+        ntlm_hash=args.hash,
+        protocols=protocols,
+        verbose=args.verbose,
+        timeout=args.timeout,
+    )
+
+    # Attach scan metadata so individual checks can use consistent naming
+    connector.artifacts_dir = ARTIFACTS_DIR
+    connector.scan_timestamp = scan_timestamp
+
+    # Attach debug logger:
+    # - connector.ldap_search() calls dbg.log_ldap() automatically
+    # - check files call connector.debug_log.log_subprocess() / log_smb() as needed
+    connector.debug_log = dbg
+
+    if not connector.connect():
         print("[-] Failed to establish any connection to the Domain Controller.")
         print("    Check your credentials, DC address, and firewall rules.")
         sys.exit(1)
-    probe.disconnect()
-    print("[+] Connectivity probe: OK\n")
 
     checks = load_checks()
     if not checks:
@@ -299,92 +218,47 @@ def main():
 
     findings = []
     score = 100
-    print_lock = threading.Lock()
-    results_lock = threading.Lock()
 
-    if args.serial:
-        # ----------------------------------------------------------------#
-        # Serial execution — original single-threaded behaviour            #
-        # ----------------------------------------------------------------#
-        serial_connector = _make_connector(args, protocols)
-        serial_connector.debug_log = dbg
-        serial_connector.scan_timestamp = scan_timestamp
-        if not serial_connector.connect():
-            print("[-] Failed to reconnect for serial scan.")
-            sys.exit(1)
+    for check in checks:
+        print(f"\n[*] Running: {check.CHECK_NAME}")
+        # Mark the check boundary in the debug log
+        dbg.log_check_start(check.CHECK_NAME)
+        try:
+            result = check.run_check(connector, verbose=args.verbose)
+            # Record end of check in debug log
+            dbg.log_check_end(check.CHECK_NAME, result)
 
-        for check in checks:
-            print(f"\n[*] Running: {check.CHECK_NAME}")
-            dbg.log_check_start(check.CHECK_NAME)
-            try:
-                result = check.run_check(serial_connector, verbose=args.verbose)
-                dbg.log_check_end(check.CHECK_NAME, result)
-                if result:
-                    for finding in result:
-                        print(f"  [!] {finding['title']}")
-                        print(f"      Severity : {finding.get('severity', 'N/A').upper()}")
-                        print(f"      Deduction: -{finding['deduction']} points")
-                        if args.verbose and finding.get("details"):
-                            for detail in finding["details"][:10]:
-                                print(f"        - {detail}")
-                            if len(finding["details"]) > 10:
-                                print(f"        ... and {len(finding['details']) - 10} more")
-                        _cat = getattr(check, "CHECK_CATEGORY", "Uncategorized")
-                        finding.setdefault("category", _cat)
-                        score = max(0, score - finding["deduction"])
-                        findings.append(finding)
-                else:
-                    print(f"  [OK] No issues found.")
-                audit.record_check(check.CHECK_NAME, result)
-            except Exception as e:
-                print(f"  [ERROR] {check.CHECK_NAME} raised an exception: {e}")
-                audit.record_check_error(check.CHECK_NAME, e)
-                dbg.log_error(context=check.CHECK_NAME, error=e)
-                if args.verbose:
-                    traceback.print_exc()
-
-        serial_connector.disconnect()
-
-    else:
-        # ----------------------------------------------------------------#
-        # Parallel execution — each check gets its own connector           #
-        # ----------------------------------------------------------------#
-        # We submit all checks to the pool immediately and collect results
-        # as they complete. Once all futures are done we re-sort by
-        # CHECK_ORDER so the final findings list and console output are in
-        # a deterministic order regardless of completion order.
-        # ----------------------------------------------------------------#
-        completed_results = []  # list of (check_module, result, exc)
-
-        with ThreadPoolExecutor(max_workers=args.workers) as pool:
-            future_to_check = {
-                pool.submit(_run_check_worker, check, args, protocols, dbg, print_lock): check
-                for check in checks
-            }
-
-            for future in as_completed(future_to_check):
-                chk, result, exc = future.result()
-                _print_check_result(chk, result, exc, args, print_lock)
-                completed_results.append((chk, result, exc))
-
-        # Re-sort by CHECK_ORDER so findings appear in canonical order
-        completed_results.sort(key=lambda t: getattr(t[0], "CHECK_ORDER", 99))
-
-        for chk, result, exc in completed_results:
-            if exc is not None:
-                audit.record_check_error(chk.CHECK_NAME, exc)
+            if result:
+                for finding in result:
+                    print(f"  [!] {finding['title']}")
+                    print(f"      Severity : {finding.get('severity', 'N/A').upper()}")
+                    print(f"      Deduction: -{finding['deduction']} points")
+                    if args.verbose and finding.get("details"):
+                        for detail in finding["details"][:10]:
+                            print(f"        - {detail}")
+                        if len(finding["details"]) > 10:
+                            print(f"        ... and {len(finding['details']) - 10} more")
+                    _cat = getattr(check, "CHECK_CATEGORY", "Uncategorized")
+                    finding.setdefault("category", _cat)
+                    score = max(0, score - finding["deduction"])
+                    findings.append(finding)
             else:
-                if result:
-                    for finding in result:
-                        _cat = getattr(chk, "CHECK_CATEGORY", "Uncategorized")
-                        finding.setdefault("category", _cat)
-                        with results_lock:
-                            score = max(0, score - finding["deduction"])
-                            findings.append(finding)
-                audit.record_check(chk.CHECK_NAME, result)
+                print(f"  [OK] No issues found.")
+
+            # Record this check in the audit log
+            audit.record_check(check.CHECK_NAME, result)
+
+        except Exception as e:
+            print(f"  [ERROR] {check.CHECK_NAME} raised an exception: {e}")
+            audit.record_check_error(check.CHECK_NAME, e)
+            dbg.log_error(context=check.CHECK_NAME, error=e)
+            if args.verbose:
+                traceback.print_exc()
 
     print()
     print("=" * 60)
+
+    connector.disconnect()
 
     formats = ["html", "json", "csv"] if args.format == "all" else [args.format]
 
