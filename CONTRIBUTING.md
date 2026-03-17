@@ -1,7 +1,7 @@
 # Contributing to ADScan
 
 Thank you for your interest in improving ADScan. The most impactful way to
-contribute is to write a new security check — the auto-discovery system means
+contribute is to write a new security check; the auto-discovery system means
 a single well-formed Python file is all it takes.
 
 This guide covers everything you need to write, test, and submit a check.
@@ -380,7 +380,7 @@ in the HTML report.
 
 The `deduction` value you hardcode in each finding dict is used as-is unless
 the operator has configured `scoring.toml`. No action is required from check
-authors — the scoring engine applies overrides transparently at runtime.
+authors, the scoring engine applies overrides transparently at runtime.
 
 However, to make your check override-friendly, follow these two practices:
 
