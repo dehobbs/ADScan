@@ -24,17 +24,11 @@ Usage (from adscan.py)::
     logger.record_check(check_name, findings_list)
     # At the end:
     logger.finish(score=score, report_path=args.output)
-
-Thread safety
--------------
-All public methods acquire a reentrant lock before writing to the log file,
-making it safe to call record_check() from multiple worker threads concurrently.
 """
 
 import os
 import sys
 import time
-import threading
 from datetime import datetime
 
 # Where audit logs live relative to the project root
@@ -67,7 +61,6 @@ class AuditLogger:
         self._start_time: float = 0.0
         self._check_records: list[dict] = []
         self._log_path: str = ""
-        self._lock = threading.Lock()
 
     # ------------------------------------------------------------------#
     # Public API                                                          #
@@ -83,7 +76,7 @@ class AuditLogger:
         self._write_header()
 
     def record_check(self, check_name: str, findings: list[dict] | None) -> None:
-        """Call after each check module completes (thread-safe).
+        """Call after each check module completes.
 
         Args:
             check_name: The CHECK_NAME constant from the check module.
@@ -97,12 +90,11 @@ class AuditLogger:
             "severities": _count_severities(findings),
             "deduction": sum(f.get("deduction", 0) for f in findings),
         }
-        with self._lock:
-            self._check_records.append(record)
-            self._append_check_line(record)
+        self._check_records.append(record)
+        self._append_check_line(record)
 
     def record_check_error(self, check_name: str, error: Exception) -> None:
-        """Call when a check raises an unhandled exception (thread-safe)."""
+        """Call when a check raises an unhandled exception."""
         record = {
             "check": check_name,
             "status": "ERROR",
@@ -111,15 +103,14 @@ class AuditLogger:
             "deduction": 0,
             "error": str(error),
         }
-        with self._lock:
-            self._check_records.append(record)
-            self._append_check_line(record)
+        self._check_records.append(record)
+        self._append_check_line(record)
 
     def finish(self, score: int, report_path: str) -> None:
         """Call once after the scan is fully complete (report generated)."""
         elapsed = time.monotonic() - self._start_time
         self._write_footer(score=score, report_path=report_path, elapsed=elapsed)
-        print(f"[*] Audit log saved  : {self._log_path}")
+        print(f"[*] Audit log saved : {self._log_path}")
 
     @property
     def log_path(self) -> str:
@@ -135,15 +126,15 @@ class AuditLogger:
             "=" * 70,
             " ADScan Audit Log",
             "=" * 70,
-            f"  Run Timestamp : {now_str}",
-            f"  Operator      : {self.username}",
-            f"  Target Domain : {self.domain}",
-            f"  DC Host       : {self.dc_host}",
-            f"  Auth Method   : {self.auth_method}",
-            f"  Python        : {sys.version.split()[0]}",
+            f" Run Timestamp : {now_str}",
+            f" Operator      : {self.username}",
+            f" Target Domain : {self.domain}",
+            f" DC Host       : {self.dc_host}",
+            f" Auth Method   : {self.auth_method}",
+            f" Python        : {sys.version.split()[0]}",
             "=" * 70,
             "",
-            f"{'CHECK':<45} {'STATUS':<10} {'FINDINGS':>8} {'DEDUCT':>6}  SEVERITIES",
+            f"{'CHECK':<45} {'STATUS':<10} {'FINDINGS':>8} {'DEDUCT':>6} SEVERITIES",
             "-" * 100,
         ]
         self._write_lines(lines)
@@ -156,7 +147,7 @@ class AuditLogger:
             f"{record['check']:<45} "
             f"{record['status']:<10} "
             f"{record['count']:>8} "
-            f"{record['deduction']:>6}  "
+            f"{record['deduction']:>6} "
             f"{sev_str}"
         )
         self._write_lines([line])
@@ -187,18 +178,18 @@ class AuditLogger:
             "",
             "SUMMARY",
             "-" * 40,
-            f"  Checks run          : {len(self._check_records)}",
-            f"  Checks with findings: {checks_with_findings}",
-            f"  Checks errored      : {checks_errored}",
-            f"  Total findings      : {total_findings}",
-            f"  Total deduction     : -{total_deduction} points",
-            f"  Severity breakdown  : {_format_severities(combined_severities)}",
+            f" Checks run          : {len(self._check_records)}",
+            f" Checks with findings: {checks_with_findings}",
+            f" Checks errored      : {checks_errored}",
+            f" Total findings      : {total_findings}",
+            f" Total deduction     : -{total_deduction} points",
+            f" Severity breakdown  : {_format_severities(combined_severities)}",
             "",
-            f"  Starting score      : 100",
-            f"  Final score         : {score}/100 (Grade: {grade})",
+            f" Starting score      : 100",
+            f" Final score         : {score}/100 (Grade: {grade})",
             "",
-            f"  Elapsed time        : {_format_elapsed(elapsed)}",
-            f"  Report saved to     : {report_path}",
+            f" Elapsed time        : {_format_elapsed(elapsed)}",
+            f" Report saved to     : {report_path}",
             "",
             "=" * 70,
             " End of audit log",
