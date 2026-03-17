@@ -21,6 +21,7 @@ from lib.connector import ADConnector
 from lib.report import generate_report, generate_json_report, generate_csv_report
 from lib.audit_log import AuditLogger
 from lib.debug_log import DebugLogger
+from lib.scoring import ScoringConfig
 
 BANNER = r"""
    _    ____  ____
@@ -111,6 +112,18 @@ def parse_args():
         help="Output format(s): html, json, csv, or all (default: html)",
     )
 
+    output_group.add_argument(
+        "--scoring-config",
+        dest="scoring_config",
+        default=None,
+        metavar="PATH",
+        help=(
+            "Path to a TOML scoring config file "
+            "(default: scoring.toml next to adscan.py).\n"
+            "Override per-finding deductions or severity-tier weights."
+        ),
+    )
+
     return parser.parse_args()
 
 
@@ -125,6 +138,9 @@ def ensure_reports_dir(path):
 def main():
     print(BANNER)
     args = parse_args()
+
+    # Load scoring config (scoring.toml is optional — built-in weights used if absent)
+    scoring = ScoringConfig.load(args.scoring_config)
 
     # If neither -p nor --hash was supplied, prompt interactively (no echo)
     if args.password is None and args.hash is None:
@@ -166,6 +182,7 @@ def main():
     print(f"[*] Format(s)        : {args.format}")
     print(f"[*] Artifacts Dir    : {ARTIFACTS_DIR}")
     print(f"[*] Timeout          : {args.timeout}s")
+    print(f"[*] Scoring Config   : {scoring.summary()}")
     print()
 
     # ------------------------------------------------------------------#
@@ -232,7 +249,8 @@ def main():
                 for finding in result:
                     print(f"  [!] {finding['title']}")
                     print(f"      Severity : {finding.get('severity', 'N/A').upper()}")
-                    print(f"      Deduction: -{finding['deduction']} points")
+                    _eff = scoring.deduction_for(finding)
+                    print(f"      Deduction: -{_eff} points")
                     if args.verbose and finding.get("details"):
                         for detail in finding["details"][:10]:
                             print(f"        - {detail}")
@@ -240,6 +258,10 @@ def main():
                             print(f"        ... and {len(finding['details']) - 10} more")
                     _cat = getattr(check, "CHECK_CATEGORY", "Uncategorized")
                     finding.setdefault("category", _cat)
+
+                    # Resolve the effective deduction via scoring config, then
+                    # write it back so all report formats see the same value
+                    finding["deduction"] = scoring.deduction_for(finding)
                     score = max(0, score - finding["deduction"])
                     findings.append(finding)
             else:
