@@ -1,34 +1,33 @@
 #!/usr/bin/env python3
 """
 ADScan - Active Directory Vulnerability Scanner
-
 Main entry point for the scanner.
 
 Usage:
     python adscan.py -d corp.local -dc-ip 192.168.1.10 -u administrator -p Password123
     python adscan.py -d corp.local -dc-ip 192.168.1.10 -u administrator --hash aad3b435b51404eeaad3b435b51404ee:8846f7eaee8fb117ad06bdd830b7586c
     python adscan.py -d corp.local -dc-ip 192.168.1.10 -u administrator -p Password123 --protocol ldaps
+    python adscan.py -d corp.local -dc-ip 192.168.1.10 -u administrator  # prompts for password
 """
-
 import argparse
+import getpass
 import sys
 import importlib
 import pkgutil
 import os
 import traceback
 from datetime import datetime
-
 from lib.connector import ADConnector
 from lib.report import generate_report, generate_json_report, generate_csv_report
 from lib.audit_log import AuditLogger
 from lib.debug_log import DebugLogger
 
 BANNER = r"""
- _    ____  ____
-/ \  | _ \/ ___|
-/ _ \| | | \___ \
-/ ___ \| |_| |___) | (_| (_| | | | |
-/_/   \_\____/|____/ \___\__,_|_| |_|
+   _    ____  ____
+  / \  |  _ \/ ___|
+ / _ \ | | | \___ \
+/ ___ \| |_| |___) |
+ (_/ \_(_|____/|____/   \___\__,_|_| |_|
 
 Active Directory Vulnerability Scanner
 Version 1.0 | github.com/dehobbs/ADScan
@@ -58,14 +57,14 @@ def parse_args():
             "Examples:\n"
             "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin -p Password1\n"
             "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin --hash :NThash\n"
-            "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin -p Pass --protocol ldaps"
+            "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin -p Pass --protocol ldaps\n"
+            "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin          # prompts for password"
         ),
     )
 
     target_group = parser.add_argument_group("Target")
     target_group.add_argument(
-        "-d", "--domain", required=True,
-        help="Target domain FQDN (e.g. corp.local)"
+        "-d", "--domain", required=True, help="Target domain FQDN (e.g. corp.local)"
     )
     target_group.add_argument(
         "-dc-ip", "--dc-ip", dest="dc_ip", required=True,
@@ -79,26 +78,30 @@ def parse_args():
     )
 
     auth_group = parser.add_argument_group("Authentication")
-    auth_group.add_argument("-u", "--username", required=True,
-                            help="Username for authentication")
-    auth_creds = auth_group.add_mutually_exclusive_group(required=True)
+    auth_group.add_argument("-u", "--username", required=True, help="Username for authentication")
+    auth_creds = auth_group.add_mutually_exclusive_group(required=False)
     auth_creds.add_argument("-p", "--password", help="Password for authentication")
     auth_creds.add_argument(
-        "--hash", metavar="NTLM_HASH",
+        "--hash",
+        metavar="NTLM_HASH",
         help="NTLM hash for pass-the-hash (format: LM:NT or just NT)",
     )
 
     output_group = parser.add_argument_group("Output")
     output_group.add_argument(
-        "-o", "--output", default=None,
-        help=f"Output HTML report path (default: {REPORTS_DIR}/adscan_report_<timestamp>.html)",
+        "-o", "--output",
+        default=None,
+        help=f"Output report path stem (default: {REPORTS_DIR}/adscan_report_<timestamp>)",
     )
     output_group.add_argument(
-        "-v", "--verbose", action="store_true",
+        "-v", "--verbose",
+        action="store_true",
         help="Verbose output (show affected objects)"
     )
     output_group.add_argument(
-        "--timeout", type=int, default=30,
+        "--timeout",
+        type=int,
+        default=30,
         help="Connection timeout in seconds (default: 30)"
     )
     output_group.add_argument(
@@ -123,6 +126,19 @@ def main():
     print(BANNER)
     args = parse_args()
 
+    # If neither -p nor --hash was supplied, prompt interactively (no echo)
+    if args.password is None and args.hash is None:
+        try:
+            args.password = getpass.getpass(
+                prompt=f"[*] Password for {args.username}@{args.domain}: "
+            )
+        except (KeyboardInterrupt, EOFError):
+            print("\n[-] Password prompt cancelled. Exiting.")
+            sys.exit(1)
+        if not args.password:
+            print("[-] No password supplied. Use -p or --hash.")
+            sys.exit(1)
+
     # Generate a single scan timestamp used for all artifact naming
     scan_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -130,7 +146,7 @@ def main():
     if args.output is None:
         output_stem = os.path.join(REPORTS_DIR, f"adscan_report_{scan_timestamp}")
     else:
-        # Strip any extension the user supplied — we'll add the right one(s)
+        # Strip any extension the user supplied - we'll add the right one(s)
         output_stem, _ = os.path.splitext(args.output)
 
     # Make sure the output directory exists (use stem + .html as representative path)
@@ -152,9 +168,9 @@ def main():
     print(f"[*] Timeout          : {args.timeout}s")
     print()
 
-    # ------------------------------------------------------------------ #
-    # Initialise audit logger + debug logger                              #
-    # ------------------------------------------------------------------ #
+    # ------------------------------------------------------------------#
+    # Initialise audit logger + debug logger                             #
+    # ------------------------------------------------------------------#
     audit = AuditLogger(
         domain=args.domain,
         dc_host=args.dc_ip,
@@ -181,6 +197,7 @@ def main():
     # Attach scan metadata so individual checks can use consistent naming
     connector.artifacts_dir = ARTIFACTS_DIR
     connector.scan_timestamp = scan_timestamp
+
     # Attach debug logger:
     # - connector.ldap_search() calls dbg.log_ldap() automatically
     # - check files call connector.debug_log.log_subprocess() / log_smb() as needed
@@ -208,7 +225,6 @@ def main():
         dbg.log_check_start(check.CHECK_NAME)
         try:
             result = check.run_check(connector, verbose=args.verbose)
-
             # Record end of check in debug log
             dbg.log_check_end(check.CHECK_NAME, result)
 
@@ -245,6 +261,7 @@ def main():
     connector.disconnect()
 
     formats = ["html", "json", "csv"] if args.format == "all" else [args.format]
+
     report_args = dict(
         domain=args.domain,
         dc_host=args.dc_ip,
@@ -264,15 +281,16 @@ def main():
         elif fmt == "csv":
             generate_csv_report(output_file=out_path, **report_args)
         print(f"[+] Saved : {out_path}")
-    print(f"[+] Final Score  : {score}/100")
+
+    print(f"[+] Final Score : {score}/100")
     grade = (
-        "A" if score >= 90 else
-        "B" if score >= 75 else
-        "C" if score >= 60 else
-        "D" if score >= 40 else
-        "F"
+        "A" if score >= 90
+        else "B" if score >= 75
+        else "C" if score >= 60
+        else "D" if score >= 40
+        else "F"
     )
-    print(f"[+] Grade        : {grade}")
+    print(f"[+] Grade : {grade}")
 
     # Finalise both loggers
     primary_ext = "html" if "html" in formats else formats[0]
