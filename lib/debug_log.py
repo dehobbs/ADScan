@@ -35,13 +35,6 @@ Errors / exceptions
 
 Log file naming: Logs/adscan_debug_<YYYYMMDD_HHMMSS>.log
 
-Thread safety
--------------
-All public methods acquire a lock before writing, making it safe to call
-log_ldap() / log_subprocess() / log_smb() / log_error() concurrently from
-multiple worker threads.  The sequence counter (_seq) is incremented under
-the same lock to maintain a globally consistent ordering across threads.
-
 Usage (from adscan.py)::
 
     from lib.debug_log import DebugLogger
@@ -71,7 +64,6 @@ Usage inside check files (subprocess example)::
 """
 
 import os
-import threading
 import traceback
 from datetime import datetime
 
@@ -84,8 +76,6 @@ class DebugLogger:
 
     Designed to be attached to the connector as connector.debug_log so that
     the connector's ldap_search() method can call log_ldap() automatically.
-
-    All public logging methods are thread-safe.
     """
 
     # ------------------------------------------------------------------#
@@ -100,10 +90,9 @@ class DebugLogger:
         self.scan_timestamp = scan_timestamp
         self.logs_dir = logs_dir or LOGS_DIR
         self._log_path: str = ""
-        self._seq: int = 0                # monotonic sequence number (all ops, all threads)
-        self._check_seq: int = 0          # per-check counter (serial mode only)
+        self._seq: int = 0                # monotonic sequence number across all ops
+        self._check_seq: int = 0          # per-check operation counter (reset each check)
         self._current_check: str = ""
-        self._lock = threading.Lock()
 
     # ------------------------------------------------------------------#
     # Lifecycle                                                           #
@@ -118,9 +107,9 @@ class DebugLogger:
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self._write([
             "=" * 80,
-            f"  ADScan Debug Log -- {now}",
-            "  Records every LDAP query, subprocess command, and SMB operation",
-            "  executed during the scan, with full input/output for debugging.",
+            f" ADScan Debug Log -- {now}",
+            " Records every LDAP query, subprocess command, and SMB operation",
+            " executed during the scan, with full input/output for debugging.",
             "=" * 80,
             "",
         ])
@@ -128,16 +117,14 @@ class DebugLogger:
     def finish(self) -> None:
         """Write the footer and print the log path."""
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        with self._lock:
-            seq = self._seq
         self._write([
             "",
             "=" * 80,
-            f"  End of debug log -- {now}",
-            f"  Total operations logged: {seq}",
+            f" End of debug log -- {now}",
+            f" Total operations logged: {self._seq}",
             "=" * 80,
         ])
-        print(f"[*] Debug log saved  : {self._log_path}")
+        print(f"[*] Debug log saved : {self._log_path}")
 
     @property
     def log_path(self) -> str:
@@ -149,14 +136,13 @@ class DebugLogger:
 
     def log_check_start(self, check_name: str) -> None:
         """Call before each check.run_check() to mark the boundary in the log."""
-        with self._lock:
-            self._current_check = check_name
-            self._check_seq = 0
+        self._current_check = check_name
+        self._check_seq = 0
         self._write([
             "",
             "=" * 80,
-            f"  CHECK: {check_name}",
-            f"  Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            f" CHECK: {check_name}",
+            f" Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             "=" * 80,
         ])
 
@@ -166,8 +152,8 @@ class DebugLogger:
         status = f"{count} finding(s)" if count else "PASS (no findings)"
         self._write([
             "",
-            f"  CHECK END: {check_name} -- {status}",
-            f"  Finished: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            f" CHECK END: {check_name} -- {status}",
+            f" Finished: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             "-" * 80,
         ])
 
@@ -187,24 +173,22 @@ class DebugLogger:
         Log one LDAP search operation.
 
         Called automatically by connector.ldap_search() -- no manual calls
-        needed in check files.  Thread-safe.
+        needed in check files.
         """
-        with self._lock:
-            self._seq += 1
-            seq = self._seq
-
-        tag = f"[LDAP #{seq}]"
+        self._seq += 1
+        self._check_seq += 1
+        tag = f"[LDAP #{self._seq}]"
         lines = [
             "",
             f"{tag} --- LDAP Search ---",
-            f"  Base DN    : {search_base}",
-            f"  Filter     : {search_filter}",
-            f"  Attributes : {', '.join(attributes) if attributes else '*'}",
+            f" Base DN    : {search_base}",
+            f" Filter     : {search_filter}",
+            f" Attributes : {', '.join(attributes) if attributes else '*'}",
         ]
         if error:
-            lines.append(f"  Result     : ERROR -- {error}")
+            lines.append(f" Result     : ERROR -- {error}")
         else:
-            lines.append(f"  Result     : {entry_count} entr{'y' if entry_count == 1 else 'ies'} returned")
+            lines.append(f" Result     : {entry_count} entr{'y' if entry_count == 1 else 'ies'} returned")
         self._write(lines)
 
     # ------------------------------------------------------------------#
@@ -220,7 +204,7 @@ class DebugLogger:
         cwd: str | None = None,
     ) -> None:
         """
-        Log a subprocess.run() call and its output.  Thread-safe.
+        Log a subprocess.run() call and its output.
 
         Call this from any check that invokes an external tool::
 
@@ -230,29 +214,27 @@ class DebugLogger:
                 dbg.log_subprocess(cmd=cmd, returncode=rc,
                                    stdout=out, stderr=err, cwd=str(cwd))
         """
-        with self._lock:
-            self._seq += 1
-            seq = self._seq
-
-        tag = f"[SUBPROCESS #{seq}]"
+        self._seq += 1
+        self._check_seq += 1
+        tag = f"[SUBPROCESS #{self._seq}]"
         cmd_str = " ".join(str(c) for c in cmd) if isinstance(cmd, list) else str(cmd)
         lines = [
             "",
             f"{tag} --- Subprocess ---",
-            f"  Command     : {cmd_str}",
-            f"  CWD         : {cwd or '(not set)'}",
-            f"  Return code : {returncode}",
+            f" Command    : {cmd_str}",
+            f" CWD        : {cwd or '(not set)'}",
+            f" Return code: {returncode}",
         ]
         if stdout and stdout.strip():
-            lines.append("  stdout:")
-            lines.extend("    " + line for line in stdout.rstrip().splitlines())
+            lines.append(" stdout:")
+            lines.extend(" " + line for line in stdout.rstrip().splitlines())
         else:
-            lines.append("  stdout      : (empty)")
+            lines.append(" stdout     : (empty)")
         if stderr and stderr.strip():
-            lines.append("  stderr:")
-            lines.extend("    " + line for line in stderr.rstrip().splitlines())
+            lines.append(" stderr:")
+            lines.extend(" " + line for line in stderr.rstrip().splitlines())
         else:
-            lines.append("  stderr      : (empty)")
+            lines.append(" stderr     : (empty)")
         self._write(lines)
 
     # ------------------------------------------------------------------#
@@ -267,7 +249,7 @@ class DebugLogger:
         error: str | None = None,
     ) -> None:
         """
-        Log an SMB or file-system operation.  Thread-safe.
+        Log an SMB or file-system operation.
 
         Call from check files that do SMB traversal::
 
@@ -276,21 +258,19 @@ class DebugLogger:
                 dbg.log_smb("listPath", sysvol_path,
                              result=f"{len(entries)} entries")
         """
-        with self._lock:
-            self._seq += 1
-            seq = self._seq
-
-        tag = f"[SMB #{seq}]"
+        self._seq += 1
+        self._check_seq += 1
+        tag = f"[SMB #{self._seq}]"
         lines = [
             "",
             f"{tag} --- SMB Operation ---",
-            f"  Operation : {operation}",
-            f"  Path      : {path}",
+            f" Operation: {operation}",
+            f" Path     : {path}",
         ]
         if error:
-            lines.append(f"  Result    : ERROR -- {error}")
+            lines.append(f" Result   : ERROR -- {error}")
         else:
-            lines.append(f"  Result    : {result or 'OK'}")
+            lines.append(f" Result   : {result or 'OK'}")
         self._write(lines)
 
     # ------------------------------------------------------------------#
@@ -304,7 +284,7 @@ class DebugLogger:
         include_traceback: bool = True,
     ) -> None:
         """
-        Log a caught exception with optional full traceback.  Thread-safe.
+        Log a caught exception with optional full traceback.
 
         Call from check files or adscan.py when an exception is caught and
         you want it recorded in the debug log without re-raising::
@@ -313,22 +293,19 @@ class DebugLogger:
                 if connector.debug_log:
                     connector.debug_log.log_error("Certipy phase", e)
         """
-        with self._lock:
-            self._seq += 1
-            seq = self._seq
-
-        tag = f"[ERROR #{seq}]"
+        self._seq += 1
+        tag = f"[ERROR #{self._seq}]"
         lines = [
             "",
             f"{tag} --- Error ---",
-            f"  Context   : {context}",
-            f"  Exception : {type(error).__name__}: {error}",
+            f" Context  : {context}",
+            f" Exception: {type(error).__name__}: {error}",
         ]
         if include_traceback:
             tb = traceback.format_exc()
             if tb and tb.strip() != "NoneType: None":
-                lines.append("  Traceback:")
-                lines.extend("    " + line for line in tb.rstrip().splitlines())
+                lines.append(" Traceback:")
+                lines.extend(" " + line for line in tb.rstrip().splitlines())
         self._write(lines)
 
     # ------------------------------------------------------------------#
@@ -336,7 +313,6 @@ class DebugLogger:
     # ------------------------------------------------------------------#
 
     def _write(self, lines: list[str]) -> None:
-        with self._lock:
-            with open(self._log_path, "a", encoding="utf-8") as fh:
-                for line in lines:
-                    fh.write(line + "\n")
+        with open(self._log_path, "a", encoding="utf-8") as fh:
+            for line in lines:
+                fh.write(line + "\n")
