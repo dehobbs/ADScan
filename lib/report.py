@@ -619,3 +619,122 @@ def generate_report(output_file, domain, dc_host, username, protocols, findings,
 
     with open(output_file, "w", encoding="utf-8") as fh:
         fh.write(html_content)
+
+
+# ---------------------------------------------------------------------------
+# JSON output
+# ---------------------------------------------------------------------------
+
+def generate_json_report(output_file, domain, dc_host, username, protocols, findings, score):
+    """Write a machine-readable JSON report."""
+    import json
+    from datetime import datetime
+
+    def _grade(s):
+        if s >= 90: return "A"
+        if s >= 75: return "B"
+        if s >= 60: return "C"
+        if s >= 40: return "D"
+        return "F"
+
+    payload = {
+        "meta": {
+            "tool": "ADScan",
+            "version": "1.0",
+            "scan_time": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+            "domain": domain,
+            "dc_host": dc_host,
+            "username": username,
+            "protocols": protocols,
+        },
+        "score": {
+            "value": score,
+            "grade": _grade(score),
+        },
+        "summary": {
+            "total_findings": len(findings),
+            "critical": sum(1 for f in findings if f.get("severity", "").lower() == "critical"),
+            "high":     sum(1 for f in findings if f.get("severity", "").lower() == "high"),
+            "medium":   sum(1 for f in findings if f.get("severity", "").lower() == "medium"),
+            "low":      sum(1 for f in findings if f.get("severity", "").lower() == "low"),
+            "info":     sum(1 for f in findings if f.get("severity", "").lower() == "info"),
+        },
+        "findings": [
+            {
+                "title":          f.get("title", ""),
+                "severity":       f.get("severity", "info"),
+                "category":       f.get("category", "Uncategorized"),
+                "deduction":      f.get("deduction", 0),
+                "description":    f.get("description", ""),
+                "recommendation": f.get("recommendation", ""),
+                "affected_count": f.get("affected_count", len(f.get("details", []))),
+                "details":        f.get("details", []),
+            }
+            for f in findings
+        ],
+    }
+
+    with open(output_file, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh, indent=2, default=str)
+
+
+# ---------------------------------------------------------------------------
+# CSV output
+# ---------------------------------------------------------------------------
+
+def generate_csv_report(output_file, domain, dc_host, username, protocols, findings, score):
+    """Write a flat CSV report — one row per finding."""
+    import csv
+    from datetime import datetime
+
+    fieldnames = [
+        "scan_time", "domain", "dc_host", "username", "protocols",
+        "score", "title", "severity", "category",
+        "deduction", "description", "recommendation",
+        "affected_count", "details_sample",
+    ]
+
+    scan_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    proto_str = ", ".join(protocols)
+
+    with open(output_file, "w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=fieldnames)
+        writer.writeheader()
+
+        if not findings:
+            writer.writerow({
+                "scan_time": scan_time, "domain": domain, "dc_host": dc_host,
+                "username": username, "protocols": proto_str, "score": score,
+                "title": "No findings", "severity": "", "category": "",
+                "deduction": 0, "description": "", "recommendation": "",
+                "affected_count": 0, "details_sample": "",
+            })
+            return
+
+        for f in findings:
+            details = f.get("details", [])
+            # Cap the sample at 5 entries to keep cells readable
+            sample = " | ".join(str(d) for d in details[:5])
+            if len(details) > 5:
+                sample += f" ... (+{len(details) - 5} more)"
+
+            cats = f.get("category", "Uncategorized")
+            if not isinstance(cats, str):
+                cats = ", ".join(cats)
+
+            writer.writerow({
+                "scan_time":      scan_time,
+                "domain":         domain,
+                "dc_host":        dc_host,
+                "username":       username,
+                "protocols":      proto_str,
+                "score":          score,
+                "title":          f.get("title", ""),
+                "severity":       f.get("severity", "info"),
+                "category":       cats,
+                "deduction":      f.get("deduction", 0),
+                "description":    f.get("description", ""),
+                "recommendation": f.get("recommendation", ""),
+                "affected_count": f.get("affected_count", len(details)),
+                "details_sample": sample,
+            })
