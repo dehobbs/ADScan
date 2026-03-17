@@ -1,22 +1,25 @@
 #!/usr/bin/env python3
 """
 ADScan - Active Directory Vulnerability Scanner
+
 Main entry point for the scanner.
 
 Usage:
     python adscan.py -d corp.local -dc-ip 192.168.1.10 -u administrator -p Password123
     python adscan.py -d corp.local -dc-ip 192.168.1.10 -u administrator --hash aad3b435b51404eeaad3b435b51404ee:8846f7eaee8fb117ad06bdd830b7586c
     python adscan.py -d corp.local -dc-ip 192.168.1.10 -u administrator -p Password123 --protocol ldaps
-    python adscan.py -d corp.local -dc-ip 192.168.1.10 -u administrator  # prompts for password
+    python adscan.py -d corp.local -dc-ip 192.168.1.10 -u administrator   # prompts for password
 """
+
 import argparse
 import getpass
+import logging
 import sys
 import importlib
 import pkgutil
 import os
-import traceback
 from datetime import datetime
+
 from lib.connector import ADConnector
 from lib.report import generate_report, generate_json_report, generate_csv_report
 from lib.audit_log import AuditLogger
@@ -24,19 +27,61 @@ from lib.debug_log import DebugLogger
 from lib.scoring import ScoringConfig
 
 BANNER = r"""
-   _    ____  ____
-  / \  |  _ \/ ___|
- / _ \ | | | \___ \
-/ ___ \| |_| |___) |
- (_/ \_(_|____/|____/   \___\__,_|_| |_|
+    _    ____  ____
+   / \  |  _ \/ ___|
+  / _ \ | | | \___ \
+ / ___ \| |_| |___) |
+(_/   \_(_|____/|____/  \___\__,_|_|  |_|
 
-Active Directory Vulnerability Scanner
-Version 1.0 | github.com/dehobbs/ADScan
+  Active Directory Vulnerability Scanner
+  Version 1.0 | github.com/dehobbs/ADScan
 """
 
 # Default output directory for reports
 REPORTS_DIR = "Reports"
 ARTIFACTS_DIR = os.path.join(REPORTS_DIR, "Artifacts")
+
+
+def configure_logging(verbose: bool, log_file: str | None) -> logging.Logger:
+    """
+    Configure the 'adscan' logger with a console handler and an optional
+    file handler.
+
+    Console handler level:
+      verbose=False -> INFO  (progress lines and finding summaries)
+      verbose=True  -> DEBUG (adds finding details and affected objects)
+
+    File handler (when --log-file is supplied):
+      Always writes at DEBUG level with a timestamp prefix, regardless of
+      --verbose. The file therefore captures the full trace of every run.
+    """
+    logger = logging.getLogger("adscan")
+    logger.setLevel(logging.DEBUG)   # capture everything; handlers filter
+    logger.propagate = False         # don't bubble to the root logger
+
+    fmt_console = logging.Formatter("%(message)s")
+    fmt_file = logging.Formatter(
+        "%(asctime)s  %(levelname)-8s  %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    # Console handler
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG if verbose else logging.INFO)
+    ch.setFormatter(fmt_console)
+    logger.addHandler(ch)
+
+    # File handler (optional)
+    if log_file:
+        log_dir = os.path.dirname(os.path.abspath(log_file))
+        if log_dir:
+            os.makedirs(log_dir, exist_ok=True)
+        fh = logging.FileHandler(log_file, encoding="utf-8")
+        fh.setLevel(logging.DEBUG)
+        fh.setFormatter(fmt_file)
+        logger.addHandler(fh)
+
+    return logger
 
 
 def load_checks():
@@ -59,7 +104,9 @@ def parse_args():
             "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin -p Password1\n"
             "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin --hash :NThash\n"
             "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin -p Pass --protocol ldaps\n"
-            "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin          # prompts for password"
+            "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin   # prompts for password\n"
+            "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin -p Pass --log-file scan.log\n"
+            "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin -p Pass -v --log-file debug.log"
         ),
     )
 
@@ -97,13 +144,17 @@ def parse_args():
     output_group.add_argument(
         "-v", "--verbose",
         action="store_true",
-        help="Verbose output (show affected objects)"
+        help=(
+            "Show DEBUG-level output on the console: finding details and "
+            "affected objects. When --log-file is also given the file always "
+            "captures DEBUG output regardless of this flag."
+        ),
     )
     output_group.add_argument(
         "--timeout",
         type=int,
         default=30,
-        help="Connection timeout in seconds (default: 30)"
+        help="Connection timeout in seconds (default: 30)",
     )
     output_group.add_argument(
         "--format",
@@ -111,7 +162,17 @@ def parse_args():
         default="html",
         help="Output format(s): html, json, csv, or all (default: html)",
     )
-
+    output_group.add_argument(
+        "--log-file",
+        dest="log_file",
+        default=None,
+        metavar="PATH",
+        help=(
+            "Write all log output (including DEBUG detail) to this file in "
+            "addition to the console. The file always captures full DEBUG "
+            "output regardless of --verbose."
+        ),
+    )
     output_group.add_argument(
         "--scoring-config",
         dest="scoring_config",
@@ -132,12 +193,15 @@ def ensure_reports_dir(path):
     directory = os.path.dirname(os.path.abspath(path))
     if directory and not os.path.isdir(directory):
         os.makedirs(directory, exist_ok=True)
-        print(f"[*] Created output directory: {directory}")
 
 
 def main():
-    print(BANNER)
     args = parse_args()
+
+    # Configure logging first — all subsequent output goes through the logger
+    log = configure_logging(args.verbose, args.log_file)
+
+    log.info(BANNER)
 
     # Load scoring config (scoring.toml is optional — built-in weights used if absent)
     scoring = ScoringConfig.load(args.scoring_config)
@@ -149,10 +213,10 @@ def main():
                 prompt=f"[*] Password for {args.username}@{args.domain}: "
             )
         except (KeyboardInterrupt, EOFError):
-            print("\n[-] Password prompt cancelled. Exiting.")
+            log.error("Password prompt cancelled. Exiting.")
             sys.exit(1)
         if not args.password:
-            print("[-] No password supplied. Use -p or --hash.")
+            log.error("No password supplied. Use -p or --hash.")
             sys.exit(1)
 
     # Generate a single scan timestamp used for all artifact naming
@@ -162,10 +226,9 @@ def main():
     if args.output is None:
         output_stem = os.path.join(REPORTS_DIR, f"adscan_report_{scan_timestamp}")
     else:
-        # Strip any extension the user supplied - we'll add the right one(s)
         output_stem, _ = os.path.splitext(args.output)
 
-    # Make sure the output directory exists (use stem + .html as representative path)
+    # Make sure the output directory exists
     ensure_reports_dir(output_stem + ".html")
 
     # Create the Artifacts subdirectory for tool output (e.g. Certipy JSON)
@@ -173,21 +236,22 @@ def main():
 
     protocols = ["ldap", "ldaps", "smb"] if args.protocol == "all" else [args.protocol]
 
-    print(f"[*] Target Domain    : {args.domain}")
-    print(f"[*] Domain Controller: {args.dc_ip}")
-    print(f"[*] Username         : {args.username}")
-    print(f"[*] Auth Method      : {'NTLM Hash' if args.hash else 'Password'}")
-    print(f"[*] Protocol(s)      : {', '.join(p.upper() for p in protocols)}")
-    print(f"[*] Output Stem      : {output_stem}.*")
-    print(f"[*] Format(s)        : {args.format}")
-    print(f"[*] Artifacts Dir    : {ARTIFACTS_DIR}")
-    print(f"[*] Timeout          : {args.timeout}s")
-    print(f"[*] Scoring Config   : {scoring.summary()}")
-    print()
+    log.info("[*] Target Domain  : %s", args.domain)
+    log.info("[*] DC Host        : %s", args.dc_ip)
+    log.info("[*] Username       : %s", args.username)
+    log.info("[*] Auth Method    : %s", "NTLM Hash" if args.hash else "Password")
+    log.info("[*] Protocol(s)    : %s", ", ".join(p.upper() for p in protocols))
+    log.info("[*] Output Stem    : %s.*", output_stem)
+    log.info("[*] Format(s)      : %s", args.format)
+    log.info("[*] Artifacts Dir  : %s", ARTIFACTS_DIR)
+    log.info("[*] Timeout        : %ss", args.timeout)
+    log.info("[*] Scoring Config : %s", scoring.summary())
+    log.info("[*] Log file       : %s", args.log_file or "(console only)")
+    log.info("")
 
-    # ------------------------------------------------------------------#
-    # Initialise audit logger + debug logger                             #
-    # ------------------------------------------------------------------#
+    # ------------------------------------------------------------------
+    # Initialise audit logger + debug logger
+    # ------------------------------------------------------------------
     audit = AuditLogger(
         domain=args.domain,
         dc_host=args.dc_ip,
@@ -195,6 +259,7 @@ def main():
         auth_method="hash" if args.hash else "password",
         scan_timestamp=scan_timestamp,
     )
+    audit.log_file = args.log_file
     audit.start()
 
     dbg = DebugLogger(scan_timestamp=scan_timestamp)
@@ -215,47 +280,72 @@ def main():
     connector.artifacts_dir = ARTIFACTS_DIR
     connector.scan_timestamp = scan_timestamp
 
-    # Attach debug logger:
-    # - connector.ldap_search() calls dbg.log_ldap() automatically
-    # - check files call connector.debug_log.log_subprocess() / log_smb() as needed
+    # Attach debug logger so connector.ldap_search() calls dbg.log_ldap() automatically
     connector.debug_log = dbg
 
     if not connector.connect():
-        print("[-] Failed to establish any connection to the Domain Controller.")
-        print("    Check your credentials, DC address, and firewall rules.")
+        log.error("Failed to establish any connection to the Domain Controller.")
+        log.error("Check your credentials, DC address, and firewall rules.")
         sys.exit(1)
+
+    # ------------------------------------------------------------------
+    # Log scan metadata — written here so the connection is confirmed live.
+    # When --log-file is given the file handler's timestamp prefix records
+    # the wall-clock time of every subsequent log entry automatically.
+    # ------------------------------------------------------------------
+    log.info("=" * 60)
+    log.info("SCAN METADATA")
+    log.info("  Domain         : %s", args.domain)
+    log.info("  DC Host        : %s", args.dc_ip)
+    log.info("  Username       : %s", args.username)
+    log.info("  Auth method    : %s", "NTLM hash" if args.hash else "password")
+    log.info("  Protocol(s)    : %s", ", ".join(p.upper() for p in protocols))
+    log.info("  Scan timestamp : %s", scan_timestamp)
+    log.info("  Scoring config : %s", scoring.summary())
+    log.info("  Log file       : %s", args.log_file or "(console only)")
+    log.info("=" * 60)
+    log.info("")
 
     checks = load_checks()
     if not checks:
-        print("[-] No check modules found in checks/ directory.")
+        log.error("No check modules found in checks/ directory.")
         sys.exit(1)
 
-    print(f"[+] Loaded {len(checks)} check module(s)\n")
-    print("=" * 60)
+    log.info("[+] Loaded %d check module(s)", len(checks))
+    log.info("")
+    log.info("=" * 60)
 
     findings = []
     score = 100
 
     for check in checks:
-        print(f"\n[*] Running: {check.CHECK_NAME}")
+        log.info("")
+        log.info("[*] Running: %s", check.CHECK_NAME)
+
         # Mark the check boundary in the debug log
         dbg.log_check_start(check.CHECK_NAME)
+
         try:
             result = check.run_check(connector, verbose=args.verbose)
+
             # Record end of check in debug log
             dbg.log_check_end(check.CHECK_NAME, result)
 
             if result:
                 for finding in result:
-                    print(f"  [!] {finding['title']}")
-                    print(f"      Severity : {finding.get('severity', 'N/A').upper()}")
+                    log.info("  [!] %s", finding["title"])
+                    log.info("      Severity  : %s", finding.get("severity", "N/A").upper())
                     _eff = scoring.deduction_for(finding)
-                    print(f"      Deduction: -{_eff} points")
-                    if args.verbose and finding.get("details"):
+                    log.info("      Deduction : -%s points", _eff)
+                    if finding.get("details"):
                         for detail in finding["details"][:10]:
-                            print(f"        - {detail}")
+                            log.debug("        - %s", detail)
                         if len(finding["details"]) > 10:
-                            print(f"        ... and {len(finding['details']) - 10} more")
+                            log.debug(
+                                "        ... and %d more",
+                                len(finding["details"]) - 10,
+                            )
+
                     _cat = getattr(check, "CHECK_CATEGORY", "Uncategorized")
                     finding.setdefault("category", _cat)
 
@@ -265,25 +355,28 @@ def main():
                     score = max(0, score - finding["deduction"])
                     findings.append(finding)
             else:
-                print(f"  [OK] No issues found.")
+                log.info("  [OK] No issues found.")
 
             # Record this check in the audit log
             audit.record_check(check.CHECK_NAME, result)
 
         except Exception as e:
-            print(f"  [ERROR] {check.CHECK_NAME} raised an exception: {e}")
+            log.warning(
+                "[WARN] %s raised an exception and was skipped: %s",
+                check.CHECK_NAME, e,
+            )
+            # Full traceback written at DEBUG — appears on console with -v,
+            # always written to --log-file when supplied.
+            log.debug("Traceback for %s:", check.CHECK_NAME, exc_info=True)
             audit.record_check_error(check.CHECK_NAME, e)
             dbg.log_error(context=check.CHECK_NAME, error=e)
-            if args.verbose:
-                traceback.print_exc()
 
-    print()
-    print("=" * 60)
+    log.info("")
+    log.info("=" * 60)
 
     connector.disconnect()
 
     formats = ["html", "json", "csv"] if args.format == "all" else [args.format]
-
     report_args = dict(
         domain=args.domain,
         dc_host=args.dc_ip,
@@ -295,29 +388,36 @@ def main():
 
     for fmt in formats:
         out_path = f"{output_stem}.{fmt}"
-        print(f"\n[*] Generating {fmt.upper()} report -> {out_path}")
+        log.info("")
+        log.info("[*] Generating %s report -> %s", fmt.upper(), out_path)
         if fmt == "html":
             generate_report(output_file=out_path, **report_args)
         elif fmt == "json":
             generate_json_report(output_file=out_path, **report_args)
         elif fmt == "csv":
             generate_csv_report(output_file=out_path, **report_args)
-        print(f"[+] Saved : {out_path}")
+        log.info("[+] Saved : %s", out_path)
 
-    print(f"[+] Final Score : {score}/100")
+    log.info("")
+    log.info("[+] Final Score : %s/100", score)
     grade = (
-        "A" if score >= 90
-        else "B" if score >= 75
-        else "C" if score >= 60
-        else "D" if score >= 40
-        else "F"
+        "A" if score >= 90 else
+        "B" if score >= 75 else
+        "C" if score >= 60 else
+        "D" if score >= 40 else
+        "F"
     )
-    print(f"[+] Grade : {grade}")
+    log.info("[+] Grade       : %s", grade)
 
     # Finalise both loggers
     primary_ext = "html" if "html" in formats else formats[0]
     audit.finish(score=score, report_path=os.path.abspath(f"{output_stem}.{primary_ext}"))
     dbg.finish()
+
+    log.info("[*] Audit log   : %s", audit.log_path)
+    log.info("[*] Debug log   : %s", dbg.log_path)
+    if args.log_file:
+        log.info("[*] Log file    : %s", os.path.abspath(args.log_file))
 
 
 if __name__ == "__main__":
