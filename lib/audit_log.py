@@ -1,38 +1,40 @@
 """
-lib/audit_log.py  --  ADScan Audit Logger
+lib/audit_log.py -- ADScan Audit Logger
 
-Creates a structured audit log in the Logs/ directory every time adscan.py
-is run.  The log captures:
+Creates a structured audit log in the Logs/ directory every time adscan.py is run.
 
-  * Run metadata   : timestamp, operator, target domain / DC, auth method
-  * Check results  : per-check status, findings count, severity breakdown
-  * Score timeline : starting score, per-finding deductions, final score
-  * Runtime        : elapsed wall-clock time for the full scan
-  * Report path    : where the HTML report was saved
+The log captures:
+  * Run metadata  : timestamp, operator, target domain / DC, auth method
+  * Check results : per-check status, findings count, severity breakdown
+  * Score timeline: starting score, per-finding deductions, final score
+  * Runtime       : elapsed wall-clock time for the full scan
+  * Report path   : where the HTML report was saved
 
-Log file naming:
-  Logs/adscan_<YYYYMMDD_HHMMSS>.log
+Log file naming: Logs/adscan_<YYYYMMDD_HHMMSS>.log
 
 Usage (from adscan.py)::
 
     from lib.audit_log import AuditLogger
-
     logger = AuditLogger(domain=args.domain, dc_host=args.dc_ip,
                          username=args.username,
                          auth_method="hash" if args.hash else "password",
                          scan_timestamp=scan_timestamp)
     logger.start()
-
     # After each check:
     logger.record_check(check_name, findings_list)
-
     # At the end:
     logger.finish(score=score, report_path=args.output)
+
+Thread safety
+-------------
+All public methods acquire a reentrant lock before writing to the log file,
+making it safe to call record_check() from multiple worker threads concurrently.
 """
 
 import os
 import sys
 import time
+import threading
 from datetime import datetime
 
 # Where audit logs live relative to the project root
@@ -42,16 +44,17 @@ LOGS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Logs")
 class AuditLogger:
     """Writes a human-readable audit log for every ADScan run."""
 
-    # ------------------------------------------------------------------ #
-    # Construction                                                          #
-    # ------------------------------------------------------------------ #
+    # ------------------------------------------------------------------#
+    # Construction                                                        #
+    # ------------------------------------------------------------------#
+
     def __init__(
         self,
         domain: str,
         dc_host: str,
         username: str,
-        auth_method: str,          # "password" or "hash"
-        scan_timestamp: str,       # YYYYMMDD_HHMMSS (shared with report)
+        auth_method: str,       # "password" or "hash"
+        scan_timestamp: str,    # YYYYMMDD_HHMMSS (shared with report)
         logs_dir: str | None = None,
     ) -> None:
         self.domain = domain
@@ -64,10 +67,12 @@ class AuditLogger:
         self._start_time: float = 0.0
         self._check_records: list[dict] = []
         self._log_path: str = ""
+        self._lock = threading.Lock()
 
-    # ------------------------------------------------------------------ #
-    # Public API                                                            #
-    # ------------------------------------------------------------------ #
+    # ------------------------------------------------------------------#
+    # Public API                                                          #
+    # ------------------------------------------------------------------#
+
     def start(self) -> None:
         """Call once at the very beginning of the scan."""
         os.makedirs(self.logs_dir, exist_ok=True)
@@ -78,7 +83,7 @@ class AuditLogger:
         self._write_header()
 
     def record_check(self, check_name: str, findings: list[dict] | None) -> None:
-        """Call after each check module completes.
+        """Call after each check module completes (thread-safe).
 
         Args:
             check_name: The CHECK_NAME constant from the check module.
@@ -92,11 +97,12 @@ class AuditLogger:
             "severities": _count_severities(findings),
             "deduction": sum(f.get("deduction", 0) for f in findings),
         }
-        self._check_records.append(record)
-        self._append_check_line(record)
+        with self._lock:
+            self._check_records.append(record)
+            self._append_check_line(record)
 
     def record_check_error(self, check_name: str, error: Exception) -> None:
-        """Call when a check raises an unhandled exception."""
+        """Call when a check raises an unhandled exception (thread-safe)."""
         record = {
             "check": check_name,
             "status": "ERROR",
@@ -105,8 +111,9 @@ class AuditLogger:
             "deduction": 0,
             "error": str(error),
         }
-        self._check_records.append(record)
-        self._append_check_line(record)
+        with self._lock:
+            self._check_records.append(record)
+            self._append_check_line(record)
 
     def finish(self, score: int, report_path: str) -> None:
         """Call once after the scan is fully complete (report generated)."""
@@ -118,14 +125,15 @@ class AuditLogger:
     def log_path(self) -> str:
         return self._log_path
 
-    # ------------------------------------------------------------------ #
-    # Internal helpers                                                      #
-    # ------------------------------------------------------------------ #
+    # ------------------------------------------------------------------#
+    # Internal helpers                                                    #
+    # ------------------------------------------------------------------#
+
     def _write_header(self) -> None:
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         lines = [
             "=" * 70,
-            "  ADScan Audit Log",
+            " ADScan Audit Log",
             "=" * 70,
             f"  Run Timestamp : {now_str}",
             f"  Operator      : {self.username}",
@@ -135,7 +143,7 @@ class AuditLogger:
             f"  Python        : {sys.version.split()[0]}",
             "=" * 70,
             "",
-            f"{'CHECK':<45} {'STATUS':<10} {'FINDINGS':>8}  {'DEDUCT':>6}  SEVERITIES",
+            f"{'CHECK':<45} {'STATUS':<10} {'FINDINGS':>8} {'DEDUCT':>6}  SEVERITIES",
             "-" * 100,
         ]
         self._write_lines(lines)
@@ -147,7 +155,7 @@ class AuditLogger:
         line = (
             f"{record['check']:<45} "
             f"{record['status']:<10} "
-            f"{record['count']:>8}  "
+            f"{record['count']:>8} "
             f"{record['deduction']:>6}  "
             f"{sev_str}"
         )
@@ -162,20 +170,18 @@ class AuditLogger:
         checks_errored = sum(
             1 for r in self._check_records if r["status"] == "ERROR"
         )
-
         combined_severities: dict[str, int] = {}
         for r in self._check_records:
             for sev, cnt in r.get("severities", {}).items():
                 combined_severities[sev] = combined_severities.get(sev, 0) + cnt
 
         grade = (
-            "A" if score >= 90 else
-            "B" if score >= 75 else
-            "C" if score >= 60 else
-            "D" if score >= 40 else
-            "F"
+            "A" if score >= 90
+            else "B" if score >= 75
+            else "C" if score >= 60
+            else "D" if score >= 40
+            else "F"
         )
-
         lines = [
             "-" * 100,
             "",
@@ -189,13 +195,13 @@ class AuditLogger:
             f"  Severity breakdown  : {_format_severities(combined_severities)}",
             "",
             f"  Starting score      : 100",
-            f"  Final score         : {score}/100  (Grade: {grade})",
+            f"  Final score         : {score}/100 (Grade: {grade})",
             "",
             f"  Elapsed time        : {_format_elapsed(elapsed)}",
             f"  Report saved to     : {report_path}",
             "",
             "=" * 70,
-            "  End of audit log",
+            " End of audit log",
             "=" * 70,
         ]
         self._write_lines(lines)
@@ -206,9 +212,9 @@ class AuditLogger:
                 fh.write(line + "\n")
 
 
-# ------------------------------------------------------------------ #
-# Module-level helpers                                                  #
-# ------------------------------------------------------------------ #
+# ------------------------------------------------------------------#
+# Module-level helpers                                               #
+# ------------------------------------------------------------------#
 
 _SEV_ORDER = ("critical", "high", "medium", "low", "info")
 
