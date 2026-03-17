@@ -97,6 +97,10 @@ def parse_args():
         "-v", "--verbose", action="store_true",
         help="Verbose output (show affected objects)"
     )
+    output_group.add_argument(
+        "--timeout", type=int, default=30,
+        help="Connection timeout in seconds (default: 30)"
+    )
 
     return parser.parse_args()
 
@@ -135,6 +139,7 @@ def main():
     print(f"[*] Protocol(s)      : {', '.join(p.upper() for p in protocols)}")
     print(f"[*] Output File      : {args.output}")
     print(f"[*] Artifacts Dir    : {ARTIFACTS_DIR}")
+    print(f"[*] Timeout          : {args.timeout}s")
     print()
 
     # ------------------------------------------------------------------ #
@@ -160,6 +165,7 @@ def main():
         ntlm_hash=args.hash,
         protocols=protocols,
         verbose=args.verbose,
+        timeout=args.timeout,
     )
 
     # Attach scan metadata so individual checks can use consistent naming
