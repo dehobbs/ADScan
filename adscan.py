@@ -19,7 +19,7 @@ import traceback
 from datetime import datetime
 
 from lib.connector import ADConnector
-from lib.report import generate_report
+from lib.report import generate_report, generate_json_report, generate_csv_report
 from lib.audit_log import AuditLogger
 from lib.debug_log import DebugLogger
 
@@ -101,6 +101,12 @@ def parse_args():
         "--timeout", type=int, default=30,
         help="Connection timeout in seconds (default: 30)"
     )
+    output_group.add_argument(
+        "--format",
+        choices=["html", "json", "csv", "all"],
+        default="html",
+        help="Output format(s): html, json, csv, or all (default: html)",
+    )
 
     return parser.parse_args()
 
@@ -120,12 +126,15 @@ def main():
     # Generate a single scan timestamp used for all artifact naming
     scan_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    # Determine output path
+    # Determine output stem (extension is added per format)
     if args.output is None:
-        args.output = os.path.join(REPORTS_DIR, f"adscan_report_{scan_timestamp}.html")
+        output_stem = os.path.join(REPORTS_DIR, f"adscan_report_{scan_timestamp}")
+    else:
+        # Strip any extension the user supplied — we'll add the right one(s)
+        output_stem, _ = os.path.splitext(args.output)
 
-    # Make sure the output directory exists
-    ensure_reports_dir(args.output)
+    # Make sure the output directory exists (use stem + .html as representative path)
+    ensure_reports_dir(output_stem + ".html")
 
     # Create the Artifacts subdirectory for tool output (e.g. Certipy JSON)
     os.makedirs(ARTIFACTS_DIR, exist_ok=True)
@@ -137,7 +146,8 @@ def main():
     print(f"[*] Username         : {args.username}")
     print(f"[*] Auth Method      : {'NTLM Hash' if args.hash else 'Password'}")
     print(f"[*] Protocol(s)      : {', '.join(p.upper() for p in protocols)}")
-    print(f"[*] Output File      : {args.output}")
+    print(f"[*] Output Stem      : {output_stem}.*")
+    print(f"[*] Format(s)        : {args.format}")
     print(f"[*] Artifacts Dir    : {ARTIFACTS_DIR}")
     print(f"[*] Timeout          : {args.timeout}s")
     print()
@@ -234,9 +244,8 @@ def main():
 
     connector.disconnect()
 
-    print(f"\n[*] Generating HTML report -> {args.output}")
-    generate_report(
-        output_file=args.output,
+    formats = ["html", "json", "csv"] if args.format == "all" else [args.format]
+    report_args = dict(
         domain=args.domain,
         dc_host=args.dc_ip,
         username=args.username,
@@ -245,7 +254,16 @@ def main():
         score=score,
     )
 
-    print(f"[+] Report saved : {args.output}")
+    for fmt in formats:
+        out_path = f"{output_stem}.{fmt}"
+        print(f"\n[*] Generating {fmt.upper()} report -> {out_path}")
+        if fmt == "html":
+            generate_report(output_file=out_path, **report_args)
+        elif fmt == "json":
+            generate_json_report(output_file=out_path, **report_args)
+        elif fmt == "csv":
+            generate_csv_report(output_file=out_path, **report_args)
+        print(f"[+] Saved : {out_path}")
     print(f"[+] Final Score  : {score}/100")
     grade = (
         "A" if score >= 90 else
@@ -257,7 +275,8 @@ def main():
     print(f"[+] Grade        : {grade}")
 
     # Finalise both loggers
-    audit.finish(score=score, report_path=os.path.abspath(args.output))
+    primary_ext = "html" if "html" in formats else formats[0]
+    audit.finish(score=score, report_path=os.path.abspath(f"{output_stem}.{primary_ext}"))
     dbg.finish()
 
 
