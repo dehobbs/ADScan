@@ -1,0 +1,72 @@
+# scoring.toml — ADScan Risk Score Configuration
+#
+# This file controls how many points are deducted from the risk score (starting
+# at 100) for each finding ADScan produces.
+#
+# Two levels of configuration are available:
+#
+#   [severity_weights]
+#       Default deduction applied to every finding of that severity tier.
+#       Change these to shift the entire scoring curve up or down.
+#
+#   [overrides]
+#       Per-finding-title deductions that take precedence over severity_weights.
+#       The key must exactly match the "title" field in the finding — copy it
+#       from a report or from the check file's findings.append({"title": ...}).
+#       Set a value to 0 to suppress a finding from affecting the score entirely
+#       without disabling the check.
+#
+# Priority order (highest to lowest):
+#   1. [overrides] entry for the exact finding title
+#   2. [severity_weights] entry for the finding's severity
+#   3. The hardcoded deduction value baked into the check module itself
+#
+# Severity tiers (case-insensitive): critical, high, medium, low, info
+# Info findings conventionally carry 0 deduction and should stay that way.
+
+[severity_weights]
+critical = 20
+high     = 15
+medium   = 8
+low      = 5
+info     = 0
+
+# ---------------------------------------------------------------------------
+# Per-finding overrides
+# ---------------------------------------------------------------------------
+# Uncomment and adjust any entry below, or add your own.
+# Title strings are matched case-sensitively and must be an exact match.
+#
+# Examples:
+#   Raise the impact of unconstrained delegation on user accounts
+#     "User Accounts with Unconstrained Delegation" = 25
+#
+#   Lower the impact of a finding your environment has a compensating control for
+#     "Kerberoastable Service Accounts" = 5
+#
+#   Suppress a finding from the score entirely (it still appears in the report)
+#     "Lockout Observation Window Too Short" = 0
+
+[overrides]
+# "User Accounts with Unconstrained Delegation"                              = 25
+# "Computer Accounts with Unconstrained Delegation"                          = 20
+# "High-Value Kerberoastable Accounts (adminCount=1 + SPN + DONT_EXPIRE)"   = 20
+# "Kerberoastable Service Accounts"                                          = 15
+# "AS-REP Roastable Accounts (DONT_REQ_PREAUTH)"                             = 15
+# "Account Lockout Disabled"                                                 = 20
+# "Passwords Never Expire"                                                   = 15
+# "Password Complexity Disabled"                                             = 15
+# "Minimum Password Length Too Short (< 8)"                                  = 15
+# "Minimum Password Length Below Recommended (< 12)"                         = 8
+# "Maximum Password Age Exceeds 365 Days"                                    = 8
+# "Reversible Password Encryption Enabled"                                   = 20
+# "krbtgt Password Not Rotated in {N} Days"                                  = 20
+# "krbtgt Password Has Never Been Reset"                                      = 20
+# "Privileged Accounts with Non-Expiring Passwords"                          = 15
+# "Stale Privileged Accounts (Inactive > 90 Days)"                           = 15
+# "Excessive Domain Admins Membership"                                        = 8
+# "Ghost Admin Accounts: disabled account(s) with adminCount=1"              = 8
+# "Stale Protected Admin Accounts: account(s) inactive > 90 days"           = 10
+# "Orphaned adminCount=1 Accounts: account(s) no longer in privileged groups"= 8
+# "Tier-0 Privileged Accounts Not in Protected Users"                        = 12
+# "Tier-1 Privileged Accounts Not in Protected Users"                        = 6
