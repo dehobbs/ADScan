@@ -7,9 +7,10 @@
 ## Features
 
 - **Multi-protocol**: LDAP, LDAPS, SMB (user-selectable; defaults to all three)
-- **Flexible auth**: password or pass-the-hash (NTLM `LM:NT` or `NT` only)
+- **Flexible auth**: password, pass-the-hash (NTLM `LM:NT` or `NT`), or interactive prompt
 - **Risk score**: starts at 100, deducted per finding (floor 0), letter grade A–F
 - **HTML report**: fully self-contained, light/dark mode toggle, severity chips, collapsible finding cards
+- **JSON / CSV output**: machine-readable exports alongside the HTML report
 - **Modular**: drop a new `check_*.py` file in `checks/` — it's auto-discovered at runtime
 - **21 check categories** covering the most critical AD attack surfaces
 
@@ -38,6 +39,7 @@ pip install -r requirements.txt
 ```
 python adscan.py -d <domain> --dc-ip <dc_ip> -u <username> -p <password> [options]
 python adscan.py -d <domain> --dc-ip <dc_ip> -u <username> --hash <LM:NT or NT> [options]
+python adscan.py -d <domain> --dc-ip <dc_ip> -u <username>              # prompts for password
 ```
 
 ### Options
@@ -47,12 +49,15 @@ python adscan.py -d <domain> --dc-ip <dc_ip> -u <username> --hash <LM:NT or NT> 
 | `-d / --domain` | Target domain FQDN (e.g. `corp.local`) | required |
 | `--dc-ip` | Domain controller IP or hostname | required |
 | `-u / --username` | Username | required |
-| `-p / --password` | Password | — |
+| `-p / --password` | Password (omit to be prompted securely) | — |
 | `--hash` | NTLM hash (`LM:NT` or `NT`) | — |
 | `--protocol` | `ldap` \| `ldaps` \| `smb` \| `all` | `all` |
 | `--timeout` | Connection timeout in seconds | `30` |
-| `-o / --output` | Output HTML file path | `Reports/adscan_report_<timestamp>.html` |
+| `--format` | `html` \| `json` \| `csv` \| `all` | `html` |
+| `-o / --output` | Output report path stem | `Reports/adscan_report_<timestamp>` |
 | `-v / --verbose` | Verbose console output | off |
+
+> **Interactive password prompt**: if neither `-p` nor `--hash` is supplied, ADScan will prompt for a password without echoing it to the terminal. This avoids storing credentials in shell history.
 
 ### Examples
 
@@ -60,11 +65,17 @@ python adscan.py -d <domain> --dc-ip <dc_ip> -u <username> --hash <LM:NT or NT> 
 # Password auth, all protocols
 python adscan.py -d corp.local -u alice -p 'P@ssw0rd!' --dc-ip 10.10.10.5
 
+# Interactive password prompt (no -p flag)
+python adscan.py -d corp.local -u alice --dc-ip 10.10.10.5
+
 # Pass-the-hash (NT only)
 python adscan.py -d corp.local -u alice --hash aad3b435b51404eeaad3b435b51404ee:8846f7eaee8fb117ad06bdd830b7586c
 
 # LDAPS only, custom output
 python adscan.py -d corp.local -u alice -p 'Secret1' --protocol ldaps -o results/scan.html
+
+# All output formats (HTML + JSON + CSV)
+python adscan.py -d corp.local -u alice -p 'Secret1' --dc-ip 10.10.10.5 --format all
 
 # Custom timeout
 python adscan.py -d corp.local -u alice -p 'Secret1' --dc-ip 10.10.10.5 --timeout 60
