@@ -100,21 +100,22 @@ class ADConnector:
                 pass
             self.smb_conn = None
 
-    def ldap_search(self, search_filter, attributes=None, search_base=None, scope="SUBTREE"):
+    def ldap_search(self, search_base, search_filter, attributes=None,
+                    scope="SUBTREE", controls=None):
         """Perform an LDAP search. Returns list of entry objects or empty list.
 
         Args:
-            search_filter: LDAP filter string.
+            search_base:   DN to search from (e.g. connector.base_dn or a sub-DN).
+            search_filter: LDAP filter string (e.g. "(objectClass=user)").
             attributes:    List of attribute names to retrieve (default: all).
-            search_base:   DN to search from (default: domain base DN).
-            scope:         Search scope string: "SUBTREE" (default), "BASE", or "ONELEVEL".
+            scope:         Search scope: "SUBTREE" (default), "BASE", or "ONELEVEL".
+            controls:      Optional list of ldap3 control tuples passed to search().
         """
         if not self.ldap_conn:
             if self.verbose:
                 print(" [WARN] No LDAP connection available for search.")
             return []
 
-        base = search_base or self.base_dn
         attrs = attributes or ["*"]
 
         # Map scope string to ldap3 constant
@@ -126,12 +127,15 @@ class ADConnector:
         ldap_scope = _scope_map.get(scope.upper(), ldap3.SUBTREE)
 
         try:
-            self.ldap_conn.search(
-                search_base=base,
+            kwargs = dict(
+                search_base=search_base,
                 search_filter=search_filter,
                 search_scope=ldap_scope,
                 attributes=attrs,
             )
+            if controls:
+                kwargs["controls"] = controls
+            self.ldap_conn.search(**kwargs)
             entries = self.ldap_conn.entries
 
             # Debug logging hook -- records every LDAP query for troubleshooting
@@ -139,7 +143,7 @@ class ADConnector:
             if dbg:
                 dbg.log_ldap(
                     search_filter=search_filter,
-                    search_base=base,
+                    search_base=search_base,
                     attributes=attrs,
                     entry_count=len(entries),
                 )
@@ -151,13 +155,12 @@ class ADConnector:
             if dbg:
                 dbg.log_ldap(
                     search_filter=search_filter,
-                    search_base=base,
+                    search_base=search_base,
                     attributes=attrs,
                     entry_count=0,
                     error=str(e),
                 )
             return []
-
     def smb_available(self):
         """Return True if SMB connection is active."""
         return self.smb_conn is not None
