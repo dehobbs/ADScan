@@ -31,21 +31,21 @@ _COMP_ATTRS   = [
 
 def _uac(entry, flag):
     try:
-        return bool(int(entry["userAccountControl"].value) & flag)
+        return bool(int(entry.get("userAccountControl")) & flag)
     except Exception:
         return False
 
 
 def _sam(entry):
     try:
-        return str(entry["sAMAccountName"].value)
+        return str(entry.get("sAMAccountName"))
     except Exception:
         return "?"
 
 
 def _has_value(entry, attr):
     try:
-        v = entry[attr].value
+        v = entry.get(attr)
         return v is not None and str(v).strip() != ""
     except Exception:
         return False
