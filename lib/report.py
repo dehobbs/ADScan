@@ -1896,7 +1896,7 @@ def generate_json_report(output_file, domain, dc_host, username, protocols, find
     payload = {
         "meta": {
             "tool": "ADScan",
-            "version": "1.0",
+            "version": "1.1",
             "scan_time": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
             "domain": domain,
             "dc_host": dc_host,
