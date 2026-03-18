@@ -1133,12 +1133,18 @@ def _manual_verification_html(finding):
     # Build cards in pairs (2-column grid)
     cards_html = "\n".join(_tool_card_html(t) for t in tools)
 
-    return f"""<div class="verif-section">
-  <div class="verif-header">Manual Verification</div>
-  <div class="verif-grid">
+    card_count = len(tools)
+    return f"""<details style='margin-top:16px;'>
+  <summary style='cursor:pointer;font-weight:600;color:var(--text-muted);
+    font-size:0.7rem;text-transform:uppercase;letter-spacing:0.12em;
+    list-style:none;display:flex;align-items:center;gap:6px;user-select:none;'>
+    <span style='display:inline-block;transition:transform .2s;font-size:0.65rem;'>&#9660;</span>
+    Manual Verification ({card_count} tool{"s" if card_count != 1 else ""})
+  </summary>
+  <div class="verif-grid" style='margin-top:12px;'>
 {cards_html}
   </div>
-</div>"""
+</details>"""
 
 
 def _remediation_html(finding):
@@ -1166,13 +1172,19 @@ def _remediation_html(finding):
   </div>
 </div>"""
 
-    return f"""<div class="remed-section">
-  <div class="remed-header">Remediation</div>
-  <div class="remed-box">
+    step_count = len(steps)
+    return f"""<details style='margin-top:12px;'>
+  <summary style='cursor:pointer;font-weight:600;color:var(--text-muted);
+    font-size:0.7rem;text-transform:uppercase;letter-spacing:0.12em;
+    list-style:none;display:flex;align-items:center;gap:6px;user-select:none;'>
+    <span style='display:inline-block;transition:transform .2s;font-size:0.65rem;'>&#9660;</span>
+    Remediation ({step_count} step{"s" if step_count != 1 else ""})
+  </summary>
+  <div class="remed-box" style='margin-top:12px;'>
     <div class="remed-title">Recommended: {title}</div>
 {steps_html}
   </div>
-</div>"""
+</details>"""
 
 
 def _severity_badge_html(severity):
@@ -1555,6 +1567,11 @@ footer{text-align:center;padding:20px;color:var(--text-muted);font-size:.8rem;
 .remed-step-body { flex: 1; }
 .remed-step-body p { font-size: 0.88rem; color: var(--text-secondary); line-height: 1.55; margin: 0 0 8px; }
 .remed-code { margin-top: 6px; }
+/* ---- Section Toggle (details/summary) ---- */
+details > summary { list-style: none; }
+details > summary::-webkit-details-marker { display: none; }
+details[open] > summary > span:first-child { transform: rotate(0deg) !important; }
+details:not([open]) > summary > span:first-child { transform: rotate(-90deg) !important; }
 """.strip()
 
     # ================================================================
