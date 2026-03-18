@@ -1124,14 +1124,39 @@ def _tool_card_html(tool_data):
 
 
 def _manual_verification_html(finding):
-    """Render the full Manual Verification section for a finding."""
+    """Render the full Manual Verification section for a finding, split by platform."""
     vdata = _get_verification(finding)
     if not vdata or not vdata.get("tools"):
         return ""
 
     tools = vdata["tools"]
-    # Build cards in pairs (2-column grid)
-    cards_html = "\n".join(_tool_card_html(t) for t in tools)
+
+    # Split tools by platform based on icon type
+    _LINUX_ICONS = {"netexec", "impacket"}
+    linux_tools = [t for t in tools if t.get("icon", "cmd") in _LINUX_ICONS]
+    win_tools   = [t for t in tools if t.get("icon", "cmd") not in _LINUX_ICONS]
+
+    def _grid(tool_list):
+        if not tool_list:
+            return ""
+        cards = "\n".join(_tool_card_html(t) for t in tool_list)
+        return f"<div class=\"verif-grid\">{cards}</div>"
+
+    sections_html = ""
+    if linux_tools:
+        sections_html += f"""<div class="verif-platform-group">
+  <div class="verif-platform-label">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;opacity:0.7"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Linux / Cross-platform
+  </div>
+  {_grid(linux_tools)}
+</div>"""
+    if win_tools:
+        sections_html += f"""<div class="verif-platform-group">
+  <div class="verif-platform-label">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;opacity:0.7"><path d="M0 3.5L10 2v10H0V3.5zm0 17L10 22V12H0v8.5zM11 1.8L24 0v12H11V1.8zm0 20.2L24 24V12H11v10z"/></svg>Windows
+  </div>
+  {_grid(win_tools)}
+</div>"""
 
     card_count = len(tools)
     return f"""<details style='margin-top:16px;'>
@@ -1141,8 +1166,8 @@ def _manual_verification_html(finding):
     <span style='display:inline-block;transition:transform .2s;font-size:0.65rem;'>&#9660;</span>
     Manual Verification ({card_count} tool{"s" if card_count != 1 else ""})
   </summary>
-  <div class="verif-grid" style='margin-top:12px;'>
-{cards_html}
+  <div style='margin-top:12px;'>
+{sections_html}
   </div>
 </details>"""
 
@@ -1516,13 +1541,14 @@ footer{text-align:center;padding:20px;color:var(--text-muted);font-size:.8rem;
   .sidebar:not(.collapsed){transform:translateX(0);}
 }
 /* ---- Manual Verification ---- */
-.verif-section { margin-top: 24px; }
-.verif-header {
-  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px;
+.verif-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.verif-platform-group { margin-bottom: 18px; }
+.verif-platform-group:last-child { margin-bottom: 0; }
+.verif-platform-label {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--text-muted);
+  margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
 }
-.verif-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-@media(max-width: 640px) { .verif-grid { grid-template-columns: 1fr; } }
 .verif-card {
   border: 1px solid var(--border); border-radius: 10px;
   padding: 16px; background: var(--card-bg);
