@@ -266,6 +266,8 @@ def _run_certipy(creds, output_prefix, cwd=None, scheme=None):
         "-p",      creds["password"],
         "-dc-ip",  creds["dc_ip"],
         "-json",
+        "-text",
+        "-csv",
         "-output", output_prefix,
         "-vulnerable",
     ]
