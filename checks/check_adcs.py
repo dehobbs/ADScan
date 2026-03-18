@@ -270,7 +270,7 @@ def _run_certipy(creds, output_prefix, cwd=None, scheme=None):
         "-vulnerable",
     ]
     if scheme:
-        cmd += ["-scheme", scheme]
+        cmd += ["-ldap-scheme", scheme]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120, cwd=cwd)
     return result.returncode, result.stdout, result.stderr
 
@@ -882,7 +882,7 @@ def _run_certipy_check(connector, verbose=False):
                 cmd=["certipy", "find", "-u", upn, "-p", "<redacted>",
                      "-dc-ip", creds["dc_ip"], "-json",
                      "-output", output_prefix, "-vulnerable"]
-                    + (["-scheme", "ldap"] if ldap_fallback_used else []),
+                    + (["-ldap-scheme", "ldap"] if ldap_fallback_used else []),
                 cwd=str(artifacts_dir) if artifacts_dir else None,
                 returncode=returncode,
                 stdout=stdout,
