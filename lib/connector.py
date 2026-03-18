@@ -1,10 +1,7 @@
-"""
-lib/connector.py - ADScan Connection Manager
-
+""" lib/connector.py - ADScan Connection Manager
 Manages LDAP, LDAPS, and SMB connections to a Domain Controller.
 Supports both password and NTLM hash authentication.
 """
-
 import socket
 import ssl
 import struct
@@ -15,7 +12,7 @@ from datetime import datetime
 # Optional imports - graceful degradation if libraries are not installed
 try:
     import ldap3
-    from ldap3 import Server, Connection, ALL, NTLM, SIMPLE, Tls
+    from ldap3 import Server, Connection, ALL, NTLM, SIMPLE, Tls, SUBTREE, BASE, LEVEL
     from ldap3.core.exceptions import LDAPException
     HAS_LDAP3 = True
 except ImportError:
@@ -52,10 +49,11 @@ class ADConnector:
         # Active connections
         self.ldap_conn = None
         self.smb_conn = None
-        self.debug_log = None   # Set by adscan.py to enable debug logging
+        self.debug_log = None  # Set by adscan.py to enable debug logging
+
         self.base_dn = self._domain_to_dn(domain)
 
-        # Normalise NTLM hash  
+        # Normalise NTLM hash
         if self.ntlm_hash:
             self.lm_hash, self.nt_hash = self._parse_ntlm_hash(ntlm_hash)
         else:
@@ -67,26 +65,24 @@ class ADConnector:
     # ------------------------------------------------------------------
 
     def connect(self):
-        """Attempt connections for each configured protocol. Returns True if at
-        least one connection succeeds."""
+        """Attempt connections for each configured protocol.
+        Returns True if at least one connection succeeds."""
         connected = False
-
         for proto in self.protocols:
             if proto in ("ldap", "ldaps"):
                 if not HAS_LDAP3:
-                    print(f"  [WARN] ldap3 not installed - skipping {proto.upper()}")
-                    print("         pip install ldap3")
+                    print(f" [WARN] ldap3 not installed - skipping {proto.upper()}")
+                    print("        pip install ldap3")
                     continue
                 if self._connect_ldap(use_ssl=(proto == "ldaps")):
                     connected = True
             elif proto == "smb":
                 if not HAS_IMPACKET:
-                    print(f"  [WARN] impacket not installed - skipping SMB")
-                    print("         pip install impacket")
+                    print(f" [WARN] impacket not installed - skipping SMB")
+                    print("        pip install impacket")
                     continue
                 if self._connect_smb():
                     connected = True
-
         return connected
 
     def disconnect(self):
@@ -97,7 +93,6 @@ class ADConnector:
             except Exception:
                 pass
             self.ldap_conn = None
-
         if self.smb_conn:
             try:
                 self.smb_conn.logoff()
@@ -105,23 +100,40 @@ class ADConnector:
                 pass
             self.smb_conn = None
 
-    def ldap_search(self, search_filter, attributes=None, search_base=None):
-        """Perform an LDAP search. Returns list of entry objects or empty list."""
+    def ldap_search(self, search_filter, attributes=None, search_base=None, scope="SUBTREE"):
+        """Perform an LDAP search. Returns list of entry objects or empty list.
+
+        Args:
+            search_filter: LDAP filter string.
+            attributes:    List of attribute names to retrieve (default: all).
+            search_base:   DN to search from (default: domain base DN).
+            scope:         Search scope string: "SUBTREE" (default), "BASE", or "ONELEVEL".
+        """
         if not self.ldap_conn:
             if self.verbose:
-                print("  [WARN] No LDAP connection available for search.")
+                print(" [WARN] No LDAP connection available for search.")
             return []
 
         base = search_base or self.base_dn
         attrs = attributes or ["*"]
 
+        # Map scope string to ldap3 constant
+        _scope_map = {
+            "SUBTREE":  ldap3.SUBTREE,
+            "BASE":     ldap3.BASE,
+            "ONELEVEL": ldap3.LEVEL,
+        }
+        ldap_scope = _scope_map.get(scope.upper(), ldap3.SUBTREE)
+
         try:
             self.ldap_conn.search(
                 search_base=base,
                 search_filter=search_filter,
+                search_scope=ldap_scope,
                 attributes=attrs,
             )
             entries = self.ldap_conn.entries
+
             # Debug logging hook -- records every LDAP query for troubleshooting
             dbg = getattr(self, "debug_log", None)
             if dbg:
@@ -134,7 +146,7 @@ class ADConnector:
             return entries
         except Exception as e:
             if self.verbose:
-                print(f"  [WARN] LDAP search failed: {e}")
+                print(f" [WARN] LDAP search failed: {e}")
             dbg = getattr(self, "debug_log", None)
             if dbg:
                 dbg.log_ldap(
@@ -158,7 +170,7 @@ class ADConnector:
             return [s["shi1_netname"][:-1] for s in self.smb_conn.listShares()]
         except Exception as e:
             if self.verbose:
-                print(f"  [WARN] SMB listShares failed: {e}")
+                print(f" [WARN] SMB listShares failed: {e}")
             return []
 
     # ------------------------------------------------------------------
@@ -168,8 +180,7 @@ class ADConnector:
     def _connect_ldap(self, use_ssl=False):
         proto_label = "LDAPS" if use_ssl else "LDAP"
         port = 636 if use_ssl else 389
-        print(f"  [*] Connecting via {proto_label} to {self.dc_host}:{port} ...", end=" ")
-
+        print(f" [*] Connecting via {proto_label} to {self.dc_host}:{port} ...", end=" ")
         try:
             tls = None
             if use_ssl:
@@ -184,7 +195,6 @@ class ADConnector:
                 get_info=ALL,
                 connect_timeout=self.timeout,
             )
-
             user = f"{self.domain}\\{self.username}"
             conn = Connection(
                 server,
@@ -193,11 +203,9 @@ class ADConnector:
                 authentication=NTLM,
                 auto_bind=True,
             )
-
             self.ldap_conn = conn
             print("OK")
             return True
-
         except LDAPException as e:
             print(f"FAILED ({e})")
             return False
@@ -206,24 +214,19 @@ class ADConnector:
             return False
 
     def _connect_smb(self):
-        print(f"  [*] Connecting via SMB to {self.dc_host}:445 ...", end=" ")
+        print(f" [*] Connecting via SMB to {self.dc_host}:445 ...", end=" ")
         try:
             smb = SMBConnection(self.dc_host, self.dc_host, sess_port=445, timeout=self.timeout)
-
             if self.password:
                 smb.login(self.username, self.password, self.domain)
             else:
                 smb.login(
-                    self.username, "",
-                    self.domain,
-                    lmhash=self.lm_hash,
-                    nthash=self.nt_hash,
+                    self.username, "", self.domain,
+                    lmhash=self.lm_hash, nthash=self.nt_hash,
                 )
-
             self.smb_conn = smb
             print("OK")
             return True
-
         except Exception as e:
             print(f"FAILED ({e})")
             return False
