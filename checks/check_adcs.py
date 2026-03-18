@@ -257,7 +257,7 @@ def _is_ldaps_error(stdout, stderr):
     combined = (stdout + stderr).lower()
     return any(pat in combined for pat in _LDAPS_ERROR_PATTERNS)
 
-def _run_certipy(creds, output_prefix, cwd=None, scheme=None):
+def _run_certipy(creds, cwd=None, scheme=None):
     """Invoke certipy find. scheme may be None (default LDAPS) or 'ldap'."""
     upn = f"{creds['username']}@{creds['domain']}"
     cmd = [
@@ -265,10 +265,7 @@ def _run_certipy(creds, output_prefix, cwd=None, scheme=None):
         "-u",      upn,
         "-p",      creds["password"],
         "-dc-ip",  creds["dc_ip"],
-        "-json",
-        "-text",
-        "-csv",
-        "-output", output_prefix,
+        "-enabled",
         "-vulnerable",
     ]
     if scheme:
@@ -841,17 +838,10 @@ def _run_certipy_check(connector, verbose=False):
     # -- Build artifact output path ---------------------------------------
     artifacts_dir  = os.path.abspath(getattr(connector, "artifacts_dir",
                                               os.path.join("Reports", "Artifacts")))
-    scan_timestamp = getattr(connector, "scan_timestamp",
-                             __import__("datetime").datetime.now().strftime("%Y%m%d_%H%M%S"))
-    safe_domain    = creds["domain"].replace(".", "_").replace("/", "_")
-    json_filename  = f"adscan_certipy_{safe_domain}_{scan_timestamp}.json"
-    json_path      = os.path.join(artifacts_dir, json_filename)
-    output_prefix  = os.path.splitext(json_filename)[0]   # basename only
-
     os.makedirs(artifacts_dir, exist_ok=True)
 
     try:
-        returncode, stdout, stderr = _run_certipy(creds, output_prefix, cwd=artifacts_dir)
+        returncode, stdout, stderr = _run_certipy(creds, cwd=artifacts_dir)
 
         # ----------------------------------------------------------------
         # LDAPS → LDAP fallback
@@ -864,14 +854,8 @@ def _run_certipy_check(connector, verbose=False):
         if _is_ldaps_error(stdout, stderr):
             if verbose:
                 print("  [Certipy] LDAPS connection failed — retrying with plain LDAP (-scheme ldap)...")
-            fallback_prefix = output_prefix + "_ldap"
             returncode, stdout, stderr = _run_certipy(
-                creds, fallback_prefix, cwd=artifacts_dir, scheme="ldap"
-            )
-            # Update the expected json_path to match the fallback prefix
-            json_path = os.path.join(
-                artifacts_dir,
-                fallback_prefix + "_Certipy.json"
+                creds, cwd=artifacts_dir, scheme="ldap"
             )
             ldap_fallback_used = True
 
@@ -882,8 +866,8 @@ def _run_certipy_check(connector, verbose=False):
             scheme_note = " (LDAP fallback)" if ldap_fallback_used else ""
             dbg.log_subprocess(
                 cmd=["certipy", "find", "-u", upn, "-p", "<redacted>",
-                     "-dc-ip", creds["dc_ip"], "-json",
-                     "-output", output_prefix, "-vulnerable"]
+                     "-dc-ip", creds["dc_ip"],
+                     "-enabled", "-vulnerable"]
                     + (["-ldap-scheme", "ldap"] if ldap_fallback_used else []),
                 cwd=str(artifacts_dir) if artifacts_dir else None,
                 returncode=returncode,
@@ -922,23 +906,10 @@ def _run_certipy_check(connector, verbose=False):
             return findings
 
         # Detect which output file Certipy actually wrote
-        actual_json = None
-        search_prefix = (output_prefix + "_ldap") if ldap_fallback_used else output_prefix
-        for _candidate in [
-            os.path.join(artifacts_dir, search_prefix + "_Certipy.json"),
-            os.path.join(artifacts_dir, search_prefix + ".json"),
-            os.path.join(artifacts_dir, output_prefix + "_Certipy.json"),
-            os.path.join(artifacts_dir, output_prefix + ".json"),
-            json_path,
-        ]:
-            if os.path.exists(_candidate):
-                actual_json = _candidate
-                break
-
-        if actual_json is None:
-            _found = glob.glob(os.path.join(artifacts_dir, "*.json"))
-            if _found:
-                actual_json = max(_found, key=os.path.getmtime)
+        # Certipy writes output named after the domain (e.g. <domain>_Certipy.json).
+        # Find the most recently modified JSON file in the artifacts directory.
+        _found = glob.glob(os.path.join(artifacts_dir, "*.json"))
+        actual_json = max(_found, key=os.path.getmtime) if _found else None
 
         if actual_json is None:
             findings.append({
@@ -957,15 +928,6 @@ def _run_certipy_check(connector, verbose=False):
                 "details": [f"stdout: {stdout[:500]}"],
             })
             return findings
-
-        # Rename to standard adscan_certipy_<domain>_<timestamp>.json if needed
-        standard_json = os.path.join(artifacts_dir, json_filename)
-        if os.path.abspath(actual_json) != os.path.abspath(standard_json):
-            try:
-                os.rename(actual_json, standard_json)
-                actual_json = standard_json
-            except OSError:
-                pass
 
         if verbose:
             scheme_label = "LDAP (fallback)" if ldap_fallback_used else "LDAPS"
