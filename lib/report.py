@@ -568,7 +568,7 @@ VERIFICATION_DB = {
                 "tool": "PowerShell",
                 "icon": "ps",
                 "desc": "Search SYSVOL for GPP files containing cpassword.",
-                "code": "Get-ChildItem -Path \"\\\\<DC>\\SYSVOL\\" -Recurse -Filter \"*.xml\" `\n    | Select-String -Pattern \"cpassword\" `\n    | Select-Object Path,Line",
+                "code": "Get-ChildItem -Path \"\\\\<DC>\\SYSVOL\" -Recurse -Filter \"*.xml\" `\n    | Select-String -Pattern \"cpassword\" `\n    | Select-Object Path,Line",
                 "confirm": "Any match contains a GPP credential that can be decrypted with the public AES key.",
             },
             {
