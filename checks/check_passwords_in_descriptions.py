@@ -29,7 +29,7 @@ _REDACT_PATTERN = re.compile(
 def _get_attr(entry, attr, default=""):
     """Safely read an ldap3 Entry attribute value."""
     try:
-        val = entry[attr].value
+        val = entry.get(attr)
         if val is None:
             return default
         if isinstance(val, list):
@@ -106,12 +106,12 @@ def run_check(connector, verbose=False):
                 desc  = _get_attr(entry, "description")
 
                 try:
-                    admin_count = int(entry["adminCount"].value or 0)
+                    admin_count = int(entry.get("adminCount") or 0)
                 except Exception:
                     admin_count = 0
 
                 try:
-                    uac = int(entry["userAccountControl"].value or 0)
+                    uac = int(entry.get("userAccountControl") or 0)
                 except Exception:
                     uac = 0
 
