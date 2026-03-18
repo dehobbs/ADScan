@@ -19,7 +19,7 @@ CHECK_CATEGORY = ["Network Hygiene"]
 
 def _get_str(entry, attr, default=""):
     try:
-        v = entry[attr].value
+        v = entry.get(attr)
         return str(v) if v else default
     except Exception:
         return default
