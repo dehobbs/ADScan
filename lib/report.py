@@ -1124,7 +1124,7 @@ def _tool_card_html(tool_data):
 
 
 def _manual_verification_html(finding):
-    """Render the full Manual Verification section for a finding, split by platform."""
+    """Render the Manual Verification section as Linux/Windows tabs, tiles stacked."""
     vdata = _get_verification(finding)
     if not vdata or not vdata.get("tools"):
         return ""
@@ -1136,27 +1136,34 @@ def _manual_verification_html(finding):
     linux_tools = [t for t in tools if t.get("icon", "cmd") in _LINUX_ICONS]
     win_tools   = [t for t in tools if t.get("icon", "cmd") not in _LINUX_ICONS]
 
-    def _grid(tool_list):
+    # Each tab panel: stacked single-column list of tool cards
+    def _panel(tool_list):
         if not tool_list:
             return ""
-        cards = "\n".join(_tool_card_html(t) for t in tool_list)
-        return f"<div class=\"verif-grid\">{cards}</div>"
+        return "\n".join(_tool_card_html(t) for t in tool_list)
 
-    sections_html = ""
+    # Build unique tab-group ID so multiple findings on the page don't clash
+    import hashlib
+    tab_id = "vt-" + hashlib.md5(str(id(finding)).encode()).hexdigest()[:8]
+
+    tabs_html = ""
+    panels_html = ""
+    first = True
+
     if linux_tools:
-        sections_html += f"""<div class="verif-platform-group">
-  <div class="verif-platform-label">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;opacity:0.7"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Linux / Cross-platform
-  </div>
-  {_grid(linux_tools)}
-</div>"""
+        active_tab = "verif-tab-active" if first else "verif-tab-inactive"
+        active_panel = "" if first else " style='display:none;'"
+        lx_svg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="flex-shrink:0"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>'
+        tabs_html += f'<button class="verif-tab {active_tab}" onclick="verifTab(this,\'{tab_id}-linux\')">{lx_svg}Linux</button>'
+        panels_html += f'<div id="{tab_id}-linux" class="verif-panel"{active_panel}>{_panel(linux_tools)}</div>'
+        first = False
+
     if win_tools:
-        sections_html += f"""<div class="verif-platform-group">
-  <div class="verif-platform-label">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;opacity:0.7"><path d="M0 3.5L10 2v10H0V3.5zm0 17L10 22V12H0v8.5zM11 1.8L24 0v12H11V1.8zm0 20.2L24 24V12H11v10z"/></svg>Windows
-  </div>
-  {_grid(win_tools)}
-</div>"""
+        active_tab = "verif-tab-active" if first else "verif-tab-inactive"
+        active_panel = "" if first else " style='display:none;'"
+        win_svg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0"><path d="M0 3.5L10 2v10H0V3.5zm0 17L10 22V12H0v8.5zM11 1.8L24 0v12H11V1.8zm0 20.2L24 24V12H11v10z"/></svg>'
+        tabs_html += f'<button class="verif-tab {active_tab}" onclick="verifTab(this,\'{tab_id}-win\')">{win_svg}Windows</button>'
+        panels_html += f'<div id="{tab_id}-win" class="verif-panel"{active_panel}>{_panel(win_tools)}</div>'
 
     card_count = len(tools)
     return f"""<details style='margin-top:16px;'>
@@ -1166,12 +1173,11 @@ def _manual_verification_html(finding):
     <span style='display:inline-block;transition:transform .2s;font-size:0.65rem;'>&#9660;</span>
     Manual Verification ({card_count} tool{"s" if card_count != 1 else ""})
   </summary>
-  <div style='margin-top:12px;'>
-{sections_html}
+  <div class="verif-tabs-wrap">
+    <div class="verif-tab-bar">{tabs_html}</div>
+    <div class="verif-panels">{panels_html}</div>
   </div>
 </details>"""
-
-
 def _remediation_html(finding):
     """Render the Remediation section for a finding."""
     vdata = _get_verification(finding)
@@ -1540,15 +1546,29 @@ footer{text-align:center;padding:20px;color:var(--text-muted);font-size:.8rem;
     transform:translateX(-100%);transition:transform .25s;}
   .sidebar:not(.collapsed){transform:translateX(0);}
 }
-/* ---- Manual Verification ---- */
-.verif-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
-.verif-platform-group { margin-bottom: 18px; }
-.verif-platform-group:last-child { margin-bottom: 0; }
-.verif-platform-label {
-  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.08em; color: var(--text-muted);
-  margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+/* ---- Manual Verification tabs ---- */
+.verif-tabs-wrap { margin-top: 14px; }
+.verif-tab-bar {
+  display: flex; gap: 4px; border-bottom: 2px solid var(--border);
+  margin-bottom: 14px;
 }
+.verif-tab {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 14px; border: none; border-radius: 6px 6px 0 0;
+  font-size: 0.82rem; font-weight: 600; cursor: pointer;
+  background: none; transition: background .15s, color .15s;
+  margin-bottom: -2px; border-bottom: 2px solid transparent;
+}
+.verif-tab-active {
+  color: #3b82f6; border-bottom-color: #3b82f6;
+  background: rgba(59,130,246,0.07);
+}
+.verif-tab-inactive {
+  color: var(--text-muted);
+}
+.verif-tab-inactive:hover { background: var(--rec-bg); color: var(--text-primary); }
+.verif-panels { display: flex; flex-direction: column; gap: 12px; }
+.verif-panel { display: flex; flex-direction: column; gap: 12px; }
 .verif-card {
   border: 1px solid var(--border); border-radius: 10px;
   padding: 16px; background: var(--card-bg);
@@ -1733,6 +1753,23 @@ function clearFilters() {
     b.style.color = '';
   });
   applyFilters();
+}
+
+// ---- Verification tab switcher ----
+function verifTab(btn, panelId) {
+  var bar = btn.parentElement;
+  bar.querySelectorAll('.verif-tab').forEach(function(b) {
+    b.classList.remove('verif-tab-active');
+    b.classList.add('verif-tab-inactive');
+  });
+  btn.classList.remove('verif-tab-inactive');
+  btn.classList.add('verif-tab-active');
+  var wrap = bar.nextElementSibling; // .verif-panels
+  wrap.querySelectorAll('.verif-panel').forEach(function(p) {
+    p.style.display = 'none';
+  });
+  var target = document.getElementById(panelId);
+  if (target) target.style.display = '';
 }
 """.strip()
 
