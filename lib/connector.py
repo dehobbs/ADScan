@@ -27,6 +27,38 @@ except ImportError:
     HAS_IMPACKET = False
 
 
+def _entry_to_dict(entry):
+    """Convert an ldap3 Entry object to a plain dict with .get() support.
+
+    Returns a dict where:
+    - Each attribute name maps to its value (scalar if single-value, list if multi-value).
+    - Bytes values (e.g. nTSecurityDescriptor) are kept as bytes.
+    - 'dn' and 'distinguishedName' are always set from entry.entry_dn.
+    """
+    try:
+        raw = entry.entry_attributes_as_dict
+    except AttributeError:
+        # Already a dict (e.g. from a previous conversion)
+        return entry if isinstance(entry, dict) else {}
+
+    result = {}
+    for attr_name, values in raw.items():
+        if not isinstance(values, list):
+            result[attr_name] = values
+        elif len(values) == 0:
+            result[attr_name] = None
+        elif len(values) == 1:
+            result[attr_name] = values[0]
+        else:
+            result[attr_name] = values
+
+    # Always expose the DN under both common keys
+    dn = getattr(entry, 'entry_dn', None) or result.get('distinguishedName', '')
+    result.setdefault('dn', dn)
+    result.setdefault('distinguishedName', dn)
+    return result
+
+
 class ADConnector:
     """
     Manages connections to an Active Directory Domain Controller.
@@ -149,7 +181,7 @@ class ADConnector:
                     attributes=attrs,
                     entry_count=len(entries),
                 )
-            return entries
+            return [_entry_to_dict(e) for e in entries]
         except Exception as e:
             if self.verbose:
                 print(f" [WARN] LDAP search failed: {e}")
