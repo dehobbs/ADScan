@@ -230,14 +230,26 @@ def _get_credential_info(connector):
 
 # SSL-related error signatures that indicate LDAPS is broken on the DC.
 _LDAPS_ERROR_PATTERNS = (
+    # SSL/TLS negotiation failures
     "ssl wrapping error",
-    "connection reset by peer",
     "ssl: wrong version number",
-    "certificate verify failed",
+    "ssl: unsupported protocol",
+    "ssl handshake",
     "handshake failure",
-    "[errno 104]",
-    "[errno 111]",
     "ssleoferror",
+    "certificate verify failed",
+    "tlsv1 alert",
+    "tlsv1.3 alert",
+    # TCP-level errors that manifest on port 636 when LDAPS is unconfigured
+    "connection reset by peer",
+    "[errno 104]",   # ECONNRESET
+    "[errno 111]",   # ECONNREFUSED (port 636 closed)
+    "[errno 110]",   # ETIMEDOUT (port 636 filtered)
+    # Certipy-specific error messages
+    "error: socket",
+    "got error: socket",
+    "ldaps connection",
+    "port 636",
 )
 
 def _is_ldaps_error(stdout, stderr):
@@ -845,7 +857,9 @@ def _run_certipy_check(connector, verbose=False):
         # on the DC) automatically retry using plain LDAP (port 389).
         # ----------------------------------------------------------------
         ldap_fallback_used = False
-        if returncode != 0 and _is_ldaps_error(stdout, stderr):
+        # Trigger LDAPS→LDAP fallback whenever SSL error patterns appear in output,
+        # regardless of return code — Certipy may return 0 even on SSL failure.
+        if _is_ldaps_error(stdout, stderr):
             if verbose:
                 print("  [Certipy] LDAPS connection failed — retrying with plain LDAP (-scheme ldap)...")
             fallback_prefix = output_prefix + "_ldap"
