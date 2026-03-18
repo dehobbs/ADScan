@@ -80,7 +80,7 @@ def run_check(connector, verbose=False):
 
     def _get(attr, default=None):
         try:
-            return entry[attr].value
+            return entry.get(attr)
         except Exception:
             return default
 
