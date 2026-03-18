@@ -53,7 +53,7 @@ _ATTRS = [
 
 def _uac(entry, flag):
     try:
-        return bool(int(entry["userAccountControl"].value) & flag)
+        return bool(int(entry.get("userAccountControl")) & flag)
     except Exception:
         return False
 
@@ -64,14 +64,14 @@ def _is_disabled(entry):
 
 def _get_sam(entry):
     try:
-        return str(entry["sAMAccountName"].value)
+        return str(entry.get("sAMAccountName"))
     except Exception:
         return "?"
 
 
 def _get_spns(entry):
     try:
-        v = entry["servicePrincipalName"].values
+        v = entry.get("servicePrincipalName")
         return list(v) if v else []
     except Exception:
         return []
@@ -79,7 +79,7 @@ def _get_spns(entry):
 
 def _is_admin_count(entry):
     try:
-        return int(entry["adminCount"].value) == 1
+        return int(entry.get("adminCount")) == 1
     except Exception:
         return False
 
@@ -95,7 +95,7 @@ def _is_des_only(entry):
         return True
     # Check msDS-SupportedEncryptionTypes
     try:
-        etype = int(entry["msDS-SupportedEncryptionTypes"].value)
+        etype = int(entry.get("msDS-SupportedEncryptionTypes"))
         if etype == 0:
             return False  # 0 means default (RC4), not DES-only
         des_bits = etype & _DES_ONLY_MASK
