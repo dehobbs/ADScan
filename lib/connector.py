@@ -100,7 +100,7 @@ class ADConnector:
                 pass
             self.smb_conn = None
 
-    def ldap_search(self, search_base, search_filter, attributes=None,
+    def ldap_search(self, search_base=None, search_filter=None, attributes=None,
                     scope="SUBTREE", controls=None):
         """Perform an LDAP search. Returns list of entry objects or empty list.
 
@@ -116,6 +116,8 @@ class ADConnector:
                 print(" [WARN] No LDAP connection available for search.")
             return []
 
+        search_base = search_base or self.base_dn
+        search_filter = search_filter or "(objectClass=*)"
         attrs = attributes or ["*"]
 
         # Map scope string to ldap3 constant
