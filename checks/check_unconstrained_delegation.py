@@ -40,7 +40,7 @@ _ATTRS = [
 def _uac_flag(entry, flag):
     """Return True if the given UAC flag is set on the entry."""
     try:
-        uac = int(entry["userAccountControl"].value)
+        uac = int(entry.get("userAccountControl"))
         return bool(uac & flag)
     except Exception:
         return False
@@ -54,7 +54,7 @@ def _is_domain_controller(entry):
 def _is_user_account(entry):
     """Return True if this is a regular user account (not computer)."""
     try:
-        obj_classes = [c.lower() for c in entry["objectClass"].values]
+        obj_classes = [c.lower() for c in entry.get("objectClass")]
         return "user" in obj_classes and "computer" not in obj_classes
     except Exception:
         return False
@@ -92,7 +92,7 @@ def run_check(connector, verbose=False):
     for entry in entries:
         sam = ""
         try:
-            sam = str(entry["sAMAccountName"].value)
+            sam = str(entry.get("sAMAccountName"))
         except Exception:
             pass
 
