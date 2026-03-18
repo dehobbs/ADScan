@@ -28,7 +28,7 @@ _LEGACY_OS_KEYWORDS = [
 
 def _get_str(entry, attr, default=""):
     try:
-        v = entry[attr].value
+        v = entry.get(attr)
         return str(v) if v else default
     except Exception:
         return default
@@ -36,7 +36,7 @@ def _get_str(entry, attr, default=""):
 
 def _get_int(entry, attr, default=0):
     try:
-        return int(entry[attr].value)
+        return int(entry.get(attr, default))
     except Exception:
         return default
 
@@ -47,7 +47,7 @@ def _is_legacy_os(os_str):
 
 def _is_rodc(entry):
     try:
-        return bool(entry["msDS-IsRodc"].value)
+        return bool(entry.get("msDS-IsRodc"))
     except Exception:
         return False
 
@@ -131,7 +131,7 @@ def run_check(connector, verbose=False):
         entries = connector.ldap_search(search_filter=filt, attributes=[attr], search_base=base) or []
         if entries:
             try:
-                owner = str(entries[0][attr].value)
+                owner = str(entries[0].get(attr, ""))
                 m = re.search(r'CN=([^,]+),CN=NTDS', owner, re.IGNORECASE)
                 fsmo_holders[role] = m.group(1) if m else owner.split(",")[0].replace("CN=", "")
             except Exception:
@@ -173,7 +173,7 @@ def run_check(connector, verbose=False):
         ) or []
         for rodc_e in rodc_entries:
             try:
-                reveal = str(rodc_e["msDS-RevealOnDemandGroup"].value)
+                reveal = str(rodc_e.get("msDS-RevealOnDemandGroup"))
                 if "domain users" in reveal.lower() or "authenticated users" in reveal.lower():
                     findings.append({
                         "title": f"RODC {rodc_sam}: Permissive Password Replication Policy",
