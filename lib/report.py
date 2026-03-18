@@ -1252,10 +1252,13 @@ def _finding_card(finding, idx):
             more = f"<li><em>... and {len(finding['details']) - 50} more</em></li>"
         details_html = f"""
     <details style='margin-top:12px;'>
-      <summary style='cursor:pointer;font-weight:600;color:{accent};'>
+      <summary style='cursor:pointer;font-weight:600;color:var(--text-muted);
+        font-size:0.7rem;text-transform:uppercase;letter-spacing:0.12em;
+        list-style:none;display:flex;align-items:center;gap:6px;user-select:none;'>
+        <span style='display:inline-block;transition:transform .2s;font-size:0.65rem;color:{accent}'>&#9660;</span>
         Affected Objects ({finding.get('affected_count', len(finding['details']))})
       </summary>
-      <ul style='margin:8px 0 0 16px;padding:0;'>{items}{more}</ul>
+      <ul style='margin:10px 0 0 16px;padding:0;'>{items}{more}</ul>
     </details>"""
 
     verif_html = _manual_verification_html(finding)
