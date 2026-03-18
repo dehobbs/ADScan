@@ -36,7 +36,7 @@ BANNER = r"""
 \___\__,_|_| |_|
 
 Active Directory Vulnerability Scanner
-Version 1.0 | github.com/dehobbs/ADScan
+Version 1.1 | github.com/dehobbs/ADScan
 """
 
 # Default output directory for reports
