@@ -45,7 +45,7 @@ _ATTRS = [
 
 def _uac_flag(entry, flag):
     try:
-        return bool(int(entry["userAccountControl"].value) & flag)
+        return bool(int(entry.get("userAccountControl")) & flag)
     except Exception:
         return False
 
@@ -57,7 +57,7 @@ def _is_disabled(entry):
 def _get_delegate_to(entry):
     """Return list of allowed-to-delegate-to SPN strings."""
     try:
-        val = entry["msDS-AllowedToDelegateTo"].values
+        val = entry.get("msDS-AllowedToDelegateTo")
         return list(val) if val else []
     except Exception:
         return []
@@ -93,7 +93,7 @@ def run_check(connector, verbose=False):
     for entry in entries:
         sam = ""
         try:
-            sam = str(entry["sAMAccountName"].value)
+            sam = str(entry.get("sAMAccountName"))
         except Exception:
             pass
 
