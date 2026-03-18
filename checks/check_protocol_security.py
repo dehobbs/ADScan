@@ -45,7 +45,7 @@ _LEGACY_OS_KEYWORDS = [
 
 def _get_str(entry, attr, default=""):
     try:
-        v = entry[attr].value
+        v = entry.get(attr)
         return str(v) if v else default
     except Exception:
         return default
@@ -68,7 +68,7 @@ def run_check(connector, verbose=False):
     domain_level = None
     if domain_entries:
         try:
-            domain_level = int(domain_entries[0]["msDS-Behavior-Version"].value)
+            domain_level = int(domain_entries[0].get("msDS-Behavior-Version"))
         except Exception:
             pass
 
@@ -83,7 +83,7 @@ def run_check(connector, verbose=False):
     forest_level = None
     if forest_entries:
         try:
-            forest_level = int(forest_entries[0]["msDS-Behavior-Version"].value)
+            forest_level = int(forest_entries[0].get("msDS-Behavior-Version"))
         except Exception:
             pass
 
