@@ -1,27 +1,33 @@
 """
 lib/audit_log.py -- ADScan Audit Logger
 
-Creates a structured audit log in the Logs/ directory every time adscan.py is run.
+Creates a structured audit log in the Logs/ directory every time adscan.py
+is run. The log captures:
 
-The log captures:
-  * Run metadata  : timestamp, operator, target domain / DC, auth method
-  * Check results : per-check status, findings count, severity breakdown
-  * Score timeline: starting score, per-finding deductions, final score
-  * Runtime       : elapsed wall-clock time for the full scan
-  * Report path   : where the HTML report was saved
+  * Run metadata   : timestamp, operator, target domain / DC, auth method,
+                     companion log-file path
+  * Check results  : per-check status, findings count, severity breakdown
+  * Score timeline : starting score, per-finding deductions, final score
+  * Runtime        : elapsed wall-clock time for the full scan
+  * Report path    : where the HTML report was saved
 
-Log file naming: Logs/adscan_<YYYYMMDD_HHMMSS>.log
+Log file naming:
+    Logs/adscan_<YYYYMMDD_HHMMSS>.log
 
 Usage (from adscan.py)::
 
     from lib.audit_log import AuditLogger
+
     logger = AuditLogger(domain=args.domain, dc_host=args.dc_ip,
                          username=args.username,
                          auth_method="hash" if args.hash else "password",
                          scan_timestamp=scan_timestamp)
+    logger.log_file = args.log_file   # companion --log-file path (may be None)
     logger.start()
+
     # After each check:
     logger.record_check(check_name, findings_list)
+
     # At the end:
     logger.finish(score=score, report_path=args.output)
 """
@@ -38,9 +44,9 @@ LOGS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Logs")
 class AuditLogger:
     """Writes a human-readable audit log for every ADScan run."""
 
-    # ------------------------------------------------------------------#
-    # Construction                                                        #
-    # ------------------------------------------------------------------#
+    # ------------------------------------------------------------------
+    # Construction
+    # ------------------------------------------------------------------
 
     def __init__(
         self,
@@ -57,14 +63,14 @@ class AuditLogger:
         self.auth_method = auth_method
         self.scan_timestamp = scan_timestamp
         self.logs_dir = logs_dir or LOGS_DIR
-
+        self.log_file: str | None = None   # companion --log-file; set by adscan.py
         self._start_time: float = 0.0
         self._check_records: list[dict] = []
         self._log_path: str = ""
 
-    # ------------------------------------------------------------------#
-    # Public API                                                          #
-    # ------------------------------------------------------------------#
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
 
     def start(self) -> None:
         """Call once at the very beginning of the scan."""
@@ -110,15 +116,14 @@ class AuditLogger:
         """Call once after the scan is fully complete (report generated)."""
         elapsed = time.monotonic() - self._start_time
         self._write_footer(score=score, report_path=report_path, elapsed=elapsed)
-        print(f"[*] Audit log saved : {self._log_path}")
 
     @property
     def log_path(self) -> str:
         return self._log_path
 
-    # ------------------------------------------------------------------#
-    # Internal helpers                                                    #
-    # ------------------------------------------------------------------#
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
 
     def _write_header(self) -> None:
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -126,12 +131,13 @@ class AuditLogger:
             "=" * 70,
             " ADScan Audit Log",
             "=" * 70,
-            f" Run Timestamp : {now_str}",
-            f" Operator      : {self.username}",
-            f" Target Domain : {self.domain}",
-            f" DC Host       : {self.dc_host}",
-            f" Auth Method   : {self.auth_method}",
-            f" Python        : {sys.version.split()[0]}",
+            f"  Run Timestamp  : {now_str}",
+            f"  Operator       : {self.username}",
+            f"  Target Domain  : {self.domain}",
+            f"  DC Host        : {self.dc_host}",
+            f"  Auth Method    : {self.auth_method}",
+            f"  Python         : {sys.version.split()[0]}",
+            f"  Log file       : {self.log_file or '(none)'}",
             "=" * 70,
             "",
             f"{'CHECK':<45} {'STATUS':<10} {'FINDINGS':>8} {'DEDUCT':>6} SEVERITIES",
@@ -153,7 +159,7 @@ class AuditLogger:
         self._write_lines([line])
 
     def _write_footer(self, score: int, report_path: str, elapsed: float) -> None:
-        total_findings = sum(r["count"] for r in self._check_records)
+        total_findings  = sum(r["count"] for r in self._check_records)
         total_deduction = sum(r["deduction"] for r in self._check_records)
         checks_with_findings = sum(
             1 for r in self._check_records if r["status"] == "FINDINGS"
@@ -161,35 +167,38 @@ class AuditLogger:
         checks_errored = sum(
             1 for r in self._check_records if r["status"] == "ERROR"
         )
+
         combined_severities: dict[str, int] = {}
         for r in self._check_records:
             for sev, cnt in r.get("severities", {}).items():
                 combined_severities[sev] = combined_severities.get(sev, 0) + cnt
 
         grade = (
-            "A" if score >= 90
-            else "B" if score >= 75
-            else "C" if score >= 60
-            else "D" if score >= 40
-            else "F"
+            "A" if score >= 90 else
+            "B" if score >= 75 else
+            "C" if score >= 60 else
+            "D" if score >= 40 else
+            "F"
         )
+
         lines = [
             "-" * 100,
             "",
             "SUMMARY",
             "-" * 40,
-            f" Checks run          : {len(self._check_records)}",
-            f" Checks with findings: {checks_with_findings}",
-            f" Checks errored      : {checks_errored}",
-            f" Total findings      : {total_findings}",
-            f" Total deduction     : -{total_deduction} points",
-            f" Severity breakdown  : {_format_severities(combined_severities)}",
+            f"  Checks run          : {len(self._check_records)}",
+            f"  Checks with findings: {checks_with_findings}",
+            f"  Checks errored      : {checks_errored}",
+            f"  Total findings      : {total_findings}",
+            f"  Total deduction     : -{total_deduction} points",
+            f"  Severity breakdown  : {_format_severities(combined_severities)}",
             "",
-            f" Starting score      : 100",
-            f" Final score         : {score}/100 (Grade: {grade})",
+            f"  Starting score      : 100",
+            f"  Final score         : {score}/100 (Grade: {grade})",
             "",
-            f" Elapsed time        : {_format_elapsed(elapsed)}",
-            f" Report saved to     : {report_path}",
+            f"  Elapsed time        : {_format_elapsed(elapsed)}",
+            f"  Report saved to     : {report_path}",
+            f"  Log file            : {self.log_file or '(none)'}",
             "",
             "=" * 70,
             " End of audit log",
@@ -203,9 +212,9 @@ class AuditLogger:
                 fh.write(line + "\n")
 
 
-# ------------------------------------------------------------------#
-# Module-level helpers                                               #
-# ------------------------------------------------------------------#
+# ------------------------------------------------------------------
+# Module-level helpers
+# ------------------------------------------------------------------
 
 _SEV_ORDER = ("critical", "high", "medium", "low", "info")
 
@@ -225,7 +234,6 @@ def _format_severities(counts: dict[str, int]) -> str:
     for sev in _SEV_ORDER:
         if sev in counts:
             parts.append(f"{sev.upper()[0]}:{counts[sev]}")
-    # Any unexpected severities
     for sev, cnt in counts.items():
         if sev not in _SEV_ORDER:
             parts.append(f"{sev.upper()}:{cnt}")
