@@ -73,22 +73,24 @@ def _filetime_to_dt(val):
 
 def _uac(entry, flag):
     try:
-        return bool(int(entry["userAccountControl"].value) & flag)
+        return bool(int(entry.get("userAccountControl") or 0) & flag)
     except Exception:
         return False
 
 
 def _sam(entry):
     try:
-        return str(entry["sAMAccountName"].value)
+        return str(entry.get("sAMAccountName") or "?")
     except Exception:
         return "?"
 
 
 def _spns(entry):
     try:
-        v = entry["servicePrincipalName"].values
-        return list(v) if v else []
+        v = entry.get("servicePrincipalName")
+        if not v:
+            return []
+        return list(v) if isinstance(v, (list, tuple, set)) else [str(v)]
     except Exception:
         return []
 
@@ -129,7 +131,7 @@ def run_check(connector, verbose=False):
             passwd_notreqd.append(sam)
 
         # Stale / never logged in
-        ll = _filetime_to_dt(entry["lastLogonTimestamp"].value if "lastLogonTimestamp" in entry else None)
+        ll = _filetime_to_dt(entry.get("lastLogonTimestamp"))
         if ll is None:
             never_logon_users.append(sam)
         elif ll < stale_cutoff:
@@ -139,7 +141,7 @@ def run_check(connector, verbose=False):
         # Old password
         no_expire = _uac(entry, _UAC_DONT_EXPIRE_PASSWD)
         if not no_expire:
-            ps = _filetime_to_dt(entry["pwdLastSet"].value if "pwdLastSet" in entry else None)
+            ps = _filetime_to_dt(entry.get("pwdLastSet"))
             if ps is not None and ps < old_pwd_cutoff:
                 days = (now - ps).days
                 old_pwd_users.append(f"{sam} (pwd set {days}d ago)")
@@ -167,7 +169,7 @@ def run_check(connector, verbose=False):
             continue  # Skip DCs
         sam = _sam(entry)
 
-        ll = _filetime_to_dt(entry["lastLogonTimestamp"].value if "lastLogonTimestamp" in entry else None)
+        ll = _filetime_to_dt(entry.get("lastLogonTimestamp"))
         if ll is None:
             never_logon_comps.append(sam)
         elif ll < stale_cutoff:
