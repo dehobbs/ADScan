@@ -1,4 +1,4 @@
-""" checks/check_audit_policy.py -- Advanced Audit Policy Check
+r""" checks/check_audit_policy.py -- Advanced Audit Policy Check
 
 Enumerates all GPOs in the domain via LDAP (objectClass=groupPolicyContainer),
 then for each GPO reads the following file from SYSVOL via SMB:
