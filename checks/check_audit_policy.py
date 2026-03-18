@@ -124,7 +124,7 @@ def _get_attr(entry, attr_name):
 
 
 def _unc_to_share_and_path(unc_path):
-    """
+    r"""
     Parse a Windows UNC path into (share_name, path_relative_to_share).
 
     Input examples:
