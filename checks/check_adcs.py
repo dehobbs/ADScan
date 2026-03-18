@@ -88,7 +88,7 @@ _TEMPLATE_ATTRS = [
     "msPKI-Template-Schema-Version", "msPKI-Certificate-Application-Policy",
     "pKIExtendedKeyUsage", "pKIExpirationPeriod", "pKIOverlapPeriod",
     "nTSecurityDescriptor", "msPKI-Minimal-Key-Size",
-    "msPKI-Template-Minor-Version", "flags", "objectClass",
+    "flags", "objectClass",
 ]
 
 _CA_ATTRS = [
@@ -152,21 +152,26 @@ _ESC_RECOMMENDATIONS = {
 # ---------------------------------------------------------------------------
 def _get_str(entry, attr, default=""):
     try:
-        v = entry[attr].value
+        v = entry.get(attr)
         return str(v) if v is not None else default
     except Exception:
         return default
 
 def _get_int(entry, attr, default=0):
     try:
-        return int(entry[attr].value)
+        v = entry.get(attr)
+        return int(v) if v is not None else default
     except Exception:
         return default
 
 def _get_list(entry, attr):
     try:
-        v = entry[attr].values
-        return [str(x) for x in v] if v else []
+        v = entry.get(attr)
+        if v is None:
+            return []
+        if isinstance(v, list):
+            return [str(x) for x in v]
+        return [str(v)]
     except Exception:
         return []
 
