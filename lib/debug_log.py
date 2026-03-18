@@ -13,7 +13,7 @@ LDAP queries
         - number of entries returned
         - full ldap3 error string if the search throws an exception
 
-Subprocess commands (e.g. Certipy)
+Subprocess commands (e.g. Certipy)h
     Call connector.debug_log.log_subprocess() immediately after any
     subprocess.run() call inside a check.  Each entry records:
         - full command line (argv list joined with spaces)
@@ -115,7 +115,7 @@ class DebugLogger:
         ])
 
     def finish(self) -> None:
-        """Write the footer and print the log path."""
+                """Write the footer."""
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self._write([
             "",
@@ -124,8 +124,7 @@ class DebugLogger:
             f" Total operations logged: {self._seq}",
             "=" * 80,
         ])
-        print(f"[*] Debug log saved : {self._log_path}")
-
+    
     @property
     def log_path(self) -> str:
         return self._log_path
