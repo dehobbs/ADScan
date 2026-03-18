@@ -1,0 +1,58 @@
+"""
+verifications/verify_account_lockout.py
+Manual Verification and Remediation data for ADScan findings matching: account lockout
+"""
+
+MATCH_KEYS = ["account lockout"]
+
+TOOLS = [
+    {
+        "tool": "NetExec",
+        "icon": "netexec",
+        "desc": "Query the password policy remotely from any machine with a valid domain account.",
+        "code": "netexec smb <DC_IP> \\\n    -u <username> \\\n    -p <password> \\\n    --pass-pol",
+        "confirm": "Look for <strong>Account Lockout Threshold: None</strong> or <strong>0</strong> in the output.",
+    },
+    {
+        "tool": "net accounts",
+        "icon": "cmd",
+        "desc": "Run from any domain-joined Windows host. No special privileges needed beyond a standard domain account.",
+        "code": "net accounts /domain",
+        "confirm": "A value of <strong>Never</strong> or <strong>0</strong> next to <em>Lockout threshold</em> confirms the finding.",
+    },
+    {
+        "tool": "ADUC (dsa.msc)",
+        "icon": "aduc",
+        "desc": "GUI method via Active Directory Users and Computers on a domain-joined machine with RSAT installed.",
+        "steps": [
+            "Open <code>dsa.msc</code>",
+            "Right-click domain root → <em>Properties</em>",
+            "Group Policy tab → open <em>Default Domain Policy</em>",
+            "Navigate to: <code>Computer Configuration → Windows Settings → Security Settings → Account Policies → Account Lockout Policy</code>",
+            "<em>Account lockout threshold</em> = <strong>0</strong> confirms the finding.",
+        ],
+    },
+    {
+        "tool": "PowerShell",
+        "icon": "ps",
+        "desc": "Run from a domain-joined host with the ActiveDirectory module available.",
+        "code": "Get-ADDefaultDomainPasswordPolicy `\n    | Select-Object LockoutThreshold,\n        LockoutDuration,\n        LockoutObservationWindow",
+        "confirm": "A <strong>LockoutThreshold</strong> of <strong>0</strong> confirms no lockout policy is in effect.",
+    },
+]
+
+REMEDIATION = {
+    "title": "Set lockout threshold to 5–10 attempts",
+    "steps": [
+        {
+            "text": "Apply via PowerShell on the domain controller:",
+            "code": "Set-ADDefaultDomainPasswordPolicy `\n    -Identity <domain.fqdn> `\n    -LockoutThreshold 5 `\n    -LockoutDuration 00:30:00 `\n    -LockoutObservationWindow 00:30:00",
+        },
+        {
+            "text": "Or apply via Group Policy Editor (<code>gpedit.msc</code>) on the Domain Controller under <em>Default Domain Policy</em> at the path shown in the ADUC step above.",
+        },
+        {
+            "text": "For privileged accounts requiring a stricter policy, use <strong>Fine-Grained Password Policies (PSOs)</strong> to apply a lower threshold (e.g. 3 attempts) to Domain Admins without affecting all users.",
+        },
+    ],
+}
