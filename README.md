@@ -54,8 +54,9 @@ python adscan.py -d <domain> --dc-ip <dc_ip> -u <username>              # prompt
 | `--protocol` | `ldap` \| `ldaps` \| `smb` \| `all` | `all` |
 | `--timeout` | Connection timeout in seconds | `30` |
 | `--format` | `html` \| `json` \| `csv` \| `all` | `html` |
+| `--log-file PATH` | Write all log output (including DEBUG detail) to a file in addition to the console | off |
 | `-o / --output` | Output report path stem | `Reports/adscan_report_<timestamp>` |
-| `-v / --verbose` | Verbose console output | off |
+| `-v / --verbose` | Show DEBUG-level detail on the console (finding details, affected objects) | off |
 
 > **Interactive password prompt**: if neither `-p` nor `--hash` is supplied, ADScan will prompt for a password without echoing it to the terminal. This avoids storing credentials in shell history.
 
@@ -79,6 +80,12 @@ python adscan.py -d corp.local -u alice -p 'Secret1' --dc-ip 10.10.10.5 --format
 
 # Custom timeout
 python adscan.py -d corp.local -u alice -p 'Secret1' --dc-ip 10.10.10.5 --timeout 60
+
+# Write a persistent log file for post-engagement review
+python adscan.py -d corp.local -u alice -p 'Secret1' --dc-ip 10.10.10.5 --log-file scan.log
+
+# Verbose console output + full debug log file
+python adscan.py -d corp.local -u alice -p 'Secret1' --dc-ip 10.10.10.5 -v --log-file debug.log
 ```
 
 ---
