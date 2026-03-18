@@ -228,7 +228,25 @@ def _get_credential_info(connector):
         domain    = ".".join(dc_parts)
     return {"username": username, "password": password, "domain": domain, "dc_ip": dc_ip}
 
-def _run_certipy(creds, output_prefix, cwd=None):
+# SSL-related error signatures that indicate LDAPS is broken on the DC.
+_LDAPS_ERROR_PATTERNS = (
+    "ssl wrapping error",
+    "connection reset by peer",
+    "ssl: wrong version number",
+    "certificate verify failed",
+    "handshake failure",
+    "[errno 104]",
+    "[errno 111]",
+    "ssleoferror",
+)
+
+def _is_ldaps_error(stdout, stderr):
+    """Return True if certipy output suggests an LDAPS/TLS failure."""
+    combined = (stdout + stderr).lower()
+    return any(pat in combined for pat in _LDAPS_ERROR_PATTERNS)
+
+def _run_certipy(creds, output_prefix, cwd=None, scheme=None):
+    """Invoke certipy find. scheme may be None (default LDAPS) or 'ldap'."""
     upn = f"{creds['username']}@{creds['domain']}"
     cmd = [
         "certipy", "find",
@@ -239,6 +257,8 @@ def _run_certipy(creds, output_prefix, cwd=None):
         "-output", output_prefix,
         "-vulnerable",
     ]
+    if scheme:
+        cmd += ["-scheme", scheme]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120, cwd=cwd)
     return result.returncode, result.stdout, result.stderr
 
@@ -818,20 +838,45 @@ def _run_certipy_check(connector, verbose=False):
 
     try:
         returncode, stdout, stderr = _run_certipy(creds, output_prefix, cwd=artifacts_dir)
+
+        # ----------------------------------------------------------------
+        # LDAPS → LDAP fallback
+        # If Certipy failed with an SSL/TLS error (e.g. LDAPS not configured
+        # on the DC) automatically retry using plain LDAP (port 389).
+        # ----------------------------------------------------------------
+        ldap_fallback_used = False
+        if returncode != 0 and _is_ldaps_error(stdout, stderr):
+            if verbose:
+                print("  [Certipy] LDAPS connection failed — retrying with plain LDAP (-scheme ldap)...")
+            fallback_prefix = output_prefix + "_ldap"
+            returncode, stdout, stderr = _run_certipy(
+                creds, fallback_prefix, cwd=artifacts_dir, scheme="ldap"
+            )
+            # Update the expected json_path to match the fallback prefix
+            json_path = os.path.join(
+                artifacts_dir,
+                fallback_prefix + "_Certipy.json"
+            )
+            ldap_fallback_used = True
+
         # Log the subprocess call to the debug log (if enabled)
         dbg = getattr(connector, "debug_log", None)
         if dbg:
             upn = f"{creds['username']}@{creds['domain']}"
+            scheme_note = " (LDAP fallback)" if ldap_fallback_used else ""
             dbg.log_subprocess(
                 cmd=["certipy", "find", "-u", upn, "-p", "<redacted>",
                      "-dc-ip", creds["dc_ip"], "-json",
-                     "-output", output_prefix, "-vulnerable"],
+                     "-output", output_prefix, "-vulnerable"]
+                    + (["-scheme", "ldap"] if ldap_fallback_used else []),
                 cwd=str(artifacts_dir) if artifacts_dir else None,
                 returncode=returncode,
                 stdout=stdout,
                 stderr=stderr,
             )
         if verbose:
+            if ldap_fallback_used:
+                print("  [Certipy] Running via plain LDAP (LDAPS unavailable on DC)")
             if stdout: print(f"  [Certipy stdout]\n{stdout[:2000]}")
             if stderr: print(f"  [Certipy stderr]\n{stderr[:1000]}")
 
@@ -841,15 +886,20 @@ def _run_certipy_check(connector, verbose=False):
                 "severity":  "info",
                 "deduction": 0,
                 "description": (
-                    f"Certipy exited with return code {returncode}. "
-                    "Check that credentials are valid and the DC is reachable."
+                    f"Certipy exited with return code {returncode}"
+                    + (" (tried LDAPS then plain LDAP fallback)." if ldap_fallback_used
+                       else ". Check that credentials are valid and the DC is reachable.")
                 ),
                 "recommendation": (
+                    f"Run manually: certipy find -u {creds['username']}@{creds['domain']} "
+                    f"-p <password> -dc-ip {creds['dc_ip']} -scheme ldap -json -vulnerable"
+                    if ldap_fallback_used else
                     f"Run manually: certipy find -u {creds['username']}@{creds['domain']} "
                     f"-p <password> -dc-ip {creds['dc_ip']} -json -vulnerable"
                 ),
                 "details": [
-                    f"Return code: {returncode}",
+                    "LDAPS failed (SSL error) — plain LDAP fallback also failed." if ldap_fallback_used
+                    else f"Return code: {returncode}",
                     f"stderr: {stderr[:500]}" if stderr else "no stderr",
                 ],
             })
@@ -857,10 +907,13 @@ def _run_certipy_check(connector, verbose=False):
 
         # Detect which output file Certipy actually wrote
         actual_json = None
+        search_prefix = (output_prefix + "_ldap") if ldap_fallback_used else output_prefix
         for _candidate in [
-            os.path.join(artifacts_dir, output_prefix + "_Certipy.json"),  # Certipy output filename
-            os.path.join(artifacts_dir, output_prefix + ".json"),        # fallback
-            json_path,                                                    # exact path
+            os.path.join(artifacts_dir, search_prefix + "_Certipy.json"),
+            os.path.join(artifacts_dir, search_prefix + ".json"),
+            os.path.join(artifacts_dir, output_prefix + "_Certipy.json"),
+            os.path.join(artifacts_dir, output_prefix + ".json"),
+            json_path,
         ]:
             if os.path.exists(_candidate):
                 actual_json = _candidate
@@ -879,6 +932,7 @@ def _run_certipy_check(connector, verbose=False):
                 "description": (
                     "Certipy ran successfully but did not produce a JSON output file. "
                     f"Searched in: {artifacts_dir}"
+                    + (" (ran via plain LDAP fallback)" if ldap_fallback_used else "")
                 ),
                 "recommendation": (
                     "Ensure Certipy version >= 4.0 is installed (certipy-ad). "
@@ -889,18 +943,43 @@ def _run_certipy_check(connector, verbose=False):
             return findings
 
         # Rename to standard adscan_certipy_<domain>_<timestamp>.json if needed
-        if os.path.abspath(actual_json) != os.path.abspath(json_path):
+        standard_json = os.path.join(artifacts_dir, json_filename)
+        if os.path.abspath(actual_json) != os.path.abspath(standard_json):
             try:
-                os.rename(actual_json, json_path)
-                actual_json = json_path
+                os.rename(actual_json, standard_json)
+                actual_json = standard_json
             except OSError:
                 pass
 
         if verbose:
-            print(f"  [Certipy] Artifact saved: {actual_json}")
+            scheme_label = "LDAP (fallback)" if ldap_fallback_used else "LDAPS"
+            print(f"  [Certipy] Artifact saved ({scheme_label}): {actual_json}")
 
         parsed = _parse_certipy_json(actual_json)
         if parsed:
+            if ldap_fallback_used:
+                # Prepend an info note that LDAPS was unavailable
+                parsed.insert(0, {
+                    "title":     "Certipy: LDAPS Unavailable — Ran via Plain LDAP",
+                    "severity":  "info",
+                    "deduction": 0,
+                    "description": (
+                        "LDAPS (port 636) on the Domain Controller returned an SSL error. "
+                        "Certipy automatically retried using plain LDAP (port 389). "
+                        "Results may be less complete than a full LDAPS-authenticated run. "
+                        "Consider configuring a valid certificate on the DC to enable LDAPS."
+                    ),
+                    "recommendation": (
+                        "Enable LDAPS on the DC by installing a certificate whose Subject "
+                        "or SAN matches the DC FQDN, or use Active Directory Certificate "
+                        "Services to auto-enroll a DC certificate. "
+                        "Verify with: openssl s_client -connect <DC_IP>:636"
+                    ),
+                    "details": [
+                        f"DC: {creds['dc_ip']}",
+                        "LDAPS error detected — fallback to port 389 (plain LDAP) used.",
+                    ],
+                })
             findings.extend(parsed)
         else:
             findings.append({
@@ -910,6 +989,7 @@ def _run_certipy_check(connector, verbose=False):
                 "description": (
                     "Certipy completed successfully and found no vulnerable "
                     "certificate templates or CA misconfigurations."
+                    + (" (ran via plain LDAP fallback)" if ldap_fallback_used else "")
                 ),
                 "recommendation": (
                     "Continue to monitor ADCS configuration. Re-run periodically "
@@ -917,7 +997,6 @@ def _run_certipy_check(connector, verbose=False):
                 ),
                 "details": [f"Artifact: {actual_json}"],
             })
-
     except subprocess.TimeoutExpired:
         findings.append({
             "title":     "Certipy Timed Out",
