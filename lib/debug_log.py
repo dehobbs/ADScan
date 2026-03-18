@@ -115,7 +115,7 @@ class DebugLogger:
         ])
 
     def finish(self) -> None:
-                """Write the footer."""
+        """Write the footer."""
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self._write([
             "",
