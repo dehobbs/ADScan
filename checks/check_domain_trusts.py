@@ -102,7 +102,7 @@ _DIR_LABELS = {
 
 def _get_str(entry, attr, default=""):
     try:
-        v = entry[attr].value
+        v = entry.get(attr)
         return str(v) if v is not None else default
     except Exception:
         return default
@@ -110,7 +110,7 @@ def _get_str(entry, attr, default=""):
 
 def _get_int(entry, attr, default=0):
     try:
-        return int(entry[attr].value)
+        v = entry.get(attr); return int(v) if v is not None else 0
     except Exception:
         return default
 
