@@ -1256,7 +1256,7 @@ def _finding_card(finding, idx):
         font-size:0.7rem;text-transform:uppercase;letter-spacing:0.12em;
         list-style:none;display:flex;align-items:center;gap:6px;user-select:none;'>
         <span style='display:inline-block;transition:transform .2s;font-size:0.65rem;color:{accent}'>&#9660;</span>
-        Affected Objects ({finding.get('affected_count', len(finding['details']))})
+        <span style='color:{accent}'>Affected Objects ({finding.get('affected_count', len(finding['details']))})</span>
       </summary>
       <ul style='margin:10px 0 0 16px;padding:0;'>{items}{more}</ul>
     </details>"""
