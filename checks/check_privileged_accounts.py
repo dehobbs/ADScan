@@ -77,7 +77,7 @@ _ATTRS_USER  = [
 
 def _uac(entry, flag):
     try:
-        return bool(int(entry["userAccountControl"].value) & flag)
+        return bool(int(entry.get("userAccountControl") or 0) & flag)
     except Exception:
         return False
 
@@ -104,14 +104,14 @@ def _filetime_to_dt(filetime_val):
 
 def _last_logon_dt(entry):
     try:
-        return _filetime_to_dt(entry["lastLogonTimestamp"].value)
+        return _filetime_to_dt(entry.get("lastLogonTimestamp"))
     except Exception:
         return None
 
 
 def _pwd_last_set_dt(entry):
     try:
-        return _filetime_to_dt(entry["pwdLastSet"].value)
+        return _filetime_to_dt(entry.get("pwdLastSet"))
     except Exception:
         return None
 
@@ -119,7 +119,7 @@ def _pwd_last_set_dt(entry):
 def _description_has_password(entry):
     """Return True if the description field looks like it contains a password."""
     try:
-        desc = str(entry["description"].value).lower()
+        desc = str(entry.get("description") or "").lower()
         return any(kw in desc for kw in _PASSWORD_KEYWORDS)
     except Exception:
         return False
@@ -127,7 +127,7 @@ def _description_has_password(entry):
 
 def _get_sam(entry):
     try:
-        return str(entry["sAMAccountName"].value)
+        return str(entry.get("sAMAccountName") or "?")
     except Exception:
         return "?"
 
@@ -135,7 +135,9 @@ def _get_sam(entry):
 def _get_rid(entry):
     """Extract the RID from an objectSid."""
     try:
-        sid = entry["objectSid"].value  # bytes
+        sid = entry.get("objectSid")  # bytes
+        if not sid:
+            return None
         return int.from_bytes(sid[-4:], byteorder="little")
     except Exception:
         return None
@@ -180,7 +182,7 @@ def run_check(connector, verbose=False):
         group_entry = _search_group(connector, group_name)
         if not group_entry:
             continue
-        group_dn = str(group_entry["distinguishedName"].value)
+        group_dn = str(group_entry.get("distinguishedName") or group_entry.get("dn") or "")
         members = _resolve_members(connector, group_dn, verbose)
         active_members = [e for e in members if not _is_disabled(e)]
         if verbose:
@@ -283,7 +285,7 @@ def run_check(connector, verbose=False):
     # 5. Passwords in Description field
     # -----------------------------------------------------------------------
     desc_passwords = [
-        f"{_get_sam(e)}: {e['description'].value}"
+        f"{_get_sam(e)}: {e.get('description', '')}"
         for e in all_priv_entries
         if _description_has_password(e)
     ]
@@ -414,7 +416,7 @@ def run_check(connector, verbose=False):
         group_entry = _search_group(connector, group_name)
         if not group_entry:
             continue
-        group_dn = str(group_entry["distinguishedName"].value)
+        group_dn = str(group_entry.get("distinguishedName") or group_entry.get("dn") or "")
         members = _resolve_members(connector, group_dn)
         active = [_get_sam(e) for e in members if not _is_disabled(e)]
         if active:
