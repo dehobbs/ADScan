@@ -33,7 +33,7 @@ TOOLS = [
         "desc": "Inspect the Default Domain Policy GPO for password settings.",
         "steps": [
             "Open <code>gpmc.msc</code> → Default Domain Policy → Edit",
-            "Computer Configuration → Windows Settings → Security Settings → Account Policies → Password Policy",
+            "Computer Configuration → Policies → Windows Settings → Security Settings → Account Policies → Password Policy",
             "Check <strong>Minimum password length</strong>.",
         ],
     },
