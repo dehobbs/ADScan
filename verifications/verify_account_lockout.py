@@ -21,13 +21,13 @@ TOOLS = [
         "confirm": "A value of <strong>Never</strong> or <strong>0</strong> next to <em>Lockout threshold</em> confirms the finding.",
     },
     {
-        "tool": "ADUC (dsa.msc)",
+        "tool": "GPMC (gpmc.msc)",
         "icon": "aduc",
-        "desc": "GUI method via Active Directory Users and Computers on a domain-joined machine with RSAT installed.",
+        "desc": "GUI method via Group Policy Management Console on a domain-joined machine with RSAT installed.",
         "steps": [
-            "Open <code>dsa.msc</code>",
-            "Right-click domain root → <em>Properties</em>",
-            "Group Policy tab → open <em>Default Domain Policy</em>",
+            "Open <code>gpmc.msc</code>",
+            "Expand <em>Forest → Domains → &lt;domain&gt; → Group Policy Objects</em>",
+            "Right-click <em>Default Domain Policy</em> → <em>Edit</em>",
             "Navigate to: <code>Computer Configuration → Windows Settings → Security Settings → Account Policies → Account Lockout Policy</code>",
             "<em>Account lockout threshold</em> = <strong>0</strong> confirms the finding.",
         ],
