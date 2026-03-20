@@ -28,7 +28,7 @@ TOOLS = [
         "confirm": "Check the <strong>Minimum password length</strong> row.",
     },
     {
-        "tool": "ADUC (dsa.msc)",
+        "tool": "GPMC (gpmc.msc)",
         "icon": "aduc",
         "desc": "Inspect the Default Domain Policy GPO for password settings.",
         "steps": [
