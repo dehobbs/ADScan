@@ -28,7 +28,7 @@ TOOLS = [
             "Open <code>gpmc.msc</code>",
             "Expand <em>Forest → Domains → &lt;domain&gt; → Group Policy Objects</em>",
             "Right-click <em>Default Domain Policy</em> → <em>Edit</em>",
-            "Navigate to: <code>Computer Configuration → Windows Settings → Security Settings → Account Policies → Account Lockout Policy</code>",
+            "Navigate to: <code>Computer Configuration → Policies → Windows Settings → Security Settings → Account Policies → Account Lockout Policy</code>",
             "<em>Account lockout threshold</em> = <strong>0</strong> confirms the finding.",
         ],
     },
