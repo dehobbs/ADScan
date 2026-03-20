@@ -34,7 +34,7 @@ TOOLS = [
         "steps": [
             "Open <code>gpmc.msc</code>",
             "Navigate to <em>Default Domain Policy</em> → Edit",
-            "Computer Configuration → Windows Settings → Security Settings → Account Policies → Password Policy",
+            "Computer Configuration → Policies → Windows Settings → Security Settings → Account Policies → Password Policy",
             "<strong>Password must meet complexity requirements: Disabled</strong> confirms the finding.",
         ],
     },
