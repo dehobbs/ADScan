@@ -28,7 +28,7 @@ TOOLS = [
         "confirm": "<strong>ComplexityEnabled: False</strong> confirms the finding.",
     },
     {
-        "tool": "ADUC (dsa.msc)",
+        "tool": "GPMC (gpmc.msc)",
         "icon": "aduc",
         "desc": "Navigate to the Default Domain Policy GPO and inspect Account Policies.",
         "steps": [
