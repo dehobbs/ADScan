@@ -27,6 +27,16 @@ TOOLS = [
         "code": "Get-ADComputer -Filter {TrustedForDelegation -eq $true} `\n    -Properties TrustedForDelegation `\n    | Where-Object {$_.Name -notlike '*DC*'} `\n    | Select-Object Name,DNSHostName\n\nGet-ADUser -Filter {TrustedForDelegation -eq $true} `\n    | Select-Object Name,SamAccountName",
         "confirm": "Any computer (excluding DCs) or user listed has unconstrained delegation.",
     },
+    {
+        "tool": "ADUC (dsa.msc)",
+        "icon": "aduc",
+        "desc": "Check delegation settings on individual computer or user objects.",
+        "steps": [
+            "Open <code>dsa.msc</code> → View → Advanced Features",
+            "Locate the computer or user object → Properties → Delegation tab",
+            "<strong>Trust this computer/user for delegation to any service (Kerberos only)</strong> = Unconstrained",
+        ],
+    },
 ]
 
 REMEDIATION = {
