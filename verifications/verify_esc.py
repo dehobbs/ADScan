@@ -10,7 +10,7 @@ TOOLS = [
         "tool": "Certipy",
         "icon": "impacket",
         "desc": "Comprehensive ADCS enumeration — finds ESC1-ESC11 misconfigurations.",
-        "code": "certipy find -u <username>@<domain> -p <password> -dc-ip <DC_IP> -vulnerable",
+        "code": "certipy find -u <username>@<domain> -p <password> -dc-ip <DC_IP> -enabled -vulnerable",
         "confirm": "Any template listed under <strong>Certificate Templates</strong> with ESC flags is exploitable.",
     },
     {
