@@ -10,7 +10,7 @@ TOOLS = [
         "tool": "NetExec",
         "icon": "netexec",
         "desc": "Check if LAPS is deployed and readable on domain computers.",
-        "code": "netexec ldap <DC_IP> -u <username> -p <password> --laps",
+        "code": "netexec ldap <DC_IP> -u <username> -p <password> -M laps",
         "confirm": "Computers without <strong>ms-Mcs-AdmPwd</strong> populated likely don\'t have LAPS deployed.",
     },
     {
