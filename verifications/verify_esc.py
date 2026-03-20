@@ -33,6 +33,7 @@ TOOLS = [
         "desc": "Enumerate Certificate Authorities and templates from Windows.",
         "code": "certutil -config - -ping\ncertutil -catemplates",
         "confirm": "Lists available templates — compare against Certipy output to identify misconfigurations.",
+        "confirm": "Must be performed on the Certificate Authority (CA) Server.",
     },
 ]
 
