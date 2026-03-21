@@ -14,6 +14,13 @@ TOOLS = [
         "confirm": "Each account listed has a non-expiring password.",
     },
     {
+        "tool": "PowerShell (Windows)",
+        "icon": "ps",
+        "desc": "List all users with non-expiring passwords using a simple one-liner.",
+        "code": "Get-ADUser -Filter {PasswordNeverExpires -eq $true} -Properties PasswordNeverExpires",
+        "confirm": "Each user object returned has PasswordNeverExpires set to True.",
+    },
+    {
         "tool": "NetExec",
         "icon": "netexec",
         "desc": "Enumerate users with password-never-expires flag via LDAP.",
@@ -26,8 +33,8 @@ TOOLS = [
         "desc": "Search for accounts with password never expires via the GUI.",
         "steps": [
             "Open <code>dsa.msc</code>",
-            "Action → Find → select <em>Users</em>",
-            "Advanced tab → Field: <em>Password Never Expires</em> = <em>True</em>",
+            "Action \u2192 Find \u2192 select <em>Users</em>",
+            "Advanced tab \u2192 Field: <em>Password Never Expires</em> = <em>True</em>",
         ],
     },
     {
@@ -51,7 +58,21 @@ REMEDIATION = {
             "code": "Get-ADUser -Filter {PasswordNeverExpires -eq $true} `\n    | Where-Object {$_.SamAccountName -notlike '*svc*'} `\n    | Set-ADUser -PasswordNeverExpires $false",
         },
         {
-            "text": "For <strong>service accounts</strong>, use <strong>Group Managed Service Accounts (gMSAs)</strong> which rotate passwords automatically — eliminating the need for PasswordNeverExpires.",
+            "text": "For <strong>service accounts</strong>, use <strong>Group Managed Service Accounts (gMSAs)</strong> which rotate passwords automatically \u2014 eliminating the need for PasswordNeverExpires.",
+        },
+        {
+            "text": "Apply via <strong>ADUC (dsa.msc)</strong>:",
+            "steps": [
+                "Open <code>dsa.msc</code>",
+                "Locate the user account \u2192 right-click \u2192 <em>Properties</em>",
+                "Go to the <em>Account</em> tab",
+                "Under <em>Account options</em>, uncheck <strong>Password never expires</strong>",
+                "Click <em>Apply</em> then <em>OK</em>",
+            ],
+        },
+        {
+            "text": "Apply in bulk via <strong>PowerShell</strong> for all non-service accounts:",
+            "code": "Get-ADUser -Filter {PasswordNeverExpires -eq $true} `\n    -Properties PasswordNeverExpires `\n    | Where-Object {$_.SamAccountName -notlike '*svc*'} `\n    | ForEach-Object { Set-ADUser $_ -PasswordNeverExpires $false }",
         },
     ],
 }
