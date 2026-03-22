@@ -30,8 +30,8 @@ def _decrypt_cpassword(cpassword):
     Returns the plaintext password string, or an error message.
     """
     try:
-        from Crypto.Cipher import AES
-        import struct
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+        from cryptography.hazmat.backends import default_backend
 
         # Pad the base64 string to a multiple of 4
         padding = 4 - (len(cpassword) % 4)
@@ -40,15 +40,20 @@ def _decrypt_cpassword(cpassword):
 
         ciphertext = base64.b64decode(cpassword)
         # AES-256-CBC, zero IV
-        cipher = AES.new(GPP_AES_KEY, AES.MODE_CBC, b"\x00" * 16)
-        decrypted = cipher.decrypt(ciphertext)
+        cipher = Cipher(
+            algorithms.AES(GPP_AES_KEY),
+            modes.CBC(b"\x00" * 16),
+            backend=default_backend(),
+        )
+        decryptor = cipher.decryptor()
+        decrypted = decryptor.update(ciphertext) + decryptor.finalize()
         # Remove PKCS7 padding
         pad_len = decrypted[-1]
         if isinstance(pad_len, int) and 1 <= pad_len <= 16:
             decrypted = decrypted[:-pad_len]
         return decrypted.decode("utf-16-le", errors="replace").strip()
     except ImportError:
-        return "<pycryptodome not installed — install with: pip install pycryptodome>"
+        return "<cryptography package not installed — install with: pip install cryptography>"
     except Exception as e:
         return f"<decryption error: {e}>"
 
@@ -219,7 +224,7 @@ def run_check(connector, verbose=False):
             "severity": "info",
             "deduction": 0,
             "description": f"The check could not complete: {e}",
-            "recommendation": "Verify SMB/LDAP connectivity. Ensure pycryptodome is installed.",
+            "recommendation": "Verify SMB/LDAP connectivity. Ensure the cryptography package is installed (pip install cryptography).",
             "details": [str(e)],
         })
 
