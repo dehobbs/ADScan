@@ -96,7 +96,7 @@ def run_check(connector, verbose=False):
             else:
                 try:
                     enc_val = int(enc_raw)
-                except Exception:
+                except Exception:  # msDS-SupportedEncryptionTypes is non-integer; skip entry
                     continue
                 permits_rc4 = bool(enc_val & ENC_RC4_HMAC)
                 has_des = bool(enc_val & (ENC_DES_CBC_CRC | ENC_DES_CBC_MD5))
