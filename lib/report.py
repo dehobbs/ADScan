@@ -68,16 +68,22 @@ def _severity_badge_html(severity):
 
 def _build_verification_db():
     """Auto-discover verification modules from the verifications/ package."""
+    import sys as _sys
     db = {}
     verif_path = os.path.join(os.path.dirname(__file__), '..', 'verifications')
     for _finder, name, _ispkg in pkgutil.iter_modules([verif_path]):
-        mod = importlib.import_module(f'verifications.{name}')
+        try:
+            mod = importlib.import_module(f'verifications.{name}')
+        except Exception as _e:
+            print(f'[ADScan] Warning: could not load verifications/{name}.py: {_e}', file=_sys.stderr)
+            continue
         if hasattr(mod, 'TOOLS'):
             entry = {
                 'tools': mod.TOOLS,
                 'remediation': getattr(mod, 'REMEDIATION', None),
             }
-            for key in mod.MATCH_KEYS:
+            match_keys = getattr(mod, 'MATCH_KEYS', [])
+            for key in match_keys:
                 db[key] = entry
     return db
 
