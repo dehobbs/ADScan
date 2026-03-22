@@ -33,3 +33,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "Schema Admins Group - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/security-best-practices/appendix-b--privileged-accounts-and-groups-in-active-directory", "tag": "vendor"},
+    {"title": "Active Directory Schema - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows/win32/ad/active-directory-schema", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Domain Policy Modification (T1484)", "url": "https://attack.mitre.org/techniques/T1484/", "tag": "attack"},
+    {"title": "Schema Modification for Persistence - Active Directory Security", "url": "https://adsecurity.org/?p=2782", "tag": "attack"},
+    {"title": "BloodHound - Schema Admins Group Analysis", "url": "https://github.com/BloodHoundAD/BloodHound", "tag": "tool"},
+    {"title": "Securing Schema Admins - Microsoft Best Practices", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/security-best-practices/reducing-the-active-directory-attack-surface", "tag": "defense"},
+    {"title": "CIS Benchmark: Restrict Schema Admins membership", "url": "https://www.cisecurity.org/benchmark/microsoft_windows_server", "tag": "defense"},
+    {"title": "Tiered Administration Model - Microsoft PAW", "url": "https://learn.microsoft.com/en-us/security/privileged-access-workstations/privileged-access-access-model", "tag": "defense"},
+]
