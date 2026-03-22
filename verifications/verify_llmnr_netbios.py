@@ -45,3 +45,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "Disable LLMNR via Group Policy - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2012-r2-and-2012/dn449944(v=ws.11)", "tag": "vendor"},
+    {"title": "Disable NetBIOS over TCP/IP - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/troubleshoot/windows-server/networking/disable-netbios-tcp-ip-using-dhcp", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: LLMNR/NBT-NS Poisoning (T1557.001)", "url": "https://attack.mitre.org/techniques/T1557/001/", "tag": "attack"},
+    {"title": "Responder - LLMNR/NBT-NS Poisoning", "url": "https://github.com/lgandx/Responder", "tag": "tool"},
+    {"title": "Inveigh - PowerShell LLMNR/NBNS Spoofer", "url": "https://github.com/Kevin-Robertson/Inveigh", "tag": "tool"},
+    {"title": "CIS Benchmark: Disable LLMNR and NetBIOS", "url": "https://www.cisecurity.org/benchmark/microsoft_windows_server", "tag": "defense"},
+    {"title": "NSA AD Hardening Guide - Protocol Security", "url": "https://media.defense.gov/2023/Jun/22/2003251092/-1/-1/0/CTR_DEFENDING_ACTIVE_DIRECTORY.PDF", "tag": "defense"},
+    {"title": "Detecting LLMNR/NBT-NS Poisoning Attacks", "url": "https://www.sans.org/white-papers/36327/", "tag": "research"},
+]
