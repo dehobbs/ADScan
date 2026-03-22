@@ -3,7 +3,7 @@ verifications/verify_password_never_expires.py
 Manual Verification and Remediation data for ADScan findings matching: password never expires
 """
 
-MATCH_KEYS = ["password never expires"]
+MATCH_KEYS = ["non-expiring", "passwords never expire"]
 
 TOOLS = [
     {
