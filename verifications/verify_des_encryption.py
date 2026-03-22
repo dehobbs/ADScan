@@ -53,3 +53,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "Kerberos Supported Encryption Types - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-security-configure-encryption-types-allowed-for-kerberos", "tag": "vendor"},
+    {"title": "Disabling DES in Kerberos - Microsoft KB", "url": "https://learn.microsoft.com/en-us/troubleshoot/windows-server/windows-security/disable-des-encryption-kerberos", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Steal or Forge Kerberos Tickets (T1558)", "url": "https://attack.mitre.org/techniques/T1558/", "tag": "attack"},
+    {"title": "DES Cipher Weakness and Kerberos Exploitation", "url": "https://adsecurity.org/?p=2462", "tag": "attack"},
+    {"title": "Impacket - Kerberos Weak Encryption Detection", "url": "https://github.com/fortra/impacket", "tag": "tool"},
+    {"title": "CIS Benchmark: Disable DES encryption in Kerberos", "url": "https://www.cisecurity.org/benchmark/microsoft_windows_server", "tag": "defense"},
+    {"title": "NSA: Eliminating Obsolete Cryptography", "url": "https://media.defense.gov/2021/Nov/01/2002862946/-1/-1/0/CTR_AVOIDING_OBSOLETE_CRYPTOGRAPHY_20211101.PDF", "tag": "defense"},
+    {"title": "NIST: DES Retirement (FIPS 46-3 Withdrawn)", "url": "https://csrc.nist.gov/publications/detail/fips/46/3/final", "tag": "research"},
+]
