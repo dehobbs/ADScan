@@ -21,13 +21,6 @@ TOOLS = [
         "confirm": "Each user object returned has PasswordNeverExpires set to True.",
     },
     {
-        "tool": "NetExec",
-        "icon": "netexec",
-        "desc": "Enumerate users with password-never-expires flag via LDAP.",
-        "code": "netexec ldap <DC_IP> -u <username> -p <password> --password-not-required",
-        "confirm": "Accounts listed have the flag set.",
-    },
-    {
         "tool": "ADUC (dsa.msc)",
         "icon": "aduc",
         "desc": "Search for accounts with password never expires via the GUI.",
