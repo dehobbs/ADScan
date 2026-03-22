@@ -244,18 +244,24 @@ def _remediation_html(finding):
 
     steps_html = ""
     for i, step in enumerate(steps, 1):
-        text = step.get("text", "")
+        step_text = step.get("text", "")
         code = step.get("code", "")
+        sub_steps = step.get("steps", [])
         code_block = ""
         if code:
             code_block = f'<pre class="verif-code remed-code"><code>{html_mod.escape(code)}</code></pre>'
+        sub_steps_html = ""
+        if sub_steps:
+            items = "".join(f"<li>{s}</li>" for s in sub_steps)
+            sub_steps_html = f'<ol class="verif-steps" style="margin-top:6px;">{items}</ol>'
         steps_html += f"""<div class="remed-step">
-  <span class="remed-num">{i}</span>
-  <div class="remed-step-body">
-    <p>{text}</p>
-    {code_block}
-  </div>
-</div>"""
+        <span class="remed-num">{i}</span>
+        <div class="remed-step-body">
+            <p>{step_text}</p>
+            {sub_steps_html}
+            {code_block}
+        </div>
+        </div>"""
 
     step_count = len(steps)
     return f"""<details style='margin-top:12px;'>
@@ -263,11 +269,11 @@ def _remediation_html(finding):
     font-size:0.7rem;text-transform:uppercase;letter-spacing:0.12em;
     list-style:none;display:flex;align-items:center;gap:6px;user-select:none;'>
     <span style='display:inline-block;transition:transform .2s;font-size:0.65rem;'>&#9660;</span>
-    Remediation ({step_count} step{"s" if step_count != 1 else ""})
+    Remediation ({step_count} step{{"s" if step_count != 1 else ""})
   </summary>
   <div class="remed-box" style='margin-top:12px;'>
     <div class="remed-title">Recommended: {title}</div>
-{steps_html}
+    {steps_html}
   </div>
 </details>"""
 
@@ -282,6 +288,10 @@ def _severity_badge_html(severity):
         f'font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">'
         f'{html_mod.escape(severity.upper())}</span>'
     )
+
+
+   
+
 
 
 def _finding_card(finding, idx):
