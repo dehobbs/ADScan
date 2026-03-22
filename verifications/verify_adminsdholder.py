@@ -56,3 +56,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "AdminSDHolder and SDProp - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/security-best-practices/appendix-c--protected-accounts-and-groups-in-active-directory", "tag": "vendor"},
+    {"title": "How SDProp Works - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/previous-versions/technet-magazine/ee361593(v=msdn.10)", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Account Manipulation (T1098)", "url": "https://attack.mitre.org/techniques/T1098/", "tag": "attack"},
+    {"title": "AdminSDHolder Backdoor Persistence - Active Directory Security", "url": "https://adsecurity.org/?p=1906", "tag": "attack"},
+    {"title": "BloodHound - AdminSDHolder ACL Analysis", "url": "https://github.com/BloodHoundAD/BloodHound", "tag": "tool"},
+    {"title": "Invoke-ACLpwn - ACL-based Privilege Escalation", "url": "https://github.com/fox-it/Invoke-ACLPwn", "tag": "tool"},
+    {"title": "Monitoring AdminSDHolder Changes - Microsoft", "url": "https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-5136", "tag": "defense"},
+    {"title": "CIS Benchmark: Restrict AdminSDHolder ACLs", "url": "https://www.cisecurity.org/benchmark/microsoft_windows_server", "tag": "defense"},
+]
