@@ -59,7 +59,7 @@ def run_check(connector, verbose=False):
                 if flags is not None:
                     try:
                         global_state = int(flags)
-                    except Exception:
+                    except Exception:  # flags value is non-integer; global_state stays None
                         pass
                     break
 
