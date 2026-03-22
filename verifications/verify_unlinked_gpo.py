@@ -39,3 +39,16 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "Group Policy Overview - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2012-r2-and-2012/hh831791(v=ws.11)", "tag": "vendor"},
+    {"title": "Managing Group Policy Objects - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2008-r2-and-2008/cc754421(v=ws.11)", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Group Policy Modification (T1484.001)", "url": "https://attack.mitre.org/techniques/T1484/001/", "tag": "attack"},
+    {"title": "GPO Abuse for Persistence and Lateral Movement", "url": "https://adsecurity.org/?p=2862", "tag": "attack"},
+    {"title": "SharpGPOAbuse - Group Policy Exploitation Tool", "url": "https://github.com/FSecureLABS/SharpGPOAbuse", "tag": "tool"},
+    {"title": "BloodHound - GPO Attack Path Analysis", "url": "https://github.com/BloodHoundAD/BloodHound", "tag": "tool"},
+    {"title": "GPO Hygiene Best Practices - Microsoft", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/security-best-practices/best-practices-for-securing-active-directory", "tag": "defense"},
+    {"title": "CIS Benchmark: Review and remove orphaned GPOs", "url": "https://www.cisecurity.org/benchmark/microsoft_windows_server", "tag": "defense"},
+    {"title": "GPO Auditing with Get-GPOReport", "url": "https://learn.microsoft.com/en-us/powershell/module/grouppolicy/get-gporeport", "tag": "defense"},
+]
