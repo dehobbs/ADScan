@@ -56,3 +56,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "Kerberos Constrained Delegation Overview - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows-server/security/kerberos/kerberos-constrained-delegation-overview", "tag": "vendor"},
+    {"title": "Configure Constrained Delegation - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2012-r2-and-2012/jj553400(v=ws.11)", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Use Alternate Authentication Material (T1550)", "url": "https://attack.mitre.org/techniques/T1550/", "tag": "attack"},
+    {"title": "Constrained Delegation Abuse - SpecterOps", "url": "https://posts.specterops.io/s4u2pwnage-heimdal-kerberos-delegation-attack-research-7f47a8e41524", "tag": "attack"},
+    {"title": "Rubeus - S4U Constrained Delegation Exploitation", "url": "https://github.com/GhostPack/Rubeus", "tag": "tool"},
+    {"title": "BloodHound - Constrained Delegation Paths", "url": "https://github.com/BloodHoundAD/BloodHound", "tag": "tool"},
+    {"title": "CIS Benchmark: Review Constrained Delegation", "url": "https://www.cisecurity.org/benchmark/microsoft_windows_server", "tag": "defense"},
+    {"title": "Defender for Identity: Constrained Delegation Alerts", "url": "https://learn.microsoft.com/en-us/defender-for-identity/lateral-movement-alerts", "tag": "defense"},
+]
