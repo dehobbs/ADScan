@@ -94,7 +94,7 @@ def run_check(connector, verbose=False):
         try:
             sam = str(entry.get("sAMAccountName"))
         except Exception:  # sAMAccountName may be absent; sam stays as empty string
-            pass
+            pass  # nosec B110
 
         if _is_domain_controller(entry):
             dc_accounts.append(sam)
