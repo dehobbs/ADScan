@@ -42,3 +42,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "Group Managed Service Accounts Overview - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows-server/security/group-managed-service-accounts/group-managed-service-accounts-overview", "tag": "vendor"},
+    {"title": "Getting Started with gMSA - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows-server/security/group-managed-service-accounts/getting-started-with-group-managed-service-accounts", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Kerberoasting (T1558.003)", "url": "https://attack.mitre.org/techniques/T1558/003/", "tag": "attack"},
+    {"title": "Service Account Abuse - Active Directory Security", "url": "https://adsecurity.org/?p=2544", "tag": "attack"},
+    {"title": "Rubeus - Kerberoasting Service Accounts", "url": "https://github.com/GhostPack/Rubeus", "tag": "tool"},
+    {"title": "CIS Benchmark: Use gMSA for service accounts", "url": "https://www.cisecurity.org/benchmark/microsoft_windows_server", "tag": "defense"},
+    {"title": "NSA: Service Account Hardening", "url": "https://media.defense.gov/2023/Jun/22/2003251092/-1/-1/0/CTR_DEFENDING_ACTIVE_DIRECTORY.PDF", "tag": "defense"},
+    {"title": "Migrating to gMSA - Step by Step", "url": "https://learn.microsoft.com/en-us/windows-server/security/group-managed-service-accounts/create-the-key-distribution-services-kds-root-key", "tag": "defense"},
+]
