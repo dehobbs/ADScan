@@ -69,3 +69,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "Password Never Expires Flag - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows/win32/adschema/a-pwdlastset", "tag": "vendor"},
+    {"title": "Account Password Policy Settings - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/password-policy", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Valid Accounts (T1078)", "url": "https://attack.mitre.org/techniques/T1078/", "tag": "attack"},
+    {"title": "MITRE ATT&CK: Brute Force (T1110)", "url": "https://attack.mitre.org/techniques/T1110/", "tag": "attack"},
+    {"title": "Get-ADUser PasswordNeverExpires Enumeration", "url": "https://learn.microsoft.com/en-us/powershell/module/activedirectory/get-aduser", "tag": "tool"},
+    {"title": "CIS Benchmark: Do not allow passwords to never expire", "url": "https://www.cisecurity.org/benchmark/microsoft_windows_server", "tag": "defense"},
+    {"title": "Fine-Grained Password Policies for Service Accounts", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/get-started/adac/introduction-to-active-directory-administrative-center-enhancements--level-100-#fine_grained_pswd_policy_mgmt", "tag": "defense"},
+    {"title": "Managing Privileged Accounts - PAW Model", "url": "https://learn.microsoft.com/en-us/security/privileged-access-workstations/privileged-access-access-model", "tag": "defense"},
+]
