@@ -55,3 +55,16 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "Microsoft LAPS Overview", "url": "https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-overview", "tag": "vendor"},
+    {"title": "Windows LAPS (Built-in) Documentation", "url": "https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-concepts-overview", "tag": "vendor"},
+    {"title": "Deploy Legacy LAPS", "url": "https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-deployment-guide", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Credentials from Password Stores (T1555)", "url": "https://attack.mitre.org/techniques/T1555/", "tag": "attack"},
+    {"title": "Abusing LAPS - Active Directory Security", "url": "https://adsecurity.org/?p=3164", "tag": "attack"},
+    {"title": "LAPS Exploitation with LAPSDumper", "url": "https://github.com/n00py/LAPSDumper", "tag": "tool"},
+    {"title": "CIS Benchmark: Ensure LAPS is installed", "url": "https://www.cisecurity.org/benchmark/microsoft_windows_server", "tag": "defense"},
+    {"title": "NSA AD Security Guide", "url": "https://media.defense.gov/2023/Jun/22/2003251092/-1/-1/0/CTR_DEFENDING_ACTIVE_DIRECTORY.PDF", "tag": "defense"},
+    {"title": "Detecting LAPS Abuse - Defender for Identity", "url": "https://learn.microsoft.com/en-us/defender-for-identity/laps-activity", "tag": "defense"},
+]
