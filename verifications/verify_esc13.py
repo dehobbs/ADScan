@@ -37,3 +37,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "AD CS Certificate Template Issuance Policies - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-cs/certificate-template-concepts", "tag": "vendor"},
+    {"title": "Issuance Policy OID Linking - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows/security/identity-protection/smart-cards/smart-card-certificate-requirements-and-enumeration", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Steal or Forge Authentication Certificates (T1649)", "url": "https://attack.mitre.org/techniques/T1649/", "tag": "attack"},
+    {"title": "ESC13 - Issuance Policy OID Abuse Research", "url": "https://posts.specterops.io/adcs-esc13-abuse-technique-fda4272fbd53", "tag": "research"},
+    {"title": "Certipy - ADCS Exploitation Tool", "url": "https://github.com/ly4k/Certipy", "tag": "tool"},
+    {"title": "PKI Auditing with certutil", "url": "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/certutil", "tag": "tool"},
+    {"title": "Securing Certificate Template Issuance Policies", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-cs/active-directory-certificate-services-overview", "tag": "defense"},
+    {"title": "AD CS Attack and Defense - Microsoft Security Blog", "url": "https://www.microsoft.com/en-us/security/blog/2022/08/16/defending-against-active-directory-certificate-services-attacks/", "tag": "defense"},
+]
