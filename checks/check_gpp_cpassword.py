@@ -123,9 +123,9 @@ def run_check(connector, verbose=False):
                                         content = b"".join(buf).decode("utf-8", errors="replace")
                                         hits = _find_cpasswords_in_xml(content, full)
                                         all_hits.extend(hits)
-                                    except Exception:
+                                    except Exception:  # individual GPP file unreadable; skip
                                         pass
-                        except Exception:
+                        except Exception:  # SMB directory walk failed; skip this path
                             pass
 
                     _smb_walk("SYSVOL", "")
@@ -165,7 +165,7 @@ def run_check(connector, verbose=False):
                                         content = f.read()
                                     hits = _find_cpasswords_in_xml(content, full_path)
                                     all_hits.extend(hits)
-                                except Exception:
+                                except Exception:  # individual GPP file unreadable via local path; skip
                                     pass
 
         # ------------------------------------------------------------------ #
