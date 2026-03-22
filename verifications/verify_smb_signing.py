@@ -51,3 +51,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "SMB Signing Configuration - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows-server/storage/file-server/smb-signing-overview", "tag": "vendor"},
+    {"title": "Configure SMB Signing with Group Policy", "url": "https://learn.microsoft.com/en-us/windows-server/storage/file-server/smb-signing-deployment", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: NTLM Relay (T1557.001)", "url": "https://attack.mitre.org/techniques/T1557/001/", "tag": "attack"},
+    {"title": "Responder - SMB Relay Attack Framework", "url": "https://github.com/lgandx/Responder", "tag": "tool"},
+    {"title": "Impacket ntlmrelayx - SMB Relay Tool", "url": "https://github.com/fortra/impacket", "tag": "tool"},
+    {"title": "NetExec - SMB Signing Check", "url": "https://github.com/Pennyw0rth/NetExec", "tag": "tool"},
+    {"title": "CIS Benchmark: Require SMB Signing", "url": "https://www.cisecurity.org/benchmark/microsoft_windows_server", "tag": "defense"},
+    {"title": "NSA: SMB Security Hardening Guide", "url": "https://media.defense.gov/2023/Jun/22/2003251092/-1/-1/0/CTR_DEFENDING_ACTIVE_DIRECTORY.PDF", "tag": "defense"},
+]
