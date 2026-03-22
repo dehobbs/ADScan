@@ -3,7 +3,17 @@ verifications/verify_esc.py
 Manual Verification and Remediation data for ADScan findings matching: ESC1-3, ESC4, ESC6-9, ESC16
 """
 
-MATCH_KEYS = ["esc1", "esc2", "esc3", "esc4", "esc6", "esc7", "esc8", "esc9", "esc16"]
+MATCH_KEYS = [
+    "enrollee-supplied san",
+    "any-purpose",
+    "enrollment agent",
+    "editf_attributesubjectaltname2",
+    "web enrollment endpoint",
+    "ct_flag_no_security_extension",
+    "write access to a certificate template",
+    "manageca or managecertificates",
+    "szoid_ntds_ca_security_ext globally",
+]
 
 TOOLS = [
     {
