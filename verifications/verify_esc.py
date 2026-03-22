@@ -64,3 +64,17 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "Active Directory Certificate Services Overview - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-cs/active-directory-certificate-services-overview", "tag": "vendor"},
+    {"title": "Certificate Template Security - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-cs/certificate-template-concepts", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Steal or Forge Authentication Certificates (T1649)", "url": "https://attack.mitre.org/techniques/T1649/", "tag": "attack"},
+    {"title": "Certified Pre-Owned - SpecterOps ADCS Research", "url": "https://posts.specterops.io/certified-pre-owned-d95910965cd2", "tag": "research"},
+    {"title": "Certipy - ADCS Enumeration and Exploitation", "url": "https://github.com/ly4k/Certipy", "tag": "tool"},
+    {"title": "Certify - ADCS Vulnerability Tool", "url": "https://github.com/GhostPack/Certify", "tag": "tool"},
+    {"title": "NetExec - ADCS Enumeration Module", "url": "https://github.com/Pennyw0rth/NetExec", "tag": "tool"},
+    {"title": "CIS Benchmark: AD CS Hardening", "url": "https://www.cisecurity.org/benchmark/microsoft_windows_server", "tag": "defense"},
+    {"title": "Defending AD CS - Microsoft Security Blog", "url": "https://www.microsoft.com/en-us/security/blog/2022/08/16/defending-against-active-directory-certificate-services-attacks/", "tag": "defense"},
+    {"title": "Defender for Identity: ADCS Alerts", "url": "https://learn.microsoft.com/en-us/defender-for-identity/credential-access-alerts", "tag": "defense"},
+]
