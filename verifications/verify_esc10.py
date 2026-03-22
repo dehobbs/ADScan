@@ -37,3 +37,14 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "AD CS ESC10 - Weak Certificate Mappings - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows/security/identity-protection/smart-cards/smart-card-certificate-requirements-and-enumeration", "tag": "vendor"},
+    {"title": "KB5014754 - Certificate-Based Authentication Changes", "url": "https://support.microsoft.com/en-us/topic/kb5014754-certificate-based-authentication-changes-on-windows-domain-controllers-ad2c23b0-15d8-4340-a468-4d4f3b188f16", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Steal or Forge Authentication Certificates (T1649)", "url": "https://attack.mitre.org/techniques/T1649/", "tag": "attack"},
+    {"title": "ESC10 - Certipy Research (ly4k)", "url": "https://research.ifcr.dk/certipy-4-0-esc9-esc10-bloodhound-gui-new-authentication-and-request-methods-and-more-7237d88061f7", "tag": "research"},
+    {"title": "Certipy - ESC10 Exploitation", "url": "https://github.com/ly4k/Certipy", "tag": "tool"},
+    {"title": "Microsoft Security Advisory: KB5014754 Enforcement Mode", "url": "https://support.microsoft.com/en-us/topic/kb5014754-certificate-based-authentication-changes-on-windows-domain-controllers-ad2c23b0-15d8-4340-a468-4d4f3b188f16", "tag": "defense"},
+    {"title": "Hardening Certificate Mappings in AD CS", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-cs/certificate-template-concepts", "tag": "defense"},
+]
