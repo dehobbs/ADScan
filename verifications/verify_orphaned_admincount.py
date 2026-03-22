@@ -35,3 +35,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "AdminSDHolder and SDProp - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/security-best-practices/appendix-c--protected-accounts-and-groups-in-active-directory", "tag": "vendor"},
+    {"title": "AdminCount Attribute - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows/win32/adschema/a-admincount", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Valid Accounts - Domain Accounts (T1078.002)", "url": "https://attack.mitre.org/techniques/T1078/002/", "tag": "attack"},
+    {"title": "AdminCount Persistence Abuse - Active Directory Security", "url": "https://adsecurity.org/?p=2011", "tag": "attack"},
+    {"title": "BloodHound - Privileged Account Analysis", "url": "https://github.com/BloodHoundAD/BloodHound", "tag": "tool"},
+    {"title": "Hardening Protected Accounts - Microsoft Best Practices", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/security-best-practices/attractive-accounts-for-credential-theft", "tag": "defense"},
+    {"title": "CIS Benchmark: Review and clean up adminCount", "url": "https://www.cisecurity.org/benchmark/microsoft_windows_server", "tag": "defense"},
+    {"title": "SDProp and AdminSDHolder Explained - Sean Metcalf", "url": "https://adsecurity.org/?p=1906", "tag": "research"},
+]
