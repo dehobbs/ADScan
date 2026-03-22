@@ -11,6 +11,9 @@ Usage:
     python adscan.py -d corp.local -dc-ip 192.168.1.10 -u administrator   # prompts for password
     python adscan.py -d corp.local -dc-ip 192.168.1.10 -u administrator --kerberos
     python adscan.py -d corp.local -dc-ip 192.168.1.10 -u administrator --ccache /tmp/alice.ccache
+    python adscan.py -d corp.local -dc-ip 192.168.1.10 -u administrator -p Password123 --checks kerberos,delegation
+    python adscan.py -d corp.local -dc-ip 192.168.1.10 -u administrator -p Password123 --skip gpp,smb
+    python adscan.py --list-checks
 """
 import argparse
 import getpass
@@ -77,15 +80,77 @@ def configure_logging(verbose: bool, log_file: str | None) -> logging.Logger:
     return logger
 
 
-def load_checks():
-    """Dynamically load all check modules from the checks/ directory."""
+def _check_slugs(module):
+    """Return the set of lowercase match tokens for a check module.
+
+    Tokens include:
+      - the bare module name without the 'check_' prefix  (e.g. 'kerberos')
+      - every word in CHECK_NAME split by spaces/underscores (e.g. 'kerberos', 'attack', 'surface')
+      - every value in CHECK_CATEGORY lowercased           (e.g. 'kerberos')
+    """
+    slugs = set()
+    # module file slug: checks.check_kerberos -> 'kerberos'
+    mod_name = module.__name__.split(".")[-1]  # e.g. 'check_kerberos'
+    if mod_name.startswith("check_"):
+        mod_name = mod_name[len("check_"):]
+    slugs.add(mod_name)
+
+    # words from CHECK_NAME
+    check_name = getattr(module, "CHECK_NAME", "")
+    for word in check_name.lower().replace("-", " ").replace("_", " ").split():
+        slugs.add(word)
+
+    # category values
+    for cat in getattr(module, "CHECK_CATEGORY", []):
+        slugs.add(cat.lower().replace(" ", "_"))
+        for word in cat.lower().split():
+            slugs.add(word)
+
+    return slugs
+
+
+def load_checks(only=None, skip=None):
+    """Dynamically load check modules from the checks/ directory.
+
+    Args:
+        only: set of lowercase slug strings — if non-empty, only modules whose
+              slugs intersect this set are included.
+        skip: set of lowercase slug strings — modules whose slugs intersect
+              this set are excluded (applied after *only* filtering).
+    """
     checks = []
     checks_path = os.path.join(os.path.dirname(__file__), "checks")
     for _finder, name, _ispkg in pkgutil.iter_modules([checks_path]):
         module = importlib.import_module(f"checks.{name}")
-        if hasattr(module, "run_check"):
-            checks.append(module)
+        if not hasattr(module, "run_check"):
+            continue
+        slugs = _check_slugs(module)
+        if only and not slugs.intersection(only):
+            continue
+        if skip and slugs.intersection(skip):
+            continue
+        checks.append(module)
     return sorted(checks, key=lambda m: getattr(m, "CHECK_ORDER", 99))
+
+
+def list_checks():
+    """Print all available check modules with their name, slug, category, and order."""
+    checks_path = os.path.join(os.path.dirname(__file__), "checks")
+    all_checks = []
+    for _finder, name, _ispkg in pkgutil.iter_modules([checks_path]):
+        module = importlib.import_module(f"checks.{name}")
+        if hasattr(module, "run_check"):
+            all_checks.append(module)
+    all_checks = sorted(all_checks, key=lambda m: getattr(m, "CHECK_ORDER", 99))
+
+    print(f"{'ORDER':<6} {'SLUG':<35} {'CATEGORY':<25} CHECK NAME")
+    print("-" * 100)
+    for m in all_checks:
+        mod_slug = m.__name__.split(".")[-1]
+        if mod_slug.startswith("check_"):
+            mod_slug = mod_slug[len("check_"):]
+        cats = ", ".join(getattr(m, "CHECK_CATEGORY", ["Uncategorized"]))
+        print(f"{getattr(m, 'CHECK_ORDER', 99):<6} {mod_slug:<35} {cats:<25} {getattr(m, 'CHECK_NAME', '?')}")
 
 
 def parse_args():
@@ -101,7 +166,10 @@ def parse_args():
             "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin -p Pass --log-file scan.log\n"
             "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin -p Pass -v --log-file debug.log\n"
             "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin --kerberos\n"
-            "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin --ccache /tmp/admin.ccache"
+            "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin --ccache /tmp/admin.ccache\n"
+            "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin -p Pass --checks kerberos,delegation\n"
+            "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin -p Pass --skip gpp,smb\n"
+            "  %(prog)s --list-checks"
         ),
     )
 
@@ -198,6 +266,38 @@ def parse_args():
             "Override per-finding deductions or severity-tier weights."
         ),
     )
+
+    filter_group = parser.add_argument_group("Check Filtering")
+    filter_group.add_argument(
+        "--checks",
+        dest="checks",
+        default=None,
+        metavar="SLUG[,SLUG...]",
+        help=(
+            "Comma-separated list of check slugs to run (all others are skipped).\n"
+            "Slugs are matched against module name, CHECK_NAME words, and CHECK_CATEGORY.\n"
+            "Example: --checks kerberos,delegation,adcs\n"
+            "Run --list-checks to see all available slugs."
+        ),
+    )
+    filter_group.add_argument(
+        "--skip",
+        dest="skip",
+        default=None,
+        metavar="SLUG[,SLUG...]",
+        help=(
+            "Comma-separated list of check slugs to skip (all others still run).\n"
+            "Example: --skip gpp,smb,dns\n"
+            "Run --list-checks to see all available slugs."
+        ),
+    )
+    filter_group.add_argument(
+        "--list-checks",
+        dest="list_checks",
+        action="store_true",
+        default=False,
+        help="Print all available check modules (slug, category, name) and exit.",
+    )
     return parser.parse_args()
 
 
@@ -210,6 +310,11 @@ def ensure_reports_dir(path):
 
 def main():
     args = parse_args()
+
+    # --list-checks: print available modules and exit immediately (no connection needed)
+    if args.list_checks:
+        list_checks()
+        sys.exit(0)
 
     # --ccache implies --kerberos even if the flag was not set explicitly
     if args.ccache and not args.kerberos:
@@ -337,11 +442,29 @@ def main():
     log.info("=" * 60)
     log.info("")
 
-    checks = load_checks()
+    # Parse --checks / --skip slug filters into sets
+    only_slugs = set()
+    skip_slugs = set()
+    if args.checks:
+        only_slugs = {s.strip().lower() for s in args.checks.split(",") if s.strip()}
+    if args.skip:
+        skip_slugs = {s.strip().lower() for s in args.skip.split(",") if s.strip()}
+
+    checks = load_checks(only=only_slugs or None, skip=skip_slugs or None)
     if not checks:
-        log.error("No check modules found in checks/ directory.")
+        if only_slugs:
+            log.error(
+                "No checks matched --checks filter: %s  (run --list-checks to see available slugs)",
+                ", ".join(sorted(only_slugs)),
+            )
+        else:
+            log.error("No check modules found in checks/ directory.")
         sys.exit(1)
 
+    if only_slugs:
+        log.info("[+] Check filter (--checks): %s", ", ".join(sorted(only_slugs)))
+    if skip_slugs:
+        log.info("[+] Skipping (--skip)      : %s", ", ".join(sorted(skip_slugs)))
     log.info("[+] Loaded %d check module(s)", len(checks))
     log.info("")
     log.info("=" * 60)
