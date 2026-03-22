@@ -59,3 +59,16 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "Kerberos Service Tickets - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/enforce-user-logon-restrictions", "tag": "vendor"},
+    {"title": "Service Principal Names - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows/win32/ad/service-principal-names", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Kerberoasting (T1558.003)", "url": "https://attack.mitre.org/techniques/T1558/003/", "tag": "attack"},
+    {"title": "Kerberoasting Without Mimikatz - Will Schroeder", "url": "https://www.harmj0y.net/blog/powershell/kerberoasting-without-mimikatz/", "tag": "research"},
+    {"title": "Rubeus - Kerberoasting Module", "url": "https://github.com/GhostPack/Rubeus", "tag": "tool"},
+    {"title": "Impacket GetUserSPNs - Kerberoasting", "url": "https://github.com/fortra/impacket", "tag": "tool"},
+    {"title": "Hashcat - Kerberos Hash Cracking", "url": "https://hashcat.net/hashcat/", "tag": "tool"},
+    {"title": "CIS Benchmark: Use gMSA to prevent Kerberoasting", "url": "https://www.cisecurity.org/benchmark/microsoft_windows_server", "tag": "defense"},
+    {"title": "Detecting Kerberoasting - Defender for Identity", "url": "https://learn.microsoft.com/en-us/defender-for-identity/credential-access-alerts#suspected-kerberoasting-activity-external-id-2010", "tag": "defense"},
+]
