@@ -55,3 +55,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "Password Must Meet Complexity Requirements - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/password-must-meet-complexity-requirements", "tag": "vendor"},
+    {"title": "NIST SP 800-63B: Memorized Secret Authenticators", "url": "https://pages.nist.gov/800-63-3/sp800-63b.html#sec5", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Brute Force - Password Spraying (T1110.003)", "url": "https://attack.mitre.org/techniques/T1110/003/", "tag": "attack"},
+    {"title": "MITRE ATT&CK: Credential Access (T1110)", "url": "https://attack.mitre.org/techniques/T1110/", "tag": "attack"},
+    {"title": "Hashcat - Password Cracking Tool", "url": "https://hashcat.net/hashcat/", "tag": "tool"},
+    {"title": "CIS Benchmark: Password Complexity Requirements", "url": "https://www.cisecurity.org/benchmark/microsoft_windows_server", "tag": "defense"},
+    {"title": "ACSC Password Guidance for Organisations", "url": "https://www.cyber.gov.au/resources-business-and-government/essential-cyber-security/ism/cyber-security-guidelines/guidelines-authentication", "tag": "defense"},
+    {"title": "Fine-Grained Password Policies - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/get-started/adac/introduction-to-active-directory-administrative-center-enhancements--level-100-#fine_grained_pswd_policy_mgmt", "tag": "vendor"},
+]
