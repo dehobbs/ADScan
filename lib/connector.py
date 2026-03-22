@@ -126,13 +126,13 @@ class ADConnector:
         if self.ldap_conn:
             try:
                 self.ldap_conn.unbind()
-            except Exception:
+            except Exception:  # unbind may fail if connection already dropped
                 pass
             self.ldap_conn = None
         if self.smb_conn:
             try:
                 self.smb_conn.logoff()
-            except Exception:
+            except Exception:  # logoff may fail if connection already dropped
                 pass
             self.smb_conn = None
 
