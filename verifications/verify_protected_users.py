@@ -56,3 +56,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "Protected Users Security Group - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows-server/security/credentials-protection-and-management/protected-users-security-group", "tag": "vendor"},
+    {"title": "Authentication Policies and Silos - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows-server/security/credentials-protection-and-management/authentication-policies-and-authentication-policy-silos", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Pass the Hash (T1550.002)", "url": "https://attack.mitre.org/techniques/T1550/002/", "tag": "attack"},
+    {"title": "MITRE ATT&CK: Pass the Ticket (T1550.003)", "url": "https://attack.mitre.org/techniques/T1550/003/", "tag": "attack"},
+    {"title": "Mimikatz - Credential Theft Tool", "url": "https://github.com/gentilkiwi/mimikatz", "tag": "tool"},
+    {"title": "CIS Benchmark: Add privileged accounts to Protected Users", "url": "https://www.cisecurity.org/benchmark/microsoft_windows_server", "tag": "defense"},
+    {"title": "Protected Users Group - Sean Metcalf Analysis", "url": "https://adsecurity.org/?p=1340", "tag": "research"},
+    {"title": "Defender for Identity: Protected Users Monitoring", "url": "https://learn.microsoft.com/en-us/defender-for-identity/security-assessment-unsecure-account-attributes", "tag": "defense"},
+]
