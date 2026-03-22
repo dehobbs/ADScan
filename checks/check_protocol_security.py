@@ -69,7 +69,7 @@ def run_check(connector, verbose=False):
     if domain_entries:
         try:
             domain_level = int(domain_entries[0].get("msDS-Behavior-Version"))
-        except Exception:
+        except Exception:  # msDS-Behavior-Version absent or non-integer; level stays None
             pass
 
     # Forest functional level (via crossRefContainer in config)
@@ -84,7 +84,7 @@ def run_check(connector, verbose=False):
     if forest_entries:
         try:
             forest_level = int(forest_entries[0].get("msDS-Behavior-Version"))
-        except Exception:
+        except Exception:  # msDS-Behavior-Version absent or non-integer; level stays None
             pass
 
     if verbose:
