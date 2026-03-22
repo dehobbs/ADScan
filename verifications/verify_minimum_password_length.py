@@ -54,3 +54,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "Password Policy Settings - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/minimum-password-length", "tag": "vendor"},
+    {"title": "NIST SP 800-63B: Digital Identity Guidelines", "url": "https://pages.nist.gov/800-63-3/sp800-63b.html", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Brute Force (T1110)", "url": "https://attack.mitre.org/techniques/T1110/", "tag": "attack"},
+    {"title": "MITRE ATT&CK: Password Spraying (T1110.003)", "url": "https://attack.mitre.org/techniques/T1110/003/", "tag": "attack"},
+    {"title": "Sprayhound - Password Spraying Tool", "url": "https://github.com/Hackndo/sprayhound", "tag": "tool"},
+    {"title": "CIS Benchmark: Minimum Password Length >= 14", "url": "https://www.cisecurity.org/benchmark/microsoft_windows_server", "tag": "defense"},
+    {"title": "ACSC Password Policy Guidance", "url": "https://www.cyber.gov.au/resources-business-and-government/essential-cyber-security/ism/cyber-security-guidelines/guidelines-authentication", "tag": "defense"},
+    {"title": "Have I Been Pwned - Password Exposure Research", "url": "https://haveibeenpwned.com/Passwords", "tag": "research"},
+]
