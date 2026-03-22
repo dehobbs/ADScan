@@ -269,7 +269,7 @@ def _remediation_html(finding):
     font-size:0.7rem;text-transform:uppercase;letter-spacing:0.12em;
     list-style:none;display:flex;align-items:center;gap:6px;user-select:none;'>
     <span style='display:inline-block;transition:transform .2s;font-size:0.65rem;'>&#9660;</span>
-    Remediation ({step_count} step{{"s" if step_count != 1 else ""})
+    Remediation ({step_count} step{"s" if step_count != 1 else ""})
   </summary>
   <div class="remed-box" style='margin-top:12px;'>
     <div class="remed-title">Recommended: {title}</div>
