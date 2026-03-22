@@ -75,7 +75,7 @@ def run_check(connector, verbose=False):
                         if any(kw in sd_str for kw in ("WriteDacl", "WriteOwner", "GenericAll", "GenericWrite")):
                             esc5_issues.append(label)
                             break
-            except Exception:
+            except Exception:  # PKI container may not exist in this environment
                 pass
         if esc5_issues:
             findings.append({
