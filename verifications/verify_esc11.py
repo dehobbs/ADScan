@@ -37,3 +37,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "AD CS ICPR Interface - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-icpr/0c6f150e-3ead-4006-b37f-ebbf9e2cf2e7", "tag": "vendor"},
+    {"title": "AD CS Hardening - Require SSL on ICPR", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-cs/active-directory-certificate-services-overview", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Steal or Forge Authentication Certificates (T1649)", "url": "https://attack.mitre.org/techniques/T1649/", "tag": "attack"},
+    {"title": "ESC11 - ICPR Relay Attack Research", "url": "https://blog.compass-security.com/2022/11/relaying-to-ad-certificate-services-over-rpc/", "tag": "research"},
+    {"title": "Certipy - ADCS Attack Research Tool", "url": "https://github.com/ly4k/Certipy", "tag": "tool"},
+    {"title": "Impacket - NTLM Relay via ICPR", "url": "https://github.com/fortra/impacket", "tag": "tool"},
+    {"title": "Microsoft: Enable Encryption for RPC to AD CS", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-cs/active-directory-certificate-services-overview", "tag": "defense"},
+    {"title": "AD CS Attack and Defense - Microsoft Security Blog", "url": "https://www.microsoft.com/en-us/security/blog/2022/08/16/defending-against-active-directory-certificate-services-attacks/", "tag": "defense"},
+]
