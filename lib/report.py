@@ -46,6 +46,60 @@ def _grade(score):
     return "F"
 
 
+def _references_html(finding):
+    """Render the References section for a finding."""
+    vdata = _get_verification(finding)
+    if not vdata or not vdata.get("references"):
+        return ""
+    refs = vdata["references"]
+    items_html = ""
+    for ref in refs:
+        label = html_mod.escape(ref.get("title", "Reference"))
+        url = ref.get("url", "#")
+        tag = ref.get("tag", "")
+        tag_html = ""
+        if tag:
+            tag_colors = {
+                "vendor": ("#1d4ed8", "#dbeafe"),
+                "attack": ("#991b1b", "#fee2e2"),
+                "defense": ("#065f46", "#d1fae5"),
+                "research": ("#5b21b6", "#ede9fe"),
+                "tool": ("#92400e", "#fef3c7"),
+            }
+            tc, tbc = tag_colors.get(tag.lower(), ("#374151", "#f3f4f6"))
+            tag_html = (
+                f'<span style="font-size:0.68rem;font-weight:700;'
+                f'text-transform:uppercase;letter-spacing:0.06em;'
+                f'background:{tbc};color:{tc};border-radius:4px;'
+                f'padding:1px 6px;margin-right:6px;flex-shrink:0;">'
+                f'{html_mod.escape(tag)}</span>'
+            )
+        items_html += (
+            f'<li style="display:flex;align-items:baseline;gap:4px;'
+            f'margin-bottom:6px;font-size:0.85rem;">'
+            f'{tag_html}'
+            f'<a href="{html_mod.escape(url)}" target="_blank" rel="noopener noreferrer" '
+            f'style="color:var(--ref-link);text-decoration:none;word-break:break-all;">'
+            f'{label}</a>'
+            f'</li>'
+        )
+    ref_count = len(refs)
+    return f"""<details style='margin-top:12px;'>
+  <summary style='cursor:pointer;font-weight:600;color:var(--text-muted);
+    font-size:0.7rem;text-transform:uppercase;letter-spacing:0.12em;
+    list-style:none;display:flex;align-items:center;gap:6px;user-select:none;'>
+    <span style='display:inline-block;transition:transform .2s;font-size:0.65rem;'>&#9660;</span>
+    References ({ref_count})
+  </summary>
+  <div style='margin-top:10px;padding:12px 16px;background:var(--ref-bg);
+    border:1px solid var(--ref-border);border-radius:8px;'>
+    <ul style='list-style:none;margin:0;padding:0;'>
+      {items_html}
+    </ul>
+  </div>
+</details>"""
+
+
 def _severity_badge_html(severity):
     sev = severity.lower()
     bg_light, _, _ = SEVERITY_COLORS.get(sev, ("#6b7280", "#f9fafb", "#374151"))
@@ -81,6 +135,7 @@ def _build_verification_db():
             entry = {
                 'tools': mod.TOOLS,
                 'remediation': getattr(mod, 'REMEDIATION', None),
+                'references': getattr(mod, 'REFERENCES', None),
             }
             match_keys = getattr(mod, 'MATCH_KEYS', [])
             for key in match_keys:
@@ -333,6 +388,7 @@ def _finding_card(finding, idx):
 
     verif_html = _manual_verification_html(finding)
     remed_html = _remediation_html(finding)
+    refs_html = _references_html(finding)
 
     cat_slug = cat_list[0].lower().replace(" ", "-").replace("&", "and").replace("/", "-")
     return f"""
@@ -369,6 +425,7 @@ def _finding_card(finding, idx):
   {details_html}
   {verif_html}
   {remed_html}
+  {refs_html}
 </div>"""
 
 
@@ -487,6 +544,9 @@ def generate_report(output_file, domain, dc_host, username, protocols, findings,
   --sidebar-bg:#1e293b; --sidebar-text:#cbd5e1; --sidebar-active:#3b82f6;
   --sidebar-hover:rgba(255,255,255,0.08); --sidebar-border:#334155;
   --sidebar-width:280px;
+  --ref-bg:#f8fafc;
+  --ref-border:#e2e8f0;
+  --ref-link:#2563eb;
 }
 [data-theme="dark"] {
   --bg:#0f172a; --card-bg:#1e293b;
@@ -496,6 +556,7 @@ def generate_report(output_file, domain, dc_host, username, protocols, findings,
   --rec-bg:#0f172a; --toggle-bg:#3b82f6; --toggle-knob:#ffffff;
   --sidebar-bg:#020617; --sidebar-text:#94a3b8; --sidebar-active:#60a5fa;
   --sidebar-hover:rgba(255,255,255,0.06); --sidebar-border:#1e293b;
+  --ref-bg:#1e293b; --ref-border:#334155; --ref-link:#60a5fa;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
