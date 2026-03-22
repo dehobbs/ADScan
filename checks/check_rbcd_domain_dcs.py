@@ -56,7 +56,7 @@ def _resolve_sid(connector, sid_str):
         if resolved:
             return resolved
     except Exception:  # SID resolution failed; return raw SID string
-        pass
+        return sid_str
     return sid_str
 
 
