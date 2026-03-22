@@ -38,3 +38,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "Disable NTLMv1 - Microsoft Security Advisory", "url": "https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-security-lan-manager-authentication-level", "tag": "vendor"},
+    {"title": "WDigest Authentication - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows-server/security/credentials-protection-and-management/configuring-additional-lsa-protection", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: OS Credential Dumping (T1003)", "url": "https://attack.mitre.org/techniques/T1003/", "tag": "attack"},
+    {"title": "Mimikatz - WDigest Credential Extraction", "url": "https://github.com/gentilkiwi/mimikatz", "tag": "tool"},
+    {"title": "Responder - NTLMv1 Capture and Cracking", "url": "https://github.com/lgandx/Responder", "tag": "tool"},
+    {"title": "CIS Benchmark: Disable NTLMv1 and WDigest", "url": "https://www.cisecurity.org/benchmark/microsoft_windows_server", "tag": "defense"},
+    {"title": "NSA: Eliminating Obsolete Transport Layer Security - NTLMv1", "url": "https://media.defense.gov/2023/Jun/22/2003251092/-1/-1/0/CTR_DEFENDING_ACTIVE_DIRECTORY.PDF", "tag": "defense"},
+    {"title": "Detecting WDigest Abuse - Splunk Research", "url": "https://research.splunk.com/endpoint/d09c7e3e-8d98-4dc3-b58a-0012534c0f87/", "tag": "defense"},
+]
