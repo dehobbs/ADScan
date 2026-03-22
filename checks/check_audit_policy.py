@@ -287,7 +287,7 @@ def run_check(connector, verbose=False):
                 name         = display_name or cn or 'Unknown GPO'
                 if fspath:
                     gpo_list.append((name, fspath))
-            except Exception:
+            except Exception:  # skip malformed GPO LDAP entries
                 continue
 
     if verbose:
