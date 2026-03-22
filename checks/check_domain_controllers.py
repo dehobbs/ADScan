@@ -134,7 +134,7 @@ def run_check(connector, verbose=False):
                 owner = str(entries[0].get(attr, ""))
                 m = re.search(r'CN=([^,]+),CN=NTDS', owner, re.IGNORECASE)
                 fsmo_holders[role] = m.group(1) if m else owner.split(",")[0].replace("CN=", "")
-            except Exception:
+            except Exception:  # FSMO owner DN may be malformed; skip this role
                 pass
 
     if verbose:
@@ -186,7 +186,7 @@ def run_check(connector, verbose=False):
                         "recommendation": "Restrict msDS-RevealOnDemandGroup to only required users/computers.",
                         "details": [f"msDS-RevealOnDemandGroup: {reveal[:200]}"],
                     })
-            except Exception:
+            except Exception:  # RODC attribute parsing failed; skip this entry
                 pass
 
     return findings
