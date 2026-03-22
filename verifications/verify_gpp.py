@@ -51,3 +51,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "MS14-025: Group Policy Preferences Password Vulnerability - Microsoft", "url": "https://learn.microsoft.com/en-us/security-updates/securitybulletins/2014/ms14-025", "tag": "vendor"},
+    {"title": "GPP Password Vulnerability Fix - Microsoft KB2962486", "url": "https://support.microsoft.com/en-us/topic/ms14-025-vulnerability-in-group-policy-preferences-could-allow-elevation-of-privilege-may-13-2014-60734e15-af79-26ca-ea53-8cd617073c30", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Unsecured Credentials - Group Policy Preferences (T1552.006)", "url": "https://attack.mitre.org/techniques/T1552/006/", "tag": "attack"},
+    {"title": "GPP Password Decryption - Get-GPPPassword", "url": "https://github.com/PowerShellMafia/PowerSploit/blob/master/Exfiltration/Get-GPPPassword.ps1", "tag": "tool"},
+    {"title": "Metasploit - post/windows/gather/credentials/gpp", "url": "https://www.rapid7.com/db/modules/post/windows/gather/credentials/gpp/", "tag": "tool"},
+    {"title": "CIS Benchmark: Remove GPP passwords from SYSVOL", "url": "https://www.cisecurity.org/benchmark/microsoft_windows_server", "tag": "defense"},
+    {"title": "NSA: Disable Group Policy Preferences Password Storage", "url": "https://media.defense.gov/2023/Jun/22/2003251092/-1/-1/0/CTR_DEFENDING_ACTIVE_DIRECTORY.PDF", "tag": "defense"},
+    {"title": "GPP Password Attack Analysis - Active Directory Security", "url": "https://adsecurity.org/?p=2288", "tag": "research"},
+]
