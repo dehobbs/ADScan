@@ -56,3 +56,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "Account Lockout Policy - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/account-lockout-policy", "tag": "vendor"},
+    {"title": "Account Lockout Threshold - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/account-lockout-threshold", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Brute Force - Password Spraying (T1110.003)", "url": "https://attack.mitre.org/techniques/T1110/003/", "tag": "attack"},
+    {"title": "Sprayhound - AD Password Spray Tool", "url": "https://github.com/Hackndo/sprayhound", "tag": "tool"},
+    {"title": "Kerbrute - Username and Password Spraying", "url": "https://github.com/ropnop/kerbrute", "tag": "tool"},
+    {"title": "CIS Benchmark: Account Lockout Policy", "url": "https://www.cisecurity.org/benchmark/microsoft_windows_server", "tag": "defense"},
+    {"title": "Fine-Grained Password Policies - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/get-started/adac/introduction-to-active-directory-administrative-center-enhancements--level-100-#fine_grained_pswd_policy_mgmt", "tag": "vendor"},
+    {"title": "Detecting Password Spraying - Defender for Identity", "url": "https://learn.microsoft.com/en-us/defender-for-identity/compromised-credentials-alerts#suspected-brute-force-attack-ldap-external-id-2004", "tag": "defense"},
+]
