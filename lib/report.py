@@ -259,7 +259,7 @@ def _manual_verification_html(finding):
 
     # Build unique tab-group ID so multiple findings on the page don't clash
     import hashlib
-    tab_id = "vt-" + hashlib.md5(str(id(finding)).encode()).hexdigest()[:8]
+    tab_id = "vt-" + hashlib.md5(str(id(finding)).encode(), usedforsecurity=False).hexdigest()[:8]
 
     tabs_html = ""
     panels_html = ""
