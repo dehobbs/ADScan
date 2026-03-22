@@ -41,3 +41,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "FSMO Roles Overview - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/planning-operations-master-role-placement", "tag": "vendor"},
+    {"title": "FSMO Placement Best Practices - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/troubleshoot/windows-server/active-directory/fsmo-placement-and-optimization-on-ad-dcs", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Domain Controller Compromise", "url": "https://attack.mitre.org/techniques/T1078/002/", "tag": "attack"},
+    {"title": "FSMO Role Seizure for Persistence - Active Directory Security", "url": "https://adsecurity.org/?p=3164", "tag": "attack"},
+    {"title": "NetDOM - FSMO Role Management Tool", "url": "https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2008-r2-and-2008/cc731551(v=ws.10)", "tag": "tool"},
+    {"title": "FSMO Role Distribution Best Practices - Microsoft", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/planning-operations-master-role-placement", "tag": "defense"},
+    {"title": "AD Resilience and FSMO Placement - TechNet", "url": "https://social.technet.microsoft.com/wiki/contents/articles/14914.active-directory-fsmo-roles-in-windows.aspx", "tag": "research"},
+    {"title": "Single Point of Failure Risks with FSMO Concentration", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/planning-operations-master-role-placement", "tag": "defense"},
+]
