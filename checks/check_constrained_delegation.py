@@ -94,7 +94,7 @@ def run_check(connector, verbose=False):
         sam = ""
         try:
             sam = str(entry.get("sAMAccountName"))
-        except Exception:
+        except Exception:  # sAMAccountName may be absent; sam stays as empty string
             pass
 
         disabled_suffix = " [DISABLED]" if _is_disabled(entry) else ""
