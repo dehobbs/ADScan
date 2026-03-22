@@ -37,3 +37,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "AD CS Certificate Template Application Policies - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-cs/certificate-template-concepts", "tag": "vendor"},
+    {"title": "szOID_APPLICATION_CERT_POLICIES OID - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows/win32/api/wincrypt/nf-wincrypt-certgetenhancedkeyusage", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Steal or Forge Authentication Certificates (T1649)", "url": "https://attack.mitre.org/techniques/T1649/", "tag": "attack"},
+    {"title": "ESC15 - Application Policy OID Abuse Research", "url": "https://posts.specterops.io/adcs-esc15-will-it-blend-aaa08b2a70d5", "tag": "research"},
+    {"title": "Certipy - ADCS Exploitation Tool", "url": "https://github.com/ly4k/Certipy", "tag": "tool"},
+    {"title": "Certify - ADCS Enumeration Tool", "url": "https://github.com/GhostPack/Certify", "tag": "tool"},
+    {"title": "Securing Application Certificate Policies in AD CS", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-cs/active-directory-certificate-services-overview", "tag": "defense"},
+    {"title": "AD CS Attack and Defense - Microsoft Security Blog", "url": "https://www.microsoft.com/en-us/security/blog/2022/08/16/defending-against-active-directory-certificate-services-attacks/", "tag": "defense"},
+]
