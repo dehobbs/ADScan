@@ -55,3 +55,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "msDS-KeyCredentialLink Attribute - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-adts/de61eb56-b75f-4743-b8af-e9be154b47af", "tag": "vendor"},
+    {"title": "Windows Hello for Business and PKINIT - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows/security/identity-protection/hello-for-business/hello-how-it-works-authentication", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Modify Authentication Process (T1556)", "url": "https://attack.mitre.org/techniques/T1556/", "tag": "attack"},
+    {"title": "Shadow Credentials Attack - Elad Shamir Research", "url": "https://posts.specterops.io/shadow-credentials-abusing-key-trust-account-mapping-for-takeover-8ee1a53566ab", "tag": "research"},
+    {"title": "Whisker - Shadow Credential Tool", "url": "https://github.com/eladshamir/Whisker", "tag": "tool"},
+    {"title": "PyWhisker - Python Shadow Credential Tool", "url": "https://github.com/ShutdownRepo/pywhisker", "tag": "tool"},
+    {"title": "Detecting Shadow Credential Attacks - Defender for Identity", "url": "https://learn.microsoft.com/en-us/defender-for-identity/credential-access-alerts", "tag": "defense"},
+    {"title": "Auditing msDS-KeyCredentialLink Changes", "url": "https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-5136", "tag": "defense"},
+]
