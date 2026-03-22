@@ -38,3 +38,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "AD Replication and Site Link Configuration - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/understanding-active-directory-site-topology", "tag": "vendor"},
+    {"title": "Site Link Replication Interval - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/setting-site-link-properties", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Domain Replication (T1003.006)", "url": "https://attack.mitre.org/techniques/T1003/006/", "tag": "attack"},
+    {"title": "Replication Delay Exploitation in AD Attacks", "url": "https://adsecurity.org/?p=1772", "tag": "attack"},
+    {"title": "Repadmin - AD Replication Monitoring Tool", "url": "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/repadmin", "tag": "tool"},
+    {"title": "AD Replication Best Practices - Microsoft", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/designing-the-site-link-topology", "tag": "defense"},
+    {"title": "Monitoring AD Replication Health", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/component-updates/replication-error-status", "tag": "defense"},
+    {"title": "AD Replication Topology Design - TechNet", "url": "https://social.technet.microsoft.com/wiki/contents/articles/24960.active-directory-sites-and-services.aspx", "tag": "research"},
+]
