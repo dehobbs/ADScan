@@ -33,3 +33,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "Enterprise Admins Group - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/security-best-practices/appendix-b--privileged-accounts-and-groups-in-active-directory", "tag": "vendor"},
+    {"title": "Securing High-Privilege Groups - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/security-best-practices/reducing-the-active-directory-attack-surface", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Domain Policy Modification (T1484)", "url": "https://attack.mitre.org/techniques/T1484/", "tag": "attack"},
+    {"title": "Enterprise Admin Compromise via Trust Abuse", "url": "https://adsecurity.org/?p=1738", "tag": "attack"},
+    {"title": "BloodHound - Enterprise Admins Path Analysis", "url": "https://github.com/BloodHoundAD/BloodHound", "tag": "tool"},
+    {"title": "CIS Benchmark: Restrict Enterprise Admins membership", "url": "https://www.cisecurity.org/benchmark/microsoft_windows_server", "tag": "defense"},
+    {"title": "Microsoft Tiered Administration Model - PAW", "url": "https://learn.microsoft.com/en-us/security/privileged-access-workstations/privileged-access-access-model", "tag": "defense"},
+    {"title": "Defending Privileged Access - Microsoft ESAE", "url": "https://learn.microsoft.com/en-us/security/privileged-access-workstations/overview", "tag": "defense"},
+]
