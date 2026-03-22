@@ -56,3 +56,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "Search for and Delete Inactive User Accounts - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/troubleshoot/windows-server/active-directory/find-inactive-user-and-computer-accounts", "tag": "vendor"},
+    {"title": "lastLogonTimestamp Replication - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows/win32/adschema/a-lastlogontimestamp", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Valid Accounts (T1078)", "url": "https://attack.mitre.org/techniques/T1078/", "tag": "attack"},
+    {"title": "Stale Account Abuse for Persistence - Active Directory Security", "url": "https://adsecurity.org/?p=1186", "tag": "attack"},
+    {"title": "BloodHound - Stale Account Identification", "url": "https://github.com/BloodHoundAD/BloodHound", "tag": "tool"},
+    {"title": "AD Recon - Inactive Account Discovery", "url": "https://github.com/sense-of-security/ADRecon", "tag": "tool"},
+    {"title": "CIS Benchmark: Disable or remove inactive accounts after 90 days", "url": "https://www.cisecurity.org/benchmark/microsoft_windows_server", "tag": "defense"},
+    {"title": "ACSC: Account and Access Management Guidelines", "url": "https://www.cyber.gov.au/resources-business-and-government/essential-cyber-security/ism/cyber-security-guidelines/guidelines-authentication", "tag": "defense"},
+]
