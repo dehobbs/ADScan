@@ -37,3 +37,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "ms-DS-MachineAccountQuota Attribute - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows/win32/adschema/a-ms-ds-machineaccountquota", "tag": "vendor"},
+    {"title": "Active Directory MachineAccountQuota Hardening", "url": "https://learn.microsoft.com/en-us/defender-for-identity/cas-isp-unsecure-account-attributes", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Create Account - Domain Account (T1136.002)", "url": "https://attack.mitre.org/techniques/T1136/002/", "tag": "attack"},
+    {"title": "MachineAccountQuota Exploitation (Kevin Robertson)", "url": "https://blog.netspi.com/machineaccountquota-is-useful-sometimes/", "tag": "attack"},
+    {"title": "MaqChecker - MachineAccountQuota Audit Tool", "url": "https://github.com/Kevin-Robertson/Powermad", "tag": "tool"},
+    {"title": "Powermad - Machine Account Creation via MAQ", "url": "https://github.com/Kevin-Robertson/Powermad", "tag": "tool"},
+    {"title": "CIS Benchmark: Restrict machine account creation", "url": "https://www.cisecurity.org/benchmark/microsoft_windows_server", "tag": "defense"},
+    {"title": "Detecting Rogue Computer Accounts - Defender for Identity", "url": "https://learn.microsoft.com/en-us/defender-for-identity/compromised-credentials-alerts", "tag": "defense"},
+]
