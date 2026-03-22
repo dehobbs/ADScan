@@ -40,3 +40,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "AD User Account Description Attribute - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows/win32/adschema/a-description", "tag": "vendor"},
+    {"title": "AD Security Best Practices - Sensitive Data in Descriptions", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/security-best-practices/best-practices-for-securing-active-directory", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Unsecured Credentials (T1552)", "url": "https://attack.mitre.org/techniques/T1552/", "tag": "attack"},
+    {"title": "MITRE ATT&CK: Credentials in Files (T1552.001)", "url": "https://attack.mitre.org/techniques/T1552/001/", "tag": "attack"},
+    {"title": "BloodHound - User Description Field Enumeration", "url": "https://github.com/BloodHoundAD/BloodHound", "tag": "tool"},
+    {"title": "AD Recon - Sensitive Data Discovery in AD", "url": "https://github.com/sense-of-security/ADRecon", "tag": "tool"},
+    {"title": "CIS Benchmark: Do not store credentials in AD descriptions", "url": "https://www.cisecurity.org/benchmark/microsoft_windows_server", "tag": "defense"},
+    {"title": "Hunting Cleartext Credentials in Active Directory", "url": "https://adsecurity.org/?p=2362", "tag": "research"},
+]
