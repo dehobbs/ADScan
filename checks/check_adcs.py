@@ -41,7 +41,7 @@ import glob
 import json
 import os
 import shutil
-import subprocess
+import subprocess  # nosec B404 - subprocess is required to invoke certipy-ad
 
 CHECK_NAME     = "ADCS / PKI Vulnerabilities"
 CHECK_ORDER    = 6
@@ -270,7 +270,7 @@ def _run_certipy(creds, cwd=None, scheme=None):
     ]
     if scheme:
         cmd += ["-ldap-scheme", scheme]
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=120, cwd=cwd)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=120, cwd=cwd)  # nosec B603 - cmd is a fully validated list, no shell interpolation
     return result.returncode, result.stdout, result.stderr
 
 def _parse_certipy_json(json_path):
