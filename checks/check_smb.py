@@ -34,7 +34,7 @@ Prerequisites:
 import os
 import re
 import shutil
-import subprocess
+import subprocess  # nosec B404 - subprocess is required to invoke netexec/nmap
 
 CHECK_NAME     = "SMB Signing Enforcement"
 CHECK_ORDER    = 22          # runs right after Legacy Protocols (21)
@@ -62,7 +62,7 @@ def _domain_to_base_dn(domain):
 
 def _run_cmd(cmd, timeout=120):
     """Run a subprocess command, return (returncode, stdout, stderr)."""
-    result = subprocess.run(
+    result = subprocess.run(  # nosec B603 - cmd is a fully validated list, no shell interpolation
         cmd,
         capture_output=True,
         text=True,
