@@ -38,3 +38,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "Microsoft: LDAP Signing Requirements (ADV190023)", "url": "https://support.microsoft.com/en-us/topic/2020-ldap-channel-binding-and-ldap-signing-requirements-for-windows-ef185fb8-00f7-167d-744c-f299a66fc00a", "tag": "vendor"},
+    {"title": "LDAP Channel Binding and Signing - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/domain-controller-ldap-server-signing-requirements", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Adversary-in-the-Middle (T1557)", "url": "https://attack.mitre.org/techniques/T1557/", "tag": "attack"},
+    {"title": "LDAP Relay Attack via LdapRelayScan", "url": "https://github.com/zyn3rgy/LdapRelayScan", "tag": "tool"},
+    {"title": "Responder - LLMNR/NBT-NS Poisoning Tool", "url": "https://github.com/lgandx/Responder", "tag": "tool"},
+    {"title": "CIS Benchmark: Ensure LDAP signing is required", "url": "https://www.cisecurity.org/benchmark/microsoft_windows_server", "tag": "defense"},
+    {"title": "NSA: Hardening Active Directory - LDAP Signing", "url": "https://media.defense.gov/2023/Jun/22/2003251092/-1/-1/0/CTR_DEFENDING_ACTIVE_DIRECTORY.PDF", "tag": "defense"},
+    {"title": "Audit LDAP Channel Binding Events", "url": "https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-2889", "tag": "defense"},
+]
