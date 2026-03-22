@@ -76,7 +76,7 @@ def run_check(connector, verbose=False):
                             esc5_issues.append(label)
                             break
             except Exception:  # PKI container may not exist in this environment
-                pass
+                pass  # nosec B110
         if esc5_issues:
             findings.append({
                 "title": "ESC5 - PKI Object ACL Abuse",
