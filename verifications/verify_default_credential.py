@@ -55,3 +55,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "Default Local Administrator Account - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows/security/identity-protection/access-control/local-accounts", "tag": "vendor"},
+    {"title": "Securing the Administrator Account - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/security-best-practices/appendix-d--securing-built-in-administrator-accounts-in-active-directory", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Default Accounts (T1078.001)", "url": "https://attack.mitre.org/techniques/T1078/001/", "tag": "attack"},
+    {"title": "MITRE ATT&CK: Brute Force - Password Spraying (T1110.003)", "url": "https://attack.mitre.org/techniques/T1110/003/", "tag": "attack"},
+    {"title": "NetExec - Default Credential Testing", "url": "https://github.com/Pennyw0rth/NetExec", "tag": "tool"},
+    {"title": "CrackMapExec - Default Credential Checks", "url": "https://github.com/byt3bl33d3r/CrackMapExec", "tag": "tool"},
+    {"title": "CIS Benchmark: Rename and disable built-in Administrator", "url": "https://www.cisecurity.org/benchmark/microsoft_windows_server", "tag": "defense"},
+    {"title": "NSA: Securing Default Accounts in AD", "url": "https://media.defense.gov/2023/Jun/22/2003251092/-1/-1/0/CTR_DEFENDING_ACTIVE_DIRECTORY.PDF", "tag": "defense"},
+]
