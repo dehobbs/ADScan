@@ -123,7 +123,7 @@ def run_check(connector, verbose=False):
                             resolved = connector.resolve_sid(trustee_sid)
                             if resolved:
                                 trustee_name = resolved
-                        except Exception:
+                        except Exception:  # SID resolution is best-effort; fall back to raw SID
                             pass
 
                         if _is_expected(trustee_name, trustee_sid):
