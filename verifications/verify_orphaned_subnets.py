@@ -39,3 +39,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "AD Sites and Subnets - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/understanding-active-directory-site-topology", "tag": "vendor"},
+    {"title": "Managing AD Subnets - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/assigning-domain-names", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: Network Topology Discovery (T1016)", "url": "https://attack.mitre.org/techniques/T1016/", "tag": "attack"},
+    {"title": "AD Recon - Network Topology Enumeration", "url": "https://github.com/sense-of-security/ADRecon", "tag": "tool"},
+    {"title": "BloodHound - AD Sites and Subnet Mapping", "url": "https://github.com/BloodHoundAD/BloodHound", "tag": "tool"},
+    {"title": "AD Sites Design Best Practices - Microsoft", "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/site-topology-owner-role", "tag": "defense"},
+    {"title": "Subnet Audit and Cleanup - AD Tiering Model", "url": "https://learn.microsoft.com/en-us/security/privileged-access-workstations/privileged-access-access-model", "tag": "defense"},
+    {"title": "Orphaned Subnets and DC Locator Failures - TechNet", "url": "https://social.technet.microsoft.com/wiki/contents/articles/24960.active-directory-sites-and-services.aspx", "tag": "research"},
+]
