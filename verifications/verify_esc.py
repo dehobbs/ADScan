@@ -7,20 +7,6 @@ MATCH_KEYS = ["esc"]
 
 TOOLS = [
     {
-        "tool": "Certipy",
-        "icon": "impacket",
-        "desc": "Comprehensive ADCS enumeration — finds ESC1-ESC11 misconfigurations.",
-        "code": "certipy find -u <username>@<domain> -p <password> -dc-ip <DC_IP> -enabled -vulnerable",
-        "confirm": "Any template listed under <strong>Certificate Templates</strong> with ESC flags is exploitable.",
-    },
-    {
-        "tool": "NetExec",
-        "icon": "netexec",
-        "desc": "Enumerate ADCS certificate authorities and templates.",
-        "code": "netexec ldap <DC_IP> -u <username> -p <password> -M certipy-find",
-        "confirm": "Lists Certificate Authorities and templates available for enrollment.",
-    },
-    {
         "tool": "PowerShell",
         "icon": "ps",
         "desc": "Enumerate certificate templates via the PKI module.",
