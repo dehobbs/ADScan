@@ -39,7 +39,7 @@ def _parse_rbcd_sd(raw_sd):
                     try:
                         sid_obj = ace["Ace"]["Sid"]
                         trustees.append(str(sid_obj))
-                    except Exception:
+                    except Exception:  # ACE SID extraction failed; skip this trustee
                         pass
     except ImportError:
         trustees.append("<impacket not available — install with: pip install impacket>")
@@ -55,7 +55,7 @@ def _resolve_sid(connector, sid_str):
         resolved = connector.resolve_sid(sid_str)
         if resolved:
             return resolved
-    except Exception:
+    except Exception:  # SID resolution failed; return raw SID string
         pass
     return sid_str
 
