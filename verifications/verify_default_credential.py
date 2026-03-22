@@ -3,7 +3,7 @@ verifications/verify_default_credential.py
 Manual Verification and Remediation data for ADScan findings matching: default credential
 """
 
-MATCH_KEYS = ["default credential"]
+MATCH_KEYS = ["rid 500"]
 
 TOOLS = [
     {
