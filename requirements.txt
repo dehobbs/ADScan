@@ -35,3 +35,6 @@ requests>=2.31.0
 pyOpenSSL>=23.2.0
 
 # LDAP3 is already listed above and shared with base ADScan checks
+
+# Safe XML parsing — prevents XML bomb / entity expansion attacks (CWE-20 / Bandit B314)
+defusedxml>=0.7.1
