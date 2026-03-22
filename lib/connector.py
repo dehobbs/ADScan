@@ -127,13 +127,13 @@ class ADConnector:
             try:
                 self.ldap_conn.unbind()
             except Exception:  # unbind may fail if connection already dropped
-                pass
+                pass  # nosec B110
             self.ldap_conn = None
         if self.smb_conn:
             try:
                 self.smb_conn.logoff()
             except Exception:  # logoff may fail if connection already dropped
-                pass
+                pass  # nosec B110
             self.smb_conn = None
 
     def ldap_search(
