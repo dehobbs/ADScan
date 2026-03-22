@@ -55,3 +55,15 @@ REMEDIATION = {
         },
     ],
 }
+
+
+REFERENCES = [
+    {"title": "Kerberos Pre-Authentication - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/enforce-user-logon-restrictions", "tag": "vendor"},
+    {"title": "AS-REP Roasting Explained - Microsoft Threat Intelligence", "url": "https://www.microsoft.com/en-us/security/blog/2020/08/27/stopping-active-directory-attacks-and-other-post-exploitation-behavior/", "tag": "vendor"},
+    {"title": "MITRE ATT&CK: AS-REP Roasting (T1558.004)", "url": "https://attack.mitre.org/techniques/T1558/004/", "tag": "attack"},
+    {"title": "Rubeus - AS-REP Roasting Tool", "url": "https://github.com/GhostPack/Rubeus", "tag": "tool"},
+    {"title": "Impacket GetNPUsers - AS-REP Roasting", "url": "https://github.com/fortra/impacket", "tag": "tool"},
+    {"title": "Hashcat - AS-REP Hash Cracking", "url": "https://hashcat.net/hashcat/", "tag": "tool"},
+    {"title": "CIS Benchmark: Enforce Kerberos Pre-Authentication", "url": "https://www.cisecurity.org/benchmark/microsoft_windows_server", "tag": "defense"},
+    {"title": "Detecting AS-REP Roasting - Defender for Identity", "url": "https://learn.microsoft.com/en-us/defender-for-identity/reconnaissance-alerts#suspected-as-rep-roasting-attack-external-id-2412", "tag": "defense"},
+]
