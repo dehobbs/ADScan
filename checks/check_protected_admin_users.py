@@ -83,12 +83,11 @@ def run_check(connector, verbose=False):
         orphaned_accounts = [] # adminCount=1 but no longer member of any privileged group
 
         for entry in results:
-            attrs = entry.get("attributes", {}) if isinstance(entry, dict) else {}
-            sam = attrs.get("sAMAccountName", "unknown")
-            dn = attrs.get("distinguishedName", "")
-            uac = attrs.get("userAccountControl", 0)
-            last_logon = attrs.get("lastLogonTimestamp")
-            member_of = attrs.get("memberOf") or []
+            sam = entry.get("sAMAccountName", "unknown")
+            dn = entry.get("distinguishedName", "")
+            uac = entry.get("userAccountControl", 0)
+            last_logon = entry.get("lastLogonTimestamp")
+            member_of = entry.get("memberOf") or []
             if isinstance(member_of, str):
                 member_of = [member_of]
 
