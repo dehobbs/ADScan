@@ -54,6 +54,7 @@ def _is_rodc(entry):
 
 def run_check(connector, verbose=False):
     findings = []
+    log = connector.log
 
     dc_entries = connector.ldap_search(
         search_filter="(&(objectClass=computer)(userAccountControl:1.2.840.113556.1.4.803:=8192))",
@@ -63,8 +64,7 @@ def run_check(connector, verbose=False):
 
     total_dcs = len(dc_entries)
 
-    if verbose:
-        print(f"     Total DCs: {total_dcs}")
+    log.debug("     Total DCs: %d", total_dcs)
 
     if total_dcs == 1:
         findings.append({
@@ -96,8 +96,7 @@ def run_check(connector, verbose=False):
             legacy_dcs.append(f"{sam}: {os_str}")
         if _is_rodc(e):
             rodc_list.append(sam)
-        if verbose:
-            print(f"     DC: {sam} | OS: {os_str} | RODC: {_is_rodc(e)}")
+        log.debug("     DC: %s | OS: %s | RODC: %s", sam, os_str, _is_rodc(e))
 
     if legacy_dcs:
         findings.append({
@@ -137,9 +136,8 @@ def run_check(connector, verbose=False):
             except Exception:  # FSMO owner DN may be malformed; skip this role
                 pass
 
-    if verbose:
-        for r, h in fsmo_holders.items():
-            print(f"     FSMO {r}: {h}")
+    for r, h in fsmo_holders.items():
+        log.debug("     FSMO %s: %s", r, h)
 
     unique_holders = set(fsmo_holders.values())
     if len(fsmo_holders) == 5 and len(unique_holders) == 1:
