@@ -55,10 +55,9 @@ def run_check(connector, verbose=False):
         dc_hostnames = set()
         if dc_results:
             for entry in dc_results:
-                attrs = entry.get("attributes", {}) if isinstance(entry, dict) else {}
-                dns = attrs.get("dNSHostName", "")
-                sam = attrs.get("sAMAccountName", "").rstrip("$").lower()
-                cn = attrs.get("cn", "").lower()
+                dns = entry.get("dNSHostName", "")
+                sam = entry.get("sAMAccountName", "").rstrip("$").lower()
+                cn = entry.get("cn", "").lower()
                 if dns:
                     dc_hostnames.add(dns.lower())
                     dc_hostnames.add(dns.split(".")[0].lower())  # short hostname
@@ -95,14 +94,13 @@ def run_check(connector, verbose=False):
         medium_hits = []     # delegation to high-value service class on non-DC
 
         for entry in deleg_results:
-            attrs = entry.get("attributes", {}) if isinstance(entry, dict) else {}
-            sam = attrs.get("sAMAccountName", "unknown")
-            dn = attrs.get("distinguishedName", "")
-            delegate_to = attrs.get("msDS-AllowedToDelegateTo") or []
+            sam = entry.get("sAMAccountName", "unknown")
+            dn = entry.get("distinguishedName", "")
+            delegate_to = entry.get("msDS-AllowedToDelegateTo") or []
             if isinstance(delegate_to, str):
                 delegate_to = [delegate_to]
-            uac = int(attrs.get("userAccountControl", 0) or 0)
-            admin_count = int(attrs.get("adminCount", 0) or 0)
+            uac = int(entry.get("userAccountControl", 0) or 0)
+            admin_count = int(entry.get("adminCount", 0) or 0)
             is_dc = bool(uac & 0x2000)
 
             for spn in delegate_to:
