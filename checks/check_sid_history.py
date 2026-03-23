@@ -97,10 +97,9 @@ def run_check(connector, verbose=False):
         warning_accounts = []    # sIDHistory present but not obviously privileged
 
         for entry in results:
-            attrs = entry.get("attributes", {}) if isinstance(entry, dict) else {}
-            sam = attrs.get("sAMAccountName", "unknown")
-            dn = attrs.get("distinguishedName", "")
-            sid_history = attrs.get("sIDHistory", [])
+            sam = entry.get("sAMAccountName", "unknown")
+            dn = entry.get("distinguishedName", "")
+            sid_history = entry.get("sIDHistory", [])
             if isinstance(sid_history, (str, bytes)):
                 sid_history = [sid_history]
 
