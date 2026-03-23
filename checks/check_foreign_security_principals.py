@@ -59,10 +59,9 @@ def run_check(connector, verbose=False):
         non_privileged_fsps = []
 
         for entry in fsp_results:
-            attrs = entry.get("attributes", {}) if isinstance(entry, dict) else {}
-            cn = attrs.get("cn", "unknown")
-            dn = attrs.get("distinguishedName", "")
-            member_of = attrs.get("memberOf") or []
+            cn = entry.get("cn", "unknown")
+            dn = entry.get("distinguishedName", "")
+            member_of = entry.get("memberOf") or []
             if isinstance(member_of, str):
                 member_of = [member_of]
 
