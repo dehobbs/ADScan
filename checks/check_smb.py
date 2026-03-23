@@ -212,6 +212,7 @@ def _parse_smb_results(nxc_output):
 
 def run_check(connector, verbose=False):
     findings = []
+    log = connector.log
 
     # ---------------------------------------------------------------------- #
     # Pre-flight: check required tools                                        #
@@ -286,16 +287,15 @@ def run_check(connector, verbose=False):
     # ---------------------------------------------------------------------- #
     ldap_cmd = _build_ldapsearch_cmd(connector)
 
-    if verbose:
-        # Redact password in display
-        display_cmd = list(ldap_cmd)
-        try:
-            pw_idx = display_cmd.index("-w")
-            display_cmd[pw_idx + 1] = "***"
-        except ValueError:
-            pass
-        print(f"  [SMB] Phase 1: enumerating computers via ldapsearch ...")
-        print(f"  Command: {' '.join(display_cmd)}")
+    # Redact password in display
+    display_cmd = list(ldap_cmd)
+    try:
+        pw_idx = display_cmd.index("-w")
+        display_cmd[pw_idx + 1] = "***"
+    except ValueError:
+        pass
+    log.debug("  [SMB] Phase 1: enumerating computers via ldapsearch ...")
+    log.debug("  Command: %s", ' '.join(display_cmd))
 
     try:
         rc1, out1, err1 = _run_cmd(ldap_cmd, timeout=120)
@@ -329,10 +329,10 @@ def run_check(connector, verbose=False):
             stderr=err1,
         )
 
-    if verbose and out1:
-        print(f"  [SMB] ldapsearch output (first 20 lines):")
+    if out1:
+        log.debug("  [SMB] ldapsearch output (first 20 lines):")
         for line in out1.splitlines()[:20]:
-            print(f"    {line}")
+            log.debug("    %s", line)
 
     targets = _parse_ldapsearch_computers(out1)
 
@@ -355,9 +355,8 @@ def run_check(connector, verbose=False):
     with open(targets_file, "w", encoding="utf-8") as fh:
         fh.write("\n".join(targets) + "\n")
 
-    if verbose:
-        print(f"  [SMB] Found {len(targets)} computer(s).")
-        print(f"  Computer list saved to: {targets_file}")
+    log.debug("  [SMB] Found %d computer(s).", len(targets))
+    log.debug("  Computer list saved to: %s", targets_file)
 
     # ---------------------------------------------------------------------- #
     # Phase 2: SMB sweep via NetExec (signing + SMBv1)                      #
@@ -365,9 +364,8 @@ def run_check(connector, verbose=False):
     smb_auth = _build_nxc_smb_auth_args(connector)
     smb_cmd  = ["nxc", "smb", targets_file] + smb_auth
 
-    if verbose:
-        print(f"  [SMB] Phase 2: sweeping {len(targets)} host(s) for signing and SMBv1 ...")
-        print(f"  Command: {' '.join(smb_cmd)}")
+    log.debug("  [SMB] Phase 2: sweeping %d host(s) for signing and SMBv1 ...", len(targets))
+    log.debug("  Command: %s", ' '.join(smb_cmd))
 
     try:
         rc2, out2, err2 = _run_cmd(smb_cmd, timeout=300)
@@ -401,10 +399,10 @@ def run_check(connector, verbose=False):
             stderr=err2,
         )
 
-    if verbose and out2:
-        print(f"  [SMB] nxc smb output (first 30 lines):")
+    if out2:
+        log.debug("  [SMB] nxc smb output (first 30 lines):")
         for line in out2.splitlines()[:30]:
-            print(f"    {line}")
+            log.debug("    %s", line)
 
     unsigned_hosts, signed_hosts, smbv1_hosts = _parse_smb_results(out2)
 
