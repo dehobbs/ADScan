@@ -14,6 +14,7 @@ CHECK_CATEGORY = ["Domain Hygiene"]
 
 def run_check(connector, verbose=False):
     findings = []
+    log = connector.log
 
     config_dn = "CN=Configuration," + connector.base_dn
     sites_dn = "CN=Sites," + config_dn
@@ -27,8 +28,7 @@ def run_check(connector, verbose=False):
             scope="ONELEVEL",
         ) or []
     except Exception as exc:
-        if verbose:
-            print(f"[Replication] Sites LDAP error: {exc}")
+        log.warning("[Replication] Sites LDAP error: %s", exc)
         sites = []
 
     site_count = len(sites)
@@ -42,8 +42,7 @@ def run_check(connector, verbose=False):
             ["cn", "replInterval", "siteList"],
         ) or []
     except Exception as exc:
-        if verbose:
-            print(f"[Replication] Site links LDAP error: {exc}")
+        log.warning("[Replication] Site links LDAP error: %s", exc)
         site_links = []
 
     # Check for excessive replication intervals
@@ -83,13 +82,11 @@ def run_check(connector, verbose=False):
         ) or []
         dc_count = len(ntdsdsa_objects)
     except Exception as exc:
-        if verbose:
-            print(f"[Replication] nTDSDSA LDAP error: {exc}")
+        log.warning("[Replication] nTDSDSA LDAP error: %s", exc)
         dc_count = 0
         ntdsdsa_objects = []
 
-    if verbose:
-        print(f"[Replication] Sites: {site_count}, DCs: {dc_count}, Site links: {len(site_links)}")
+    log.debug("[Replication] Sites: %d, DCs: %d, Site links: %d", site_count, dc_count, len(site_links))
 
     # Report site topology summary as informational
     if site_count > 1:
