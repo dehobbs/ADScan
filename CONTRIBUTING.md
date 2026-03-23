@@ -23,7 +23,8 @@ This guide covers everything you need to write, test, and submit a check.
 7. [Naming and ordering conventions](#naming-and-ordering-conventions)
 8. [Scoring config integration](#scoring-config-integration)
 9. [Common patterns and helpers](#common-patterns-and-helpers)
-10. [Submitting a pull request](#submitting-a-pull-request)
+10. [Adding Manual Verification, Remediation, and References](#adding-manual-verification-remediation-and-references)
+11. [Submitting a pull request](#submitting-a-pull-request)
 
 ---
 
@@ -39,12 +40,16 @@ ADScan/
 │   ├── check_password_policy.py
 │   ├── check_kerberos.py
 │   └── ...              # 37 built-in checks
-└── lib/
-    ├── connector.py     # ADConnector, LDAP/LDAPS/SMB connection manager
-    ├── report.py        # HTML / JSON / CSV report generators
-    ├── scoring.py       # ScoringConfig, loads scoring.toml
-    ├── audit_log.py     # Structured audit trail
-    └── debug_log.py     # Low-level LDAP query debug log
+├── lib/
+    │   ├── connector.py     # ADConnector, LDAP/LDAPS/SMB connection manager
+    │   ├── report.py        # HTML / JSON / CSV report generators
+    │   ├── scoring.py       # ScoringConfig, loads scoring.toml
+    │   ├── audit_log.py     # Structured audit trail
+    │   └── debug_log.py     # Low-level LDAP query debug log
+    └── verifications/           # Manual verification & remediation data
+        ├── verify_kerberoast.py
+        ├── verify_laps.py
+        └── ...                  # one file per check topic
 ```
 
 ---
@@ -480,6 +485,205 @@ with the main runner's console style.
 
 ---
 
+## Adding Manual Verification, Remediation, and References
+
+Every finding in the HTML report can display three collapsible panels below the description:
+
+- **Manual Verification** — step-by-step tool cards showing how to confirm the finding by hand.
+- **Remediation** — numbered steps with optional code blocks for fixing the issue.
+- **References** — tagged links to CVEs, MITRE techniques, vendor docs, and research.
+
+These panels are driven by files in the `verifications/` directory. Each file is a plain Python module that defines structured data — no HTML required. `report.py` discovers and renders them automatically.
+
+---
+
+### How the matching works
+
+`report.py` calls `_build_verification_db()` at startup, which imports every `verifications/verify_*.py` module and builds a lookup table keyed on `MATCH_KEYS`. When rendering a finding card, it lowercases the finding `title` and checks whether any key in `MATCH_KEYS` is a substring of it. The first match wins.
+
+```
+finding title (lowercased): "account lockout disabled"
+MATCH_KEYS = ["account lockout"]   ← "account lockout" ⊂ title → match ✓
+```
+
+`MATCH_KEYS` entries should be distinctive enough to avoid false matches across different findings, but broad enough to cover all severity variants of the same issue (e.g. `"kerberoast"` matches both `"Kerberoastable Service Accounts"` and `"High-Value Kerberoastable Accounts"`).
+
+---
+
+### File naming and location
+
+| Convention | Example |
+|------------|---------|
+| Location | `verifications/verify_<topic>.py` |
+| Naming | `verify_kerberoast.py`, `verify_laps.py`, `verify_account_lockout.py` |
+| Topic | Match the check slug — use the same stem as the corresponding `check_*.py` file |
+
+---
+
+### Module structure
+
+A verification file defines up to four module-level names:
+
+| Name | Type | Required | Purpose |
+|------|------|----------|---------|
+| `MATCH_KEYS` | `list[str]` | ✅ | Lowercase substrings matched against finding titles |
+| `TOOLS` | `list[dict]` | ✅ | Tool cards shown in the Manual Verification panel |
+| `REMEDIATION` | `dict` | recommended | Numbered steps shown in the Remediation panel |
+| `REFERENCES` | `list[dict]` | recommended | Tagged links shown in the References panel |
+
+---
+
+### TOOLS
+
+Each entry in `TOOLS` renders as one card in a 2-column grid. Cards whose `icon` is `"netexec"` or `"impacket"` are placed on the **Linux** tab; all others (`"ps"`, `"cmd"`, `"aduc"`) go on the **Windows** tab.
+
+**Tool card keys:**
+
+| Key | Type | Required | Description |
+|-----|------|----------|-------------|
+| `tool` | `str` | ✅ | Display name in the card header (e.g. `"NetExec"`, `"PowerShell"`) |
+| `icon` | `str` | ✅ | One of: `"netexec"`, `"impacket"`, `"ps"`, `"cmd"`, `"aduc"` |
+| `desc` | `str` | ✅ | One-sentence description of what this tool does for this check |
+| `code` | `str` | — | Command to run (rendered as a monospace code block) |
+| `steps` | `list[str]` | — | Numbered steps for GUI tools; use instead of or alongside `code` |
+| `confirm` | `str` | — | Italic text explaining what output confirms the finding; supports inline HTML |
+
+Use `code` for CLI tools. Use `steps` for GUI tools (ADUC, GPMC). `confirm` is always shown at the bottom of the card regardless of which body fields are used.
+
+**Example — CLI tool:**
+
+```python
+{
+    "tool": "NetExec",
+    "icon": "netexec",
+    "desc": "Enumerate Kerberoastable accounts quickly without retrieving hashes.",
+    "code": "netexec ldap <DC_IP> -u <username> -p <password> --kerberoasting",
+    "confirm": "Any account listed is Kerberoastable.",
+},
+```
+
+**Example — GUI tool with numbered steps:**
+
+```python
+{
+    "tool": "ADUC (dsa.msc)",
+    "icon": "aduc",
+    "desc": "Find user accounts with SPNs via the GUI attribute editor.",
+    "steps": [
+        "Open <code>dsa.msc</code> → View → Advanced Features",
+        "Find a user → Properties → Attribute Editor",
+        "Locate <strong>servicePrincipalName</strong> attribute",
+        "Any non-empty value on a user account (not computer) is Kerberoastable.",
+    ],
+},
+```
+
+> Inline HTML is supported in `desc`, `steps`, and `confirm` values — use `<code>`, `<strong>`, and `<em>` for emphasis. The `code` field is HTML-escaped by `report.py`, so use plain text there.
+
+---
+
+### REMEDIATION
+
+`REMEDIATION` is a single dict with a `title` and a `steps` list.
+
+| Key | Type | Required | Description |
+|-----|------|----------|-------------|
+| `title` | `str` | ✅ | Brief description of the recommended fix, shown as the panel header |
+| `steps` | `list[dict]` | ✅ | Ordered remediation steps |
+
+Each step dict:
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `text` | `str` | Step description; supports inline HTML |
+| `code` | `str` | Optional command block rendered in monospace |
+| `steps` | `list[str]` | Optional nested sub-steps rendered as a numbered list |
+
+**Example:**
+
+```python
+REMEDIATION = {
+    "title": "Remove unnecessary SPNs and enforce AES-only encryption",
+    "steps": [
+        {
+            "text": "Audit and remove unnecessary SPNs from user accounts:",
+            "code": "Set-ADUser -Identity <username> -ServicePrincipalNames @{Remove='<SPN>'}",
+        },
+        {
+            "text": "Enforce AES-only encryption to make offline cracking infeasible:",
+            "code": "Set-ADUser -Identity <username> `\n    -KerberosEncryptionType AES128,AES256",
+        },
+        {
+            "text": "Migrate service accounts to <strong>gMSAs</strong> where possible.",
+        },
+    ],
+}
+```
+
+---
+
+### REFERENCES
+
+`REFERENCES` is a list of link dicts. Each entry renders as a tagged pill + hyperlink in the collapsible References panel.
+
+| Key | Type | Required | Description |
+|-----|------|----------|-------------|
+| `title` | `str` | ✅ | Link display text |
+| `url` | `str` | ✅ | Full URL (https://...) |
+| `tag` | `str` | ✅ | One of the tag values below |
+
+**Tag values:**
+
+| Tag | Colour | Use for |
+|-----|--------|---------|
+| `"vendor"` | Blue | Official vendor docs (Microsoft Docs, CIS Benchmarks) |
+| `"attack"` | Red | MITRE ATT&CK techniques, PoC tools used offensively |
+| `"defense"` | Green | Detection guidance, hardening references, monitoring alerts |
+| `"research"` | Purple | Blog posts, conference talks, academic papers |
+| `"tool"` | Amber | Open-source offensive or audit tools (Impacket, Rubeus, NetExec) |
+
+**Example:**
+
+```python
+REFERENCES = [
+    {
+        "title": "MITRE ATT&CK: Kerberoasting (T1558.003)",
+        "url": "https://attack.mitre.org/techniques/T1558/003/",
+        "tag": "attack",
+    },
+    {
+        "title": "Kerberoasting Without Mimikatz - Will Schroeder",
+        "url": "https://www.harmj0y.net/blog/powershell/kerberoasting-without-mimikatz/",
+        "tag": "research",
+    },
+    {
+        "title": "Rubeus - Kerberoasting Module",
+        "url": "https://github.com/GhostPack/Rubeus",
+        "tag": "tool",
+    },
+    {
+        "title": "Detecting Kerberoasting - Defender for Identity",
+        "url": "https://learn.microsoft.com/en-us/defender-for-identity/credential-access-alerts",
+        "tag": "defense",
+    },
+]
+```
+
+Aim for 4–8 references per finding. Prioritise: the MITRE ATT&CK technique, the relevant Microsoft Docs page, one detection reference, and one or two commonly used offensive tools.
+
+---
+
+### Checklist for a new verification file
+
+- [ ] File is named `verifications/verify_<topic>.py` matching the corresponding `check_<topic>.py` slug
+- [ ] `MATCH_KEYS` contains at least one distinctive lowercase substring of the finding title
+- [ ] `TOOLS` has at least one Linux tool (`"netexec"` or `"impacket"`) and one Windows tool (`"ps"` or `"aduc"`)
+- [ ] Every tool card has `tool`, `icon`, `desc`, and either `code` or `steps`
+- [ ] Every tool card that has a verifiable success condition includes `confirm`
+- [ ] `REMEDIATION` has a `title` and at least one `steps` entry
+- [ ] `REFERENCES` has 4–8 entries covering attack, vendor, defense, and tool tags
+
+---
 ## Submitting a pull request
 
 1. Fork the repository and create a branch named `check/<topic>`
