@@ -5,6 +5,7 @@ Manages LDAP, LDAPS, and SMB connections to a Domain Controller.
 Supports password, NTLM hash (pass-the-hash), and Kerberos (ccache) auth.
 """
 import os
+import logging
 import socket
 import ssl
 import struct
@@ -88,6 +89,7 @@ class ADConnector:
         self.ldap_conn = None
         self.smb_conn = None
         self.debug_log = None
+        self._log = logging.getLogger("adscan")
 
         self.base_dn = self._domain_to_dn(domain)
 
@@ -107,15 +109,13 @@ class ADConnector:
         for proto in self.protocols:
             if proto in ("ldap", "ldaps"):
                 if not HAS_LDAP3:
-                    print(f" [WARN] ldap3 not installed - skipping {proto.upper()}")
-                    print("        pip install ldap3")
+                    self._log.warning(" [WARN] ldap3 not installed - skipping %s. Run: pip install ldap3", proto.upper())
                     continue
                 if self._connect_ldap(use_ssl=(proto == "ldaps")):
                     connected = True
             elif proto == "smb":
                 if not HAS_IMPACKET:
-                    print(" [WARN] impacket not installed - skipping SMB")
-                    print("        pip install impacket")
+                    self._log.warning(" [WARN] impacket not installed - skipping SMB. Run: pip install impacket")
                     continue
                 if self._connect_smb():
                     connected = True
@@ -146,8 +146,7 @@ class ADConnector:
     ):
         """Perform an LDAP search. Returns list of entry dicts or empty list."""
         if not self.ldap_conn:
-            if self.verbose:
-                print("  [WARN] No LDAP connection available for search.")
+            self._log.warning("  [WARN] No LDAP connection available for search.")
             return []
 
         search_base   = search_base   or self.base_dn
@@ -184,8 +183,7 @@ class ADConnector:
             return [_entry_to_dict(e) for e in entries]
 
         except Exception as e:
-            if self.verbose:
-                print(f"  [WARN] LDAP search failed: {e}")
+            self._log.warning("  [WARN] LDAP search failed: %s", e)
             dbg = getattr(self, "debug_log", None)
             if dbg:
                 dbg.log_ldap(
@@ -208,8 +206,7 @@ class ADConnector:
         try:
             return [s["shi1_netname"][:-1] for s in self.smb_conn.listShares()]
         except Exception as e:
-            if self.verbose:
-                print(f"  [WARN] SMB listShares failed: {e}")
+            self._log.warning("  [WARN] SMB listShares failed: %s", e)
             return []
 
     # ------------------------------------------------------------------
@@ -230,7 +227,7 @@ class ADConnector:
     def _connect_ldap(self, use_ssl=False):
         proto_label = "LDAPS" if use_ssl else "LDAP"
         port = 636 if use_ssl else 389
-        print(f" [*] Connecting via {proto_label} to {self.dc_host}:{port} ...", end=" ")
+        self._log.info(" [*] Connecting via %s to %s:%s ...", proto_label, self.dc_host, port)
 
         try:
             tls = None
@@ -250,9 +247,10 @@ class ADConnector:
             if self.use_kerberos:
                 ccache = self._resolve_ccache()
                 if not ccache:
-                    print(
-                        "FAILED (Kerberos requested but no ccache found"
-                        " -- set KRB5CCNAME or use --ccache)"
+                    self._log.warning(
+                        " [!] %s connection FAILED: Kerberos requested but no ccache found"
+                        " -- set KRB5CCNAME or use --ccache",
+                        proto_label,
                     )
                     return False
                 os.environ["KRB5CCNAME"] = ccache
@@ -273,27 +271,27 @@ class ADConnector:
                 )
 
             self.ldap_conn = conn
-            print("OK")
+            self._log.info(" [*] Connected via %s to %s:%s - OK", proto_label, self.dc_host, port)
             return True
 
         except LDAPException as e:
-            print(f"FAILED ({e})")
+            self._log.warning(" [!] %s connection to %s:%s FAILED: %s", proto_label, self.dc_host, port, e)
             return False
         except Exception as e:
-            print(f"FAILED ({e})")
+            self._log.warning(" [!] %s connection to %s:%s FAILED: %s", proto_label, self.dc_host, port, e)
             return False
 
     def _connect_smb(self):
-        print(f" [*] Connecting via SMB to {self.dc_host}:445 ...", end=" ")
+        self._log.info(" [*] Connecting via SMB to %s:445 ...", self.dc_host)
         try:
             smb = SMBConnection(self.dc_host, self.dc_host, sess_port=445, timeout=self.timeout)
 
             if self.use_kerberos:
                 ccache = self._resolve_ccache()
                 if not ccache:
-                    print(
-                        "FAILED (Kerberos requested but no ccache found"
-                        " -- set KRB5CCNAME or use --ccache)"
+                    self._log.warning(
+                        " [!] SMB connection FAILED: Kerberos requested but no ccache found"
+                        " -- set KRB5CCNAME or use --ccache"
                     )
                     return False
                 os.environ["KRB5CCNAME"] = ccache
@@ -317,11 +315,11 @@ class ADConnector:
                 )
 
             self.smb_conn = smb
-            print("OK")
+            self._log.info(" [*] Connected via SMB to %s:445 - OK", self.dc_host)
             return True
 
         except Exception as e:
-            print(f"FAILED ({e})")
+            self._log.warning(" [!] SMB connection to %s:445 FAILED: %s", self.dc_host, e)
             return False
 
     # ------------------------------------------------------------------
