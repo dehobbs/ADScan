@@ -58,6 +58,7 @@ def _is_legacy_os(os_str):
 
 def run_check(connector, verbose=False):
     findings = []
+    log = connector.log
 
     # Domain functional level
     domain_entries = connector.ldap_search(
@@ -87,9 +88,8 @@ def run_check(connector, verbose=False):
         except Exception:  # msDS-Behavior-Version absent or non-integer; level stays None
             pass
 
-    if verbose:
-        print(f"  DFL: {domain_level} ({_FUNC_LEVELS.get(domain_level, '?')})")
-        print(f"  FFL: {forest_level} ({_FUNC_LEVELS.get(forest_level, '?')})")
+    log.debug("  DFL: %s (%s)", domain_level, _FUNC_LEVELS.get(domain_level, "?"))
+    log.debug("  FFL: %s (%s)", forest_level, _FUNC_LEVELS.get(forest_level, "?"))
 
     if domain_level is not None:
         name = _FUNC_LEVELS.get(domain_level, f"Level {domain_level}")
@@ -157,8 +157,7 @@ def run_check(connector, verbose=False):
         sam    = _get_str(e, "sAMAccountName")
         if os_str and _is_legacy_os(os_str):
             legacy_dcs.append(f"{sam}: {os_str}")
-        if verbose:
-            print(f"  DC: {sam} | OS: {os_str or 'unknown'}")
+        log.debug("  DC: %s | OS: %s", sam, os_str or "unknown")
 
     if legacy_dcs:
         findings.append({
