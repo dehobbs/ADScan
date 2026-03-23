@@ -470,7 +470,7 @@ def main():
     log.info("=" * 60)
 
     findings = []
-    score = 100
+    score = scoring.initial_score
 
     for check in checks:
         log.info("")
