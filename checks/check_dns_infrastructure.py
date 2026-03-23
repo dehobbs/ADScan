@@ -27,6 +27,7 @@ def _get_str(entry, attr, default=""):
 
 def run_check(connector, verbose=False):
     findings = []
+    log = connector.log
 
     config_dn = "CN=Configuration," + connector.base_dn
 
@@ -44,8 +45,7 @@ def run_check(connector, verbose=False):
         if _get_str(e, "dc").strip() == "*"
     ]
 
-    if verbose:
-        print(f"  Wildcard DNS records: {len(wildcards_found)}")
+    log.debug("  Wildcard DNS records: %d", len(wildcards_found))
 
     if wildcards_found:
         findings.append({
@@ -107,9 +107,8 @@ def run_check(connector, verbose=False):
         search_base=sites_dn,
     ) or []
 
-    if verbose:
-        print(f"  AD Sites  : {len(site_entries)}")
-        print(f"  AD Subnets: {len(subnet_entries)}")
+    log.debug("  AD Sites  : %d", len(site_entries))
+    log.debug("  AD Subnets: %d", len(subnet_entries))
 
     unassigned = [_get_str(e, "cn") for e in subnet_entries if not _get_str(e, "siteObject")]
 
