@@ -848,7 +848,7 @@ def _run_certipy_check(connector, verbose=False):
         # Trigger LDAPS→LDAP fallback whenever SSL error patterns appear in output,
         # regardless of return code — Certipy may return 0 even on SSL failure.
         if _is_ldaps_error(stdout, stderr):
-                log.debug("  [Certipy] LDAPS connection failed — retrying with plain LDAP (-scheme ldap)..."))
+                log.debug("  [Certipy] LDAPS connection failed — retrying with plain LDAP (-scheme ldap)...")
             returncode, stdout, stderr = _run_certipy(
                 creds, cwd=artifacts_dir, scheme="ldap"
             )
