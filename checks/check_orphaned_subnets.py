@@ -39,11 +39,10 @@ def run_check(connector, verbose=False):
         assigned = []    # Has siteObject link
 
         for entry in subnet_results:
-            attrs = entry.get("attributes", {}) if isinstance(entry, dict) else {}
-            cn = attrs.get("cn", "unknown")
-            site_obj = attrs.get("siteObject")
-            desc = attrs.get("description", "") or ""
-            location = attrs.get("location", "") or ""
+            cn = entry.get("cn", "unknown")
+            site_obj = entry.get("siteObject")
+            desc = entry.get("description", "") or ""
+            location = entry.get("location", "") or ""
 
             label = cn
             if desc:
