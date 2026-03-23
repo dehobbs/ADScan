@@ -145,6 +145,8 @@ available to check modules is:
 | `connector.ldap_search(search_filter, attributes, search_base)` | Perform an LDAP search; returns a list of `ldap3` result entries or `[]` |
 | `connector.smb_available()` | Returns `True` if an SMB session is active |
 | `connector.get_smb_shares()` | Returns a list of share name strings |
+| `connector.resolve_sid(sid_str)` | Resolves a SID string to a `sAMAccountName` via LDAP; returns the original SID unchanged if not found |
+| `connector.log` | The shared `logging.getLogger("adscan")` logger instance — use `connector.log.debug(...)` for verbose output |
 | `connector.verbose` | Mirror of the `--verbose` CLI flag |
 
 **`ldap_search` signature:**
@@ -473,15 +475,21 @@ except Exception as e:
 
 **Verbose output convention:**
 
+Use `connector.log` (a standard Python `logging.Logger`) instead of `print()` so
+that output flows through `--log-file` and respects `--verbose`:
+
 ```python
-if verbose:
-    print(f"  [*] Checking {something} ...")
-    print(f"  [!] Found issue: {detail}")
-    print(f"  [OK] No issues for {topic}")
+def run_check(connector, verbose=False):
+    log = connector.log  # shared 'adscan' logger
+    ...
+    log.debug("  [*] Checking %s ...", something)
+    log.debug("  [!] Found issue: %s", detail)
+    log.debug("  [OK] No issues for %s", topic)
 ```
 
-Use two-space indentation for `[*]`/`[!]`/`[OK]` prefixes so output aligns
-with the main runner's console style.
+`log.debug()` messages appear on the console only when `--verbose` is set, and are
+always written to `--log-file` when one is configured. Use `log.warning()` for
+unexpected conditions that should be visible regardless of verbosity.
 
 ---
 
