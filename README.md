@@ -135,6 +135,112 @@ python adscan.py -d corp.local -u alice -p 'Secret1' --dc-ip 10.10.10.5 -v --log
 
 ---
 
+## Check Filtering
+
+ADScan supports running targeted subsets of checks — useful for time-constrained engagements or when you only want to assess a specific attack surface.
+
+### List available checks
+
+```bash
+python adscan.py --list-checks
+```
+
+Prints a formatted table of every check module with its slug, category, and display name:
+
+```
+ORDER  SLUG                                CATEGORY                  CHECK NAME
+----------------------------------------------------------------------------------------------------
+1      password_policy                     Account Hygiene           Domain Password Policy
+2      account_hygiene                     Account Hygiene           Account Hygiene
+3      kerberos                            Kerberos                  Kerberos Attack Surface
+...
+```
+
+Slugs are matched against the module filename, the words in `CHECK_NAME`, and the `CHECK_CATEGORY` value — so `kerberos`, `attack`, and `surface` all match the Kerberos check.
+
+### --checks: run only specific checks
+
+```bash
+# Run only Kerberos and delegation checks
+python adscan.py -d corp.local --dc-ip 10.10.10.5 -u alice -p 'P@ss' --checks kerberos,delegation
+
+# Run only ADCS-related checks
+python adscan.py -d corp.local --dc-ip 10.10.10.5 -u alice -p 'P@ss' --checks adcs
+```
+
+### --skip: exclude specific checks
+
+```bash
+# Skip GPP and SMB checks (e.g. SMB is firewalled)
+python adscan.py -d corp.local --dc-ip 10.10.10.5 -u alice -p 'P@ss' --skip gpp,smb
+
+# Skip DNS and replication checks
+python adscan.py -d corp.local --dc-ip 10.10.10.5 -u alice -p 'P@ss' --skip dns,replication
+```
+
+`--checks` and `--skip` can be combined: `--checks` restricts the candidate set first, then `--skip` removes from it.
+
+---
+
+## Scoring
+
+ADScan starts each scan at a score of **100** and deducts points per finding based on its severity. The final score maps to a letter grade:
+
+| Score | Grade |
+|-------|-------|
+| 90–100 | A |
+| 75–89 | B |
+| 60–74 | C |
+| 40–59 | D |
+| 0–39 | F |
+
+### Default severity deductions
+
+| Severity | Default Deduction |
+|----------|-------------------|
+| Critical | 20 pts |
+| High | 15 pts |
+| Medium | 8 pts |
+| Low | 5 pts |
+| Info | 0 pts |
+
+### Customising the score with scoring.toml
+
+Copy or edit `scoring.toml` (included in the repo) to tune deductions for your engagement without touching any check code.
+
+**Change the severity curve** (affects all findings of that tier):
+
+```toml
+[severity_weights]
+critical = 25
+high     = 15
+medium   = 5
+low      = 2
+info     = 0
+```
+
+**Override a single finding** (exact title match, takes precedence over severity weights):
+
+```toml
+[overrides]
+# Raise impact — unconstrained delegation is critical in your environment
+"User Accounts with Unconstrained Delegation" = 25
+
+# Lower impact — compensating control is already in place
+"Kerberoastable Service Accounts" = 3
+
+# Suppress from score entirely (finding still appears in the report)
+"Lockout Observation Window Too Short" = 0
+```
+
+Pass a custom config at runtime with `--scoring-config`:
+
+```bash
+python adscan.py -d corp.local --dc-ip 10.10.10.5 -u alice -p 'P@ss' --scoring-config my_scoring.toml
+```
+
+---
+
 ## Disclaimer
 
 ADScan is intended for authorised security assessments only. Always obtain written permission before scanning an Active Directory environment. Unauthorised use may violate computer crime laws.
