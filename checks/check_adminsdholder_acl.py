@@ -86,8 +86,7 @@ def run_check(connector, verbose=False):
         suspicious_aces = []
 
         for entry in results:
-            attrs = entry.get("attributes", {}) if isinstance(entry, dict) else {}
-            raw_sd = attrs.get("nTSecurityDescriptor")
+            raw_sd = entry.get("nTSecurityDescriptor")
 
             if not raw_sd:
                 continue
