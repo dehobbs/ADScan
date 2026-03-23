@@ -13,6 +13,7 @@ CHECK_CATEGORY = ["Privileged Accounts"]
 
 def run_check(connector, verbose=False):
     findings = []
+    log = connector.log
 
     # gMSA adoption
     try:
@@ -22,11 +23,9 @@ def run_check(connector, verbose=False):
             ["cn", "sAMAccountName"],
         ) or []
         gmsa_count = len(gmsas)
-        if verbose:
-            print(f"[ServiceAccounts] gMSAs found: {gmsa_count}")
+        log.debug("[ServiceAccounts] gMSAs found: %d", gmsa_count)
     except Exception as exc:
-        if verbose:
-            print(f"[ServiceAccounts] gMSA query error: {exc}")
+        log.warning("[ServiceAccounts] gMSA query error: %s", exc)
         gmsa_count = 0
 
     # Regular user accounts used as service accounts (SPN set, objectClass=user, not computer)
@@ -38,8 +37,7 @@ def run_check(connector, verbose=False):
              "userAccountControl", "pwdLastSet"],
         ) or []
     except Exception as exc:
-        if verbose:
-            print(f"[ServiceAccounts] SPN user query error: {exc}")
+        log.warning("[ServiceAccounts] SPN user query error: %s", exc)
         user_spn_accounts = []
 
     # Filter out krbtgt and typical system accounts
