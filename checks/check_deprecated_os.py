@@ -49,6 +49,7 @@ def _match(os_str, patterns):
 
 def run_check(connector, verbose=False):
     findings = []
+    log = connector.log
 
     try:
         computers = connector.ldap_search(
@@ -57,12 +58,10 @@ def run_check(connector, verbose=False):
             ["cn", "operatingSystem", "operatingSystemVersion", "dNSHostName"],
         ) or []
     except Exception as exc:
-        if verbose:
-            print(f"[DeprecatedOS] LDAP error: {exc}")
+        log.warning("[DeprecatedOS] LDAP error: %s", exc)
         return findings
 
-    if verbose:
-        print(f"[DeprecatedOS] Total enabled computers: {len(computers)}")
+    log.debug("[DeprecatedOS] Total enabled computers: %d", len(computers))
 
     # Categorise
     critical_workstations = []
@@ -141,7 +140,6 @@ def run_check(connector, verbose=False):
         })
 
     if not critical_workstations and not critical_servers and not high_servers:
-        if verbose:
-            print("[DeprecatedOS] No deprecated operating systems detected.")
+        log.debug("[DeprecatedOS] No deprecated operating systems detected.")
 
     return findings
