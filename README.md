@@ -1,5 +1,5 @@
 # ADScan
-**Active Directory Vulnerability Scanner** — a modular, Python-based tool that connects to domain controllers via LDAP, LDAPS, and/or SMB, runs a comprehensive battery of security checks, and produces a self-contained HTML dashboard report with a risk score.
+**Active Directory Vulnerability Scanner** is a modular, Python-based tool that connects to domain controllers via LDAP, LDAPS, and/or SMB, runs a comprehensive battery of security checks, and produces a self-contained HTML dashboard report with a risk score.
 
 ---
 
@@ -10,7 +10,7 @@
 - **Risk score**: starts at 100, deducted per finding (floor 0), letter grade A–F
 - **HTML report**: fully self-contained, light/dark mode toggle, severity chips, collapsible finding cards
 - **JSON / CSV output**: machine-readable exports alongside the HTML report
-- **Modular**: drop a new `check_*.py` file in `checks/` — it's auto-discovered at runtime
+- **Modular**: drop a new `check_*.py` file in `checks/`; it's auto-discovered at runtime
 - **36 security checks** covering the most critical AD attack surfaces
 
 ---
@@ -68,7 +68,7 @@ python adscan.py -d <domain> --dc-ip <dc_ip> -u <username> --ccache /tmp/user.cc
 
 ### Kerberos / assumed-breach authentication
 
-ADScan supports Kerberos ticket reuse via a ccache file — the standard Linux credential store written by `kinit`, `getTGT.py`, and similar tools.  This is useful when:
+ADScan supports Kerberos ticket reuse via a ccache file; the standard Linux credential store written by `kinit`, `getTGT.py`, and similar tools.  This is useful when:
 
 - The target environment has **NTLM disabled** (common in hardened AD configurations).
 - You are operating in an **assumed-breach** scenario and already hold a valid TGT or service ticket.
@@ -79,7 +79,7 @@ ADScan supports Kerberos ticket reuse via a ccache file — the standard Linux c
 ```bash
 # Obtain a TGT with impacket
 getTGT.py corp.local/alice:'P@ssw0rd!' -dc-ip 10.10.10.5
-export KRB5CCNAME=alice.ccache
+export KRB5CCNAME=$(pwd)/alice.ccache
 
 # ADScan picks it up automatically
 python adscan.py -d corp.local --dc-ip 10.10.10.5 -u alice --kerberos
@@ -137,7 +137,7 @@ python adscan.py -d corp.local -u alice -p 'Secret1' --dc-ip 10.10.10.5 -v --log
 
 ## Check Filtering
 
-ADScan supports running targeted subsets of checks — useful for time-constrained engagements or when you only want to assess a specific attack surface.
+ADScan supports running targeted subsets of checks which is useful for time-constrained engagements or when you only want to assess a specific attack surface.
 
 ### List available checks
 
@@ -156,7 +156,7 @@ ORDER  SLUG                                CATEGORY                  CHECK NAME
 ...
 ```
 
-Slugs are matched against the module filename, the words in `CHECK_NAME`, and the `CHECK_CATEGORY` value — so `kerberos`, `attack`, and `surface` all match the Kerberos check.
+Slugs are matched against the module filename, the words in `CHECK_NAME`, and the `CHECK_CATEGORY` value so `kerberos`, `attack`, and `surface` all match the Kerberos check.
 
 ### --checks: run only specific checks
 
@@ -223,10 +223,10 @@ info     = 0
 
 ```toml
 [overrides]
-# Raise impact — unconstrained delegation is critical in your environment
+# Raise impact (unconstrained delegation is critical in your environment)
 "User Accounts with Unconstrained Delegation" = 25
 
-# Lower impact — compensating control is already in place
+# Lower impact (compensating control is already in place)
 "Kerberoastable Service Accounts" = 3
 
 # Suppress from score entirely (finding still appears in the report)
