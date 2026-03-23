@@ -148,14 +148,13 @@ def run_check(connector, verbose=False):
         computer_hits = []
 
         for obj_type, entry in all_results:
-            attrs = entry.get("attributes", {}) if isinstance(entry, dict) else {}
-            sam = attrs.get("sAMAccountName", "unknown")
-            dn = attrs.get("distinguishedName", "")
-            key_links = attrs.get("msDS-KeyCredentialLink", [])
+            sam = entry.get("sAMAccountName", "unknown")
+            dn = entry.get("distinguishedName", "")
+            key_links = entry.get("msDS-KeyCredentialLink", [])
             if not isinstance(key_links, list):
                 key_links = [key_links]
-            admin_count = int(attrs.get("adminCount", 0) or 0)
-            uac = int(attrs.get("userAccountControl", 0) or 0)
+            admin_count = int(entry.get("adminCount", 0) or 0)
+            uac = int(entry.get("userAccountControl", 0) or 0)
             is_dc = bool(uac & 0x2000)  # SERVER_TRUST_ACCOUNT
 
             for i, kl in enumerate(key_links):
