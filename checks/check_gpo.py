@@ -48,6 +48,7 @@ def _get_int(entry, attr, default=0):
 
 def run_check(connector, verbose=False):
     findings = []
+    log = connector.log
 
     gpo_base = f"CN=Policies,CN=System,{connector.base_dn}"
 
@@ -58,13 +59,11 @@ def run_check(connector, verbose=False):
     ) or []
 
     if not gpo_entries:
-        if verbose:
-            print("  [INFO] No GPOs found or LDAP query failed.")
+        log.debug("  [INFO] No GPOs found or LDAP query failed.")
         return findings
 
     total_gpos = len(gpo_entries)
-    if verbose:
-        print(f"     Total GPOs found: {total_gpos}")
+    log.debug("     Total GPOs found: %d", total_gpos)
 
     # Collect all GPO GUIDs from gpLink attributes across the domain
     # Search for all objects with gpLink (OUs, domain root, sites)
@@ -111,10 +110,9 @@ def run_check(connector, verbose=False):
         if cn_val and cn_val not in linked_guids:
             unlinked_gpos.append(f"{name} [{cn_val}]")
 
-    if verbose:
-        print(f"     Disabled GPOs : {len(disabled_gpos)}")
-        print(f"     Empty GPOs    : {len(empty_gpos)}")
-        print(f"     Unlinked GPOs : {len(unlinked_gpos)}")
+    log.debug("     Disabled GPOs : %d", len(disabled_gpos))
+    log.debug("     Empty GPOs    : %d", len(empty_gpos))
+    log.debug("     Unlinked GPOs : %d", len(unlinked_gpos))
 
     if disabled_gpos:
         findings.append({
