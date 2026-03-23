@@ -65,6 +65,7 @@ def _filetime_to_minutes(filetime_val):
 def run_check(connector, verbose=False):
     """Query and evaluate the Default Domain Password Policy."""
     findings = []
+    log = connector.log
 
     entries = connector.ldap_search(
         search_filter="(objectClass=domainDNS)",
@@ -72,8 +73,7 @@ def run_check(connector, verbose=False):
     )
 
     if not entries:
-        if verbose:
-            print("  [WARN] Could not retrieve domain password policy via LDAP.")
+        log.warning("  [WARN] Could not retrieve domain password policy via LDAP.")
         return findings
 
     entry = entries[0]
@@ -98,14 +98,13 @@ def run_check(connector, verbose=False):
     complexity_enabled = bool(int(pwd_props or 0) & _FLAG_COMPLEXITY)
     reversible_enabled = bool(int(pwd_props or 0) & _FLAG_REVERSIBLE)
 
-    if verbose:
-        print(f"     Min Password Length  : {min_pwd_len}")
-        print(f"     Password History     : {pwd_history}")
-        print(f"     Complexity Enabled   : {complexity_enabled}")
-        print(f"     Reversible Encryption: {reversible_enabled}")
-        print(f"     Max Password Age     : {max_pwd_age_days} days (0=never expires)")
-        print(f"     Lockout Threshold    : {lockout_threshold} attempts")
-        print(f"     Lockout Window       : {lockout_window_mins} minutes")
+    log.debug("     Min Password Length  : %s", min_pwd_len)
+    log.debug("     Password History     : %s", pwd_history)
+    log.debug("     Complexity Enabled   : %s", complexity_enabled)
+    log.debug("     Reversible Encryption: %s", reversible_enabled)
+    log.debug("     Max Password Age     : %s days (0=never expires)", max_pwd_age_days)
+    log.debug("     Lockout Threshold    : %s attempts", lockout_threshold)
+    log.debug("     Lockout Window       : %s minutes", lockout_window_mins)
 
     # ----------------------------------------------------------------
     # Lockout threshold (most critical)
