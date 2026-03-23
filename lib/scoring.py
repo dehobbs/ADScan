@@ -81,6 +81,7 @@ class ScoringConfig:
         severity_weights: dict[str, int],
         overrides: dict[str, int],
         source: str,
+        initial_score: int = 100,
     ) -> None:
         # Normalise severity keys to lowercase
         self._weights: dict[str, int] = {
@@ -90,6 +91,7 @@ class ScoringConfig:
             str(k): int(v) for k, v in overrides.items()
         }
         self._source = source
+        self._initial_score: int = max(0, min(100, int(initial_score)))
 
     # ------------------------------------------------------------------
     # Factory
@@ -133,6 +135,7 @@ class ScoringConfig:
 
         weights = data.get("severity_weights", {})
         overrides = data.get("overrides", {})
+        initial_score = int(data.get("initial_score", 100))
 
         # Merge with built-ins so any missing severity tier still has a value
         merged_weights = dict(_BUILTIN_SEVERITY_WEIGHTS)
@@ -142,6 +145,7 @@ class ScoringConfig:
             severity_weights=merged_weights,
             overrides=overrides,
             source=resolved,
+            initial_score=initial_score,
         )
 
     @classmethod
@@ -184,6 +188,11 @@ class ScoringConfig:
     def source(self) -> str:
         """Path or description of where this config was loaded from."""
         return self._source
+
+    @property
+    def initial_score(self) -> int:
+        """Starting score before deductions (default 100; configurable via scoring.toml)."""
+        return self._initial_score
 
     def summary(self) -> str:
         """One-line human-readable summary for the startup banner."""
