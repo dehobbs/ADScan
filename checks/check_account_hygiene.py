@@ -97,6 +97,7 @@ def _spns(entry):
 
 def run_check(connector, verbose=False):
     findings = []
+    log = connector.log
 
     now            = datetime.now(tz=timezone.utc)
     stale_cutoff   = now - timedelta(days=_STALE_DAYS)
@@ -190,15 +191,14 @@ def run_check(connector, verbose=False):
         if len(accounts) > 1
     }
 
-    if verbose:
-        print(f"  Enabled users       : {len(user_entries)}")
-        print(f"  Stale users         : {len(stale_users)}")
-        print(f"  Never-logon users   : {len(never_logon_users)}")
-        print(f"  PASSWD_NOTREQD      : {len(passwd_notreqd)}")
-        print(f"  Reversible enc      : {len(reversible_enc)}")
-        print(f"  Old password users  : {len(old_pwd_users)}")
-        print(f"  Stale computers     : {len(stale_comps)}")
-        print(f"  Duplicate SPNs      : {len(dup_spns)}")
+    log.debug("  Enabled users       : %d", len(user_entries))
+    log.debug("  Stale users         : %d", len(stale_users))
+    log.debug("  Never-logon users   : %d", len(never_logon_users))
+    log.debug("  PASSWD_NOTREQD      : %d", len(passwd_notreqd))
+    log.debug("  Reversible enc      : %d", len(reversible_enc))
+    log.debug("  Old password users  : %d", len(old_pwd_users))
+    log.debug("  Stale computers     : %d", len(stale_comps))
+    log.debug("  Duplicate SPNs      : %d", len(dup_spns))
 
     # -----------------------------------------------------------------------
     # Build findings
