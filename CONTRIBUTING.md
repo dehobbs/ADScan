@@ -178,8 +178,7 @@ Or use the dict-based pattern (entries returned as dicts when using
 def _get_attr(entry, key):
     """Return a normalised string value for an ldap3 result entry attribute."""
     try:
-        attrs = entry.get("attributes", {}) if isinstance(entry, dict) else {}
-        val = attrs.get(key)
+        val = entry.get(key)
         if val is None:
             return None
         return str(val) if not hasattr(val, "value") else str(val.value)
@@ -423,8 +422,7 @@ uncomment or add a line in the `[overrides]` section:
 ```python
 def _get_attr(entry, key, default=None):
     try:
-        attrs = entry.get("attributes", {}) if isinstance(entry, dict) else {}
-        val = attrs.get(key)
+        val = entry.get(key)
         if val is None:
             return default
         return str(val) if not hasattr(val, "value") else str(val.value)
