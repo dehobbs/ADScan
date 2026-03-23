@@ -48,17 +48,16 @@ _TIER1_GROUPS = [
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _is_disabled(attrs):
+def _is_disabled(entry):
     try:
-        return bool(int(attrs.get("userAccountControl", 0)) & _UAC_DISABLED)
+        return bool(int(entry.get("userAccountControl", 0)) & _UAC_DISABLED)
     except Exception:
         return False
 
 
 def _get_sam(entry):
     try:
-        attrs = entry.get("attributes", {}) if isinstance(entry, dict) else {}
-        val = attrs.get("sAMAccountName", "?")
+        val = entry.get("sAMAccountName", "?")
         return str(val) if not hasattr(val, "value") else str(val.value)
     except Exception:
         return "?"
@@ -67,8 +66,7 @@ def _get_sam(entry):
 def _get_attr(entry, key):
     """Return a normalised string value for an attribute from an ldap3 result entry."""
     try:
-        attrs = entry.get("attributes", {}) if isinstance(entry, dict) else {}
-        val = attrs.get(key)
+        val = entry.get(key)
         if val is None:
             return None
         return str(val) if not hasattr(val, "value") else str(val.value)
@@ -101,8 +99,7 @@ def _get_group_members(connector, group_dn):
         return []
     enabled = []
     for entry in results:
-        attrs = entry.get("attributes", {}) if isinstance(entry, dict) else {}
-        if not _is_disabled(attrs):
+        if not _is_disabled(entry):
             enabled.append(entry)
     return enabled
 
