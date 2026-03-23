@@ -169,6 +169,7 @@ def _search_group(connector, group_name):
 
 def run_check(connector, verbose=False):
     findings = []
+    log = connector.log
     now = datetime.now(tz=timezone.utc)
     stale_threshold = now - timedelta(days=90)
     krbtgt_threshold = now - timedelta(days=180)
@@ -185,8 +186,7 @@ def run_check(connector, verbose=False):
         group_dn = str(group_entry.get("distinguishedName") or group_entry.get("dn") or "")
         members = _resolve_members(connector, group_dn, verbose)
         active_members = [e for e in members if not _is_disabled(e)]
-        if verbose:
-            print(f"     {group_name}: {len(active_members)} active member(s)")
+        log.debug("     %s: %d active member(s)", group_name, len(active_members))
         tier0_members_all[group_name] = active_members
 
     # Collect all unique privileged user entries (deduplicated by SAM)
