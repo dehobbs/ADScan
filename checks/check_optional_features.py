@@ -12,6 +12,7 @@ CHECK_CATEGORY = ["Domain Hygiene"]
 
 def run_check(connector, verbose=False):
     findings = []
+    log = connector.log
 
     features_dn = (
         "CN=Optional Features,CN=Directory Service,CN=Windows NT,"
@@ -26,8 +27,7 @@ def run_check(connector, verbose=False):
             scope="ONELEVEL",
         ) or []
     except Exception as exc:
-        if verbose:
-            print(f"[OptionalFeatures] LDAP error: {exc}")
+        log.warning("[OptionalFeatures] LDAP error: %s", exc)
         return findings
 
     feature_names = {f.get("cn", "").lower(): f for f in features}
@@ -59,8 +59,7 @@ def run_check(connector, verbose=False):
             "details": [],
         })
     else:
-        if verbose:
-            print("[OptionalFeatures] AD Recycle Bin is enabled.")
+        log.debug("[OptionalFeatures] AD Recycle Bin is enabled.")
 
     # Privileged Access Management (PAM)
     pam_enabled = False
@@ -90,7 +89,6 @@ def run_check(connector, verbose=False):
             "details": [],
         })
     else:
-        if verbose:
-            print("[OptionalFeatures] PAM feature is enabled.")
+        log.debug("[OptionalFeatures] PAM feature is enabled.")
 
     return findings
