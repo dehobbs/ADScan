@@ -148,8 +148,7 @@ def run_check(connector, verbose=False):
             gpo_paths = []
             if gpo_results:
                 for entry in gpo_results:
-                    attrs = entry.get("attributes", {}) if isinstance(entry, dict) else {}
-                    fspath = attrs.get("gPCFileSysPath", "")
+                    fspath = entry.get("gPCFileSysPath", "")
                     if fspath:
                         gpo_paths.append(fspath)
 
