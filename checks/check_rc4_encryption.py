@@ -75,15 +75,14 @@ def run_check(connector, verbose=False):
         des_accounts   = []
 
         for entry in results:
-            attrs = entry.get("attributes", {}) if isinstance(entry, dict) else {}
-            sam = attrs.get("sAMAccountName", "unknown")
-            dn = attrs.get("distinguishedName", "")
-            uac = int(attrs.get("userAccountControl", 0) or 0)
-            enc_raw = attrs.get("msDS-SupportedEncryptionTypes")
-            spns = attrs.get("servicePrincipalName") or []
+            sam = entry.get("sAMAccountName", "unknown")
+            dn = entry.get("distinguishedName", "")
+            uac = int(entry.get("userAccountControl", 0) or 0)
+            enc_raw = entry.get("msDS-SupportedEncryptionTypes")
+            spns = entry.get("servicePrincipalName") or []
             if isinstance(spns, str):
                 spns = [spns]
-            admin_count = int(attrs.get("adminCount", 0) or 0)
+            admin_count = int(entry.get("adminCount", 0) or 0)
 
             is_dc = bool(uac & UAC_SERVER_TRUST)
 
