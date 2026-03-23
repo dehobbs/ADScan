@@ -129,6 +129,7 @@ def _trust_label(entry):
 
 def run_check(connector, verbose=False):
     findings = []
+    log = connector.log
 
     trust_entries = connector.ldap_search(
         search_filter="(objectClass=trustedDomain)",
@@ -136,12 +137,10 @@ def run_check(connector, verbose=False):
     )
 
     if not trust_entries:
-        if verbose:
-            print("  [INFO] No domain trusts found (or LDAP query returned no results).")
+        log.debug("  [INFO] No domain trusts found (or LDAP query returned no results).")
         return findings
 
-    if verbose:
-        print(f"     Total trust relationships found: {len(trust_entries)}")
+    log.debug("     Total trust relationships found: %d", len(trust_entries))
 
     bidir_no_filter     = []   # Bidirectional, SID filtering disabled -> critical
     forest_trusts       = []   # Forest trusts (any direction)
@@ -187,8 +186,7 @@ def run_check(connector, verbose=False):
         summary = f"{label} | Attrs: [{', '.join(attrs)}]"
         all_trusts_summary.append(summary)
 
-        if verbose:
-            print(f"     {summary}")
+        log.debug("     %s", summary)
 
         # Skip within-forest parent-child trusts (normal, expected)
         if is_within_forest:
