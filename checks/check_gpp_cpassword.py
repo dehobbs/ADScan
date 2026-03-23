@@ -88,6 +88,7 @@ def _find_cpasswords_in_xml(xml_content, source_path):
 
 def run_check(connector, verbose=False):
     findings = []
+    log = connector._log
     all_hits = []
 
     try:
@@ -96,9 +97,8 @@ def run_check(connector, verbose=False):
         # ------------------------------------------------------------------ #
         smb_searched = False
         try:
-            smb_conn = getattr(connector, "smb_connection", None)
+            smb_conn = connector.smb_conn
             if smb_conn:
-                sysvol_path = f"\\\\{connector.dc_host}\\SYSVOL\\{connector.domain}\\Policies"
                 # Walk SYSVOL via SMB and search for GPP XML files
                 # This is a best-effort scan; errors are caught and noted
                 try:
