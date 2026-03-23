@@ -66,13 +66,12 @@ def run_check(connector, verbose=False):
         not_covered = []   # no LAPS password detected
 
         for entry in all_computers:
-            attrs = entry.get("attributes", {}) if isinstance(entry, dict) else {}
-            cn = attrs.get("cn", str(entry))
+            cn = entry.get("cn", str(entry))
 
-            has_legacy  = bool(attrs.get("ms-Mcs-AdmPwd"))
+            has_legacy  = bool(entry.get("ms-Mcs-AdmPwd"))
             has_win_laps = (
-                bool(attrs.get("msLAPS-Password")) or
-                bool(attrs.get("msLAPS-EncryptedPassword"))
+                bool(entry.get("msLAPS-Password")) or
+                bool(entry.get("msLAPS-EncryptedPassword"))
             )
 
             if has_legacy or has_win_laps:
