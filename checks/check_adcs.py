@@ -1,8 +1,8 @@
 """
-checks/check_adcs_combined.py - ADCS / PKI Vulnerability Check (Combined)
+checks/check_adcs.py - ADCS / PKI Vulnerability Check
 
-This module merges the LDAP-based ESC checks (check_adcs.py) with the
-Certipy-based deep enumeration (check_adcs_certipy.py) into a single unified check.
+Combines LDAP-based ESC checks with optional Certipy-based deep enumeration
+into a single unified check.
 
 Execution order:
   1. LDAP checks  -- always run; enumerate CAs, templates, and flag ESC1-16 via
@@ -400,12 +400,10 @@ def _run_ldap_checks(connector, verbose=False):
         search_base=enroll_dn,
     )
     if not ca_entries:
-        if verbose:
-            print("  [INFO] No ADCS Certification Authority found in this domain.")
+        log.debug("  [INFO] No ADCS Certification Authority found in this domain.")
         return findings
     ca_names = [_get_name(e) for e in ca_entries]
-    if verbose:
-        print(f"  CA(s) found: {', '.join(ca_names)}")
+    log.debug("  CA(s) found: %s", ', '.join(ca_names))
 
     # -------------------------------------------------------------------
     # ESC6: CA has EDITF_ATTRIBUTESUBJECTALTNAME2 flag
@@ -471,11 +469,9 @@ def _run_ldap_checks(connector, verbose=False):
         search_base=tmpl_dn,
     )
     if not tmpl_entries:
-        if verbose:
-            print("  [INFO] No certificate templates found.")
+        log.debug("  [INFO] No certificate templates found.")
         return findings
-    if verbose:
-        print(f"  Certificate templates found: {len(tmpl_entries)}")
+    log.debug("  Certificate templates found: %d", len(tmpl_entries))
 
     esc1_templates  = []
     esc2_templates  = []
@@ -789,6 +785,8 @@ def _run_certipy_check(connector, verbose=False):
     Returns an empty list if Certipy is unavailable or credentials are missing.
     """
     findings = []
+    log = connector._log
+    log = connector._log
 
     # -- Check Certipy is available ---------------------------------------
     if not _certipy_available():
@@ -831,9 +829,7 @@ def _run_certipy_check(connector, verbose=False):
         })
         return findings
 
-    if verbose:
-        print(f"  [Certipy] Running as {creds['username']}@{creds['domain']} "
-              f"against DC {creds['dc_ip']}")
+    log.debug("  [Certipy] Running as %s@%s against DC %s", creds['username'], creds['domain'], creds['dc_ip'])
 
     # -- Build artifact output path ---------------------------------------
     artifacts_dir  = os.path.abspath(getattr(connector, "artifacts_dir",
@@ -852,8 +848,7 @@ def _run_certipy_check(connector, verbose=False):
         # Trigger LDAPS→LDAP fallback whenever SSL error patterns appear in output,
         # regardless of return code — Certipy may return 0 even on SSL failure.
         if _is_ldaps_error(stdout, stderr):
-            if verbose:
-                print("  [Certipy] LDAPS connection failed — retrying with plain LDAP (-scheme ldap)...")
+                log.debug("  [Certipy] LDAPS connection failed — retrying with plain LDAP (-scheme ldap)..."))
             returncode, stdout, stderr = _run_certipy(
                 creds, cwd=artifacts_dir, scheme="ldap"
             )
@@ -874,11 +869,12 @@ def _run_certipy_check(connector, verbose=False):
                 stdout=stdout,
                 stderr=stderr,
             )
-        if verbose:
-            if ldap_fallback_used:
-                print("  [Certipy] Running via plain LDAP (LDAPS unavailable on DC)")
-            if stdout: print(f"  [Certipy stdout]\n{stdout[:2000]}")
-            if stderr: print(f"  [Certipy stderr]\n{stderr[:1000]}")
+        if ldap_fallback_used:
+            log.debug("  [Certipy] Running via plain LDAP (LDAPS unavailable on DC)")
+        if stdout:
+            log.debug("  [Certipy stdout]\n%s", stdout[:2000])
+        if stderr:
+            log.debug("  [Certipy stderr]\n%s", stderr[:1000])
 
         if returncode != 0:
             findings.append({
@@ -929,9 +925,8 @@ def _run_certipy_check(connector, verbose=False):
             })
             return findings
 
-        if verbose:
-            scheme_label = "LDAP (fallback)" if ldap_fallback_used else "LDAPS"
-            print(f"  [Certipy] Artifact saved ({scheme_label}): {actual_json}")
+        scheme_label = "LDAP (fallback)" if ldap_fallback_used else "LDAPS"
+        log.debug("  [Certipy] Artifact saved (%s): %s", scheme_label, actual_json)
 
         parsed = _parse_certipy_json(actual_json)
         if parsed:
