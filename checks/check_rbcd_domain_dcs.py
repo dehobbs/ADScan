@@ -1,3 +1,26 @@
+"""
+checks/check_rbcd_domain_dcs.py - Resource-Based Constrained Delegation (RBCD) Check
+
+Detects dangerous RBCD configuration on high-value targets: the domain NC head
+and all Domain Controller computer objects.
+
+RBCD is controlled by the msDS-AllowedToActOnBehalfOfOtherIdentity attribute,
+which holds a binary security descriptor (DACL). Any principal listed in that
+DACL can use S4U2Proxy to impersonate ANY user (including Domain Admins) to
+services on the target object.
+
+On a Domain Controller this is equivalent to Domain Admin access via Kerberos
+without knowing any password — a critical persistence and privilege escalation
+path abused by tools such as Rubeus and Impacket.
+
+LDAP attributes queried:
+  msDS-AllowedToActOnBehalfOfOtherIdentity  -- binary security descriptor
+  sAMAccountName, distinguishedName, dNSHostName  -- for DC identification
+
+Risk Deductions:
+  Critical (-20): any unexpected principal with S4U2Proxy rights on the
+                  domain NC head or a DC computer object.
+"""
 CHECK_NAME = "RBCD on Domain Object / DCs"
 CHECK_ORDER = 72
 CHECK_CATEGORY = ["Kerberos"]
@@ -69,6 +92,7 @@ SAFE_SIDS = {
 
 def run_check(connector, verbose=False):
     findings = []
+    log = connector._log
 
     try:
         # ------------------------------------------------------------------ #
