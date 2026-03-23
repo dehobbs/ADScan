@@ -226,6 +226,17 @@ def parse_args():
         help=f"Output report path stem (default: {REPORTS_DIR}/adscan_report_<timestamp>)",
     )
     output_group.add_argument(
+        "--output-dir",
+        default=None,
+        metavar="DIR",
+        dest="output_dir",
+        help=(
+            "Directory for output reports (overrides the default Reports/ folder). "
+            "The filename is auto-generated as adscan_report_<timestamp>. "
+            "Ignored if -o/--output is also specified."
+        ),
+    )
+    output_group.add_argument(
         "-v", "--verbose",
         action="store_true",
         help=(
@@ -355,10 +366,13 @@ def main():
     scan_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     # Determine output stem (extension is added per format)
-    if args.output is None:
-        output_stem = os.path.join(REPORTS_DIR, f"adscan_report_{scan_timestamp}")
-    else:
+    if args.output is not None:
         output_stem, _ = os.path.splitext(args.output)
+    elif args.output_dir is not None:
+        os.makedirs(args.output_dir, exist_ok=True)
+        output_stem = os.path.join(args.output_dir, f"adscan_report_{scan_timestamp}")
+    else:
+        output_stem = os.path.join(REPORTS_DIR, f"adscan_report_{scan_timestamp}")
 
     # Make sure the output directory exists
     ensure_reports_dir(output_stem + ".html")
