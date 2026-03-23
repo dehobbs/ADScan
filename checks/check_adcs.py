@@ -96,6 +96,9 @@ _CA_ATTRS = [
     "flags", "msPKI-Private-Key-Flag", "cACertificate", "certificateTemplates",
 ]
 
+# CA flags: bit 0x200 = CA_FLAG_IGNORE_ENROLLMENT_AUTH_DATA (EPA disabled for Web Enrollment)
+_CA_FLAG_EPA_DISABLED = 0x200
+
 # ---------------------------------------------------------------------------
 # Certipy severity / description / recommendation maps
 # ---------------------------------------------------------------------------
@@ -542,29 +545,39 @@ def _run_ldap_checks(connector, verbose=False):
 
     # -------------------------------------------------------------------
     # ESC8: Web Enrollment endpoint (HTTP NTLM relay)
+    # Fires only for CAs where EPA cannot be confirmed as enforced.
+    # The CA "flags" attribute bit 0x200 (CA_FLAG_IGNORE_ENROLLMENT_AUTH_DATA)
+    # indicates EPA is NOT enforced.  If the attribute is absent (None/0) we
+    # cannot confirm protection and conservatively flag the CA.
     # -------------------------------------------------------------------
-    findings.append({
-        "title": "ESC8: Potential NTLM Relay to ADCS Web Enrollment Endpoint",
-        "severity":  "high",
-        "deduction": 15,
-        "description": (
-            f"Active Directory Certificate Services is deployed in this domain "
-            f"(CA(s): {', '.join(ca_names)}). "
-            "If the IIS-based Web Enrollment role (certsrv) is enabled on any CA, "
-            "it is likely vulnerable to NTLM relay attacks (ESC8). "
-            "An attacker can coerce authentication from a privileged host and relay "
-            "it to the Web Enrollment endpoint to obtain a certificate as that host, "
-            "enabling DCSync or full domain compromise via UnPAC-the-Hash or PKINIT."
-        ),
-        "recommendation": (
-            "1. Disable the Web Enrollment (certsrv) IIS role if not required. "
-            "2. If required, enable EPA and HTTPS. "
-            "3. Enable SMB signing on all domain-joined systems. "
-            "4. Block intra-domain NTLM where possible (LmCompatibilityLevel=5). "
-            "Verify: https://<CA-host>/certsrv -- if accessible, Web Enrollment is enabled."
-        ),
-        "details": [f"CA host: {_get_str(ca, 'dNSHostName') or _get_name(ca)}" for ca in ca_entries],
-    })
+    cas_without_epa = [
+        ca for ca in ca_entries
+        if (int(_get_str(ca, "flags") or 0) & _CA_FLAG_EPA_DISABLED) or
+           not _get_str(ca, "flags")
+    ]
+    if cas_without_epa:
+        findings.append({
+            "title": "ESC8: Potential NTLM Relay to ADCS Web Enrollment Endpoint",
+            "severity":  "high",
+            "deduction": 15,
+            "description": (
+                f"Active Directory Certificate Services is deployed in this domain "
+                f"(CA(s): {', '.join(ca_names)}). "
+                "If the IIS-based Web Enrollment role (certsrv) is enabled on any CA, "
+                "it is likely vulnerable to NTLM relay attacks (ESC8). "
+                "An attacker can coerce authentication from a privileged host and relay "
+                "it to the Web Enrollment endpoint to obtain a certificate as that host, "
+                "enabling DCSync or full domain compromise via UnPAC-the-Hash or PKINIT."
+            ),
+            "recommendation": (
+                "1. Disable the Web Enrollment (certsrv) IIS role if not required. "
+                "2. If required, enable EPA (Extended Protection for Authentication) and HTTPS. "
+                "3. Enable SMB signing on all domain-joined systems. "
+                "4. Block intra-domain NTLM where possible (LmCompatibilityLevel=5). "
+                "Verify: https://<CA-host>/certsrv -- if accessible, Web Enrollment is enabled."
+            ),
+            "details": [f"CA host: {_get_str(ca, 'dNSHostName') or _get_name(ca)}" for ca in cas_without_epa],
+        })
 
     # -------------------------------------------------------------------
     # ESC10: Certificate mapping via UPN without strong mapping
