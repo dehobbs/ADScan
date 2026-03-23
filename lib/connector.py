@@ -209,6 +209,45 @@ class ADConnector:
             self._log.warning("  [WARN] SMB listShares failed: %s", e)
             return []
 
+    @property
+    def log(self):
+        """Return the shared 'adscan' logger for use by check modules."""
+        return self._log
+
+    def resolve_sid(self, sid_str):
+        """Resolve a SID string to a sAMAccountName via an LDAP objectSid lookup.
+
+        Active Directory supports filtering on ``objectSid`` using the standard
+        string SID syntax, e.g. ``(objectSid=S-1-5-21-...-1104)``.
+
+        Returns the sAMAccountName if found, or the original *sid_str* unchanged
+        when the lookup fails or the SID has no matching object in the directory.
+
+        Parameters
+        ----------
+        sid_str : str
+            A string SID (e.g. ``S-1-5-21-...-1104``).
+
+        Returns
+        -------
+        str
+            Resolved account name (e.g. ``CORP\\\\john``) or original SID.
+        """
+        if not sid_str or not self.ldap_conn:
+            return sid_str
+        try:
+            results = self.ldap_search(
+                search_filter=f"(objectSid={sid_str})",
+                attributes=["sAMAccountName", "distinguishedName"],
+            )
+            if results:
+                sam = results[0].get("sAMAccountName")
+                if sam:
+                    return str(sam)
+        except Exception as e:
+            self._log.debug(" [DEBUG] resolve_sid(%s) failed: %s", sid_str, e)
+        return sid_str
+
     # ------------------------------------------------------------------
     # Internal - connection helpers
     # ------------------------------------------------------------------
