@@ -107,6 +107,7 @@ def _is_des_only(entry):
 
 def run_check(connector, verbose=False):
     findings = []
+    log = connector.log
 
     # -----------------------------------------------------------------------
     # 1 & 4. Kerberoastable accounts (SPN on user object)
@@ -142,9 +143,8 @@ def run_check(connector, verbose=False):
         else:
             kerberoastable.append(label)
 
-    if verbose:
-        print(f"     Kerberoastable accounts          : {len(kerberoastable)}")
-        print(f"     High-value Kerberoastable        : {len(high_value_kerb)}")
+    log.debug("     Kerberoastable accounts          : %d", len(kerberoastable))
+    log.debug("     High-value Kerberoastable        : %d", len(high_value_kerb))
 
     # High-value combo: adminCount=1 + SPN + PasswordNeverExpires (most critical)
     if high_value_kerb:
@@ -213,8 +213,7 @@ def run_check(connector, verbose=False):
         label = sam + (" [adminCount=1]" if is_admin else "")
         asrep_accounts.append(label)
 
-    if verbose:
-        print(f"     AS-REP Roastable accounts        : {len(asrep_accounts)}")
+    log.debug("     AS-REP Roastable accounts        : %d", len(asrep_accounts))
 
     if asrep_accounts:
         findings.append({
@@ -271,8 +270,7 @@ def run_check(connector, verbose=False):
         if _is_des_only(entry):
             des_accounts.append(sam + " [via msDS-SupportedEncryptionTypes]")
 
-    if verbose:
-        print(f"     DES-only accounts                : {len(des_accounts)}")
+    log.debug("     DES-only accounts                : %d", len(des_accounts))
 
     if des_accounts:
         findings.append({
