@@ -79,7 +79,7 @@ ADScan supports Kerberos ticket reuse via a ccache file — the standard Linux c
 ```bash
 # Obtain a TGT with impacket
 getTGT.py corp.local/alice:'P@ssw0rd!' -dc-ip 10.10.10.5
-export KRB5CCNAME=$(pwd)/alice.ccache
+export KRB5CCNAME=$alice.ccache
 
 # ADScan picks it up automatically
 python adscan.py -d corp.local --dc-ip 10.10.10.5 -u alice --kerberos
