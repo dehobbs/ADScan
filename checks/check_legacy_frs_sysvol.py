@@ -54,8 +54,7 @@ def run_check(connector, verbose=False):
         global_state = None
         if dfsr_results:
             for entry in dfsr_results:
-                attrs = entry.get("attributes", {}) if isinstance(entry, dict) else {}
-                flags = attrs.get("msDFSR-Flags")
+                flags = entry.get("msDFSR-Flags")
                 if flags is not None:
                     try:
                         global_state = int(flags)
