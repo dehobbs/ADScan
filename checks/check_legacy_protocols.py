@@ -15,6 +15,7 @@ CHECK_CATEGORY = ["Protocol Security"]
 
 def run_check(connector, verbose=False):
     findings = []
+    log = connector.log
 
     # SMBv1 detection via impacket SMB connection
     smb1_detected = False
@@ -32,18 +33,16 @@ def run_check(connector, verbose=False):
                 if "NT LM 0.12" in dialect_str or dialect_str == "\\x00" or "0x0000" == dialect_str.lower():
                     smb1_detected = True
                     smb1_detail.append(f"SMB dialect negotiated: {dialect_str}")
-                elif verbose:
-                    print(f"[LegacyProtocols] SMB dialect: {dialect_str}")
+                else:
+                    log.debug("[LegacyProtocols] SMB dialect: %s", dialect_str)
         else:
-            if verbose:
-                print("[LegacyProtocols] No SMB connection available; skipping SMBv1 dialect check.")
+            log.debug("[LegacyProtocols] No SMB connection available; skipping SMBv1 dialect check.")
             smb1_detail.append(
                 "SMB connection not available. Run with --protocol smb or --protocol all "
                 "for active SMBv1 dialect detection."
             )
     except Exception as exc:
-        if verbose:
-            print(f"[LegacyProtocols] SMBv1 check error: {exc}")
+        log.warning("[LegacyProtocols] SMBv1 check error: %s", exc)
 
     if smb1_detected:
         findings.append({
