@@ -16,6 +16,7 @@ CHECK_CATEGORY = ["Privileged Accounts"]
 
 def run_check(connector, verbose=False):
     findings = []
+    log = connector.log
 
     pki_base = "CN=Public Key Services,CN=Services,CN=Configuration," + connector.base_dn
     schema_base = "CN=Schema,CN=Configuration," + connector.base_dn
@@ -54,8 +55,7 @@ def run_check(connector, verbose=False):
                 "details": dangerous_templates,
             })
     except Exception as exc:
-        if verbose:
-            print(f"[ACL] ESC4 check error: {exc}")
+        log.warning("[ACL] ESC4 check error: %s", exc)
 
     # ESC5: PKI object ACL abuse
     try:
@@ -94,8 +94,7 @@ def run_check(connector, verbose=False):
                 "details": esc5_issues,
             })
     except Exception as exc:
-        if verbose:
-            print(f"[ACL] ESC5 check error: {exc}")
+        log.warning("[ACL] ESC5 check error: %s", exc)
 
     # ESC7: CA Officer / CA Manager abuse
     try:
@@ -129,8 +128,7 @@ def run_check(connector, verbose=False):
                 "details": esc7_cas,
             })
     except Exception as exc:
-        if verbose:
-            print(f"[ACL] ESC7 check error: {exc}")
+        log.warning("[ACL] ESC7 check error: %s", exc)
 
     # DCSync: Non-privileged principals with DS-Replication rights
     try:
@@ -169,8 +167,7 @@ def run_check(connector, verbose=False):
                 "details": dcsync_principals,
             })
     except Exception as exc:
-        if verbose:
-            print(f"[ACL] DCSync check error: {exc}")
+        log.warning("[ACL] DCSync check error: %s", exc)
 
     # Protected Users Group
     try:
@@ -213,8 +210,7 @@ def run_check(connector, verbose=False):
                     "details": [],
                 })
     except Exception as exc:
-        if verbose:
-            print(f"[ACL] Protected Users check error: {exc}")
+        log.warning("[ACL] Protected Users check error: %s", exc)
 
     # Delegation ACLs: AllowedToActOnBehalfOfOtherIdentity
     try:
@@ -242,7 +238,6 @@ def run_check(connector, verbose=False):
                 "details": names,
             })
     except Exception as exc:
-        if verbose:
-            print(f"[ACL] RBCD check error: {exc}")
+        log.warning("[ACL] RBCD check error: %s", exc)
 
     return findings
