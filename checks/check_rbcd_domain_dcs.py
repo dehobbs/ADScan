@@ -92,7 +92,7 @@ SAFE_SIDS = {
 
 def run_check(connector, verbose=False):
     findings = []
-    log = connector._log
+    log = connector.log
 
     try:
         # ------------------------------------------------------------------ #
@@ -107,8 +107,7 @@ def run_check(connector, verbose=False):
         domain_rbcd_trustees = []
         if domain_results:
             for entry in domain_results:
-                attrs = entry.get("attributes", {}) if isinstance(entry, dict) else {}
-                raw_sd = attrs.get("msDS-AllowedToActOnBehalfOfOtherIdentity")
+                raw_sd = entry.get("msDS-AllowedToActOnBehalfOfOtherIdentity")
                 if raw_sd:
                     sids = _parse_rbcd_sd(raw_sd)
                     for sid in sids:
@@ -138,11 +137,10 @@ def run_check(connector, verbose=False):
         dc_rbcd_trustees = []
         if dc_results:
             for entry in dc_results:
-                attrs = entry.get("attributes", {}) if isinstance(entry, dict) else {}
-                sam = attrs.get("sAMAccountName", "unknown")
-                dn = attrs.get("distinguishedName", "")
-                dns = attrs.get("dNSHostName", "")
-                raw_sd = attrs.get("msDS-AllowedToActOnBehalfOfOtherIdentity")
+                sam = entry.get("sAMAccountName", "unknown")
+                dn = entry.get("distinguishedName", "")
+                dns = entry.get("dNSHostName", "")
+                raw_sd = entry.get("msDS-AllowedToActOnBehalfOfOtherIdentity")
 
                 if raw_sd:
                     sids = _parse_rbcd_sd(raw_sd)
