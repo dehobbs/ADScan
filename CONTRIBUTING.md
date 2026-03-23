@@ -489,11 +489,11 @@ with the main runner's console style.
 
 Every finding in the HTML report can display three collapsible panels below the description:
 
-- **Manual Verification** — step-by-step tool cards showing how to confirm the finding by hand.
-- **Remediation** — numbered steps with optional code blocks for fixing the issue.
-- **References** — tagged links to CVEs, MITRE techniques, vendor docs, and research.
+- **Manual Verification**: step-by-step tool cards showing how to confirm the finding by hand.
+- **Remediation**: numbered steps with optional code blocks for fixing the issue.
+- **References**: tagged links to CVEs, MITRE techniques, vendor docs, and research.
 
-These panels are driven by files in the `verifications/` directory. Each file is a plain Python module that defines structured data — no HTML required. `report.py` discovers and renders them automatically.
+These panels are driven by files in the `verifications/` directory. Each file is a plain Python module that defines structured data; no HTML required. `report.py` discovers and renders them automatically.
 
 ---
 
@@ -516,7 +516,7 @@ MATCH_KEYS = ["account lockout"]   ← "account lockout" ⊂ title → match ✓
 |------------|---------|
 | Location | `verifications/verify_<topic>.py` |
 | Naming | `verify_kerberoast.py`, `verify_laps.py`, `verify_account_lockout.py` |
-| Topic | Match the check slug — use the same stem as the corresponding `check_*.py` file |
+| Topic | Match the check slug (use the same stem as the corresponding `check_*.py` file) |
 
 ---
 
@@ -550,7 +550,7 @@ Each entry in `TOOLS` renders as one card in a 2-column grid. Cards whose `icon`
 
 Use `code` for CLI tools. Use `steps` for GUI tools (ADUC, GPMC). `confirm` is always shown at the bottom of the card regardless of which body fields are used.
 
-**Example — CLI tool:**
+**Example" CLI tool:**
 
 ```python
 {
@@ -562,7 +562,7 @@ Use `code` for CLI tools. Use `steps` for GUI tools (ADUC, GPMC). `confirm` is a
 },
 ```
 
-**Example — GUI tool with numbered steps:**
+**Example: GUI tool with numbered steps:**
 
 ```python
 {
@@ -578,7 +578,7 @@ Use `code` for CLI tools. Use `steps` for GUI tools (ADUC, GPMC). `confirm` is a
 },
 ```
 
-> Inline HTML is supported in `desc`, `steps`, and `confirm` values — use `<code>`, `<strong>`, and `<em>` for emphasis. The `code` field is HTML-escaped by `report.py`, so use plain text there.
+> Inline HTML is supported in `desc`, `steps`, and `confirm` values, use `<code>`, `<strong>`, and `<em>` for emphasis. The `code` field is HTML-escaped by `report.py`, so use plain text there.
 
 ---
 
@@ -691,7 +691,7 @@ Aim for 4–8 references per finding. Prioritise: the MITRE ATT&CK technique, th
 2. Add your `checks/check_<topic>.py` file.
 3. If your check requires a new Python dependency, add it to
    `requirements.txt` with a comment explaining why.
-4. Update `README.md` — increment the check count in the description
+4. Update `README.md`; increment the check count in the description
    and add a row to the checks table if one exists.
 5. Open a pull request against `main` with a title like:
    `Add check: <CHECK_NAME>`.
