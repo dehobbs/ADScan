@@ -91,6 +91,10 @@ def run_check(connector, verbose=False):
             if isinstance(member_of, str):
                 member_of = [member_of]
 
+            # Skip well-known system accounts
+            if sam.lower() in ("krbtgt",):
+                continue
+
             # Ghost: disabled account still carrying adminCount=1
             if _uac_disabled(uac):
                 ghost_accounts.append(f"{sam} (DN: {dn})")
