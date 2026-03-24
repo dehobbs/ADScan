@@ -35,6 +35,20 @@ _HIGH_VALUE_SERVICES = {
     "mssql", "MSSQLSvc", "wsman", "rpcss",
 }
 
+# Extended set used for DC-targeting analysis (includes DC-specific service classes)
+_DC_HIGH_VALUE_SERVICES = {
+    "ldap", "cifs", "host", "gc", "krbtgt",
+    "rpc", "rpcss", "http", "wsman", "termsrv",
+    "dns", "time", "w32time",
+}
+
+def _spn_host(spn):
+    """Extract the target hostname from an SPN (e.g. 'cifs/dc01.corp.local' -> 'dc01.corp.local')."""
+    if not spn or "/" not in spn:
+        return ""
+    host_part = spn.split("/", 1)[1].split(":")[0].split("/")[0]
+    return host_part.lower()
+
 _ATTRS = [
     "sAMAccountName",
     "distinguishedName",
@@ -42,6 +56,7 @@ _ATTRS = [
     "msDS-AllowedToDelegateTo",
     "objectClass",
     "description",
+    "adminCount",
 ]
 
 
@@ -196,5 +211,131 @@ def run_check(connector, verbose=False):
             ),
             "details": remaining,
         })
+
+    # ----------------------------------------------------------------
+    # DC-targeting analysis (merged from check_dangerous_constrained_delegation)
+    # Cross-reference delegation targets against actual DC hostnames.
+    # ----------------------------------------------------------------
+    try:
+        dc_results = connector.ldap_search(
+            search_filter=(
+                "(&(objectClass=computer)"
+                "(userAccountControl:1.2.840.113556.1.4.803:=8192))"
+            ),
+            attributes=["dNSHostName", "sAMAccountName", "cn"],
+        )
+        dc_hostnames = set()
+        if dc_results:
+            for dc in dc_results:
+                dns = dc.get("dNSHostName", "")
+                sam = dc.get("sAMAccountName", "").rstrip("$").lower()
+                cn  = dc.get("cn", "").lower()
+                if dns:
+                    dc_hostnames.add(dns.lower())
+                    dc_hostnames.add(dns.split(".")[0].lower())
+                if sam:
+                    dc_hostnames.add(sam)
+                if cn:
+                    dc_hostnames.add(cn)
+
+        if dc_hostnames and entries:
+            critical_dc_hits = []
+            high_dc_hits = []
+            medium_hits = []
+            seen = set(t2a4d_accounts + [a.split(" ->")[0] for a in high_value_accounts])
+
+            for entry in entries:
+                sam = ""
+                try:
+                    sam = str(entry.get("sAMAccountName"))
+                except Exception:
+                    pass
+                disabled_suffix = " [DISABLED]" if _is_disabled(entry) else ""
+                admin_count = int(entry.get("adminCount", 0) or 0)
+                delegate_to = _get_delegate_to(entry)
+
+                for spn in delegate_to:
+                    svc_class   = _spn_service(spn)
+                    target_host = _spn_host(spn)
+                    targets_dc  = target_host in dc_hostnames
+                    is_dangerous_svc = svc_class in _DC_HIGH_VALUE_SERVICES
+                    label = f"{sam}{disabled_suffix} -> {spn}"
+                    if admin_count:
+                        label = f"[ADMIN] {label}"
+
+                    if targets_dc and is_dangerous_svc:
+                        critical_dc_hits.append(label)
+                    elif targets_dc:
+                        high_dc_hits.append(label)
+                    elif is_dangerous_svc:
+                        medium_hits.append(label)
+
+            if critical_dc_hits:
+                findings.append({
+                    "title": (
+                        f"Dangerous Constrained Delegation: {len(critical_dc_hits)} account(s) "
+                        "delegating to high-value services on Domain Controllers"
+                    ),
+                    "severity": "critical",
+                    "deduction": 20,
+                    "description": (
+                        "Accounts are configured with constrained delegation targeting "
+                        "high-value service classes (ldap/, cifs/, host/, gc/, krbtgt/) "
+                        "on Domain Controllers. An attacker who compromises one of these "
+                        "accounts can impersonate any user (including Domain Admins) to "
+                        "those services on the DC via S4U2Proxy, effectively achieving "
+                        "domain compromise."
+                    ),
+                    "recommendation": (
+                        "Remove or restrict dangerous constrained delegation configurations. "
+                        "Use Resource-Based Constrained Delegation (RBCD) on the target only. "
+                        "Enable 'Account is sensitive and cannot be delegated' on all "
+                        "privileged accounts."
+                    ),
+                    "details": critical_dc_hits,
+                })
+
+            if high_dc_hits:
+                findings.append({
+                    "title": (
+                        f"Constrained Delegation Targets DCs: {len(high_dc_hits)} account(s)"
+                    ),
+                    "severity": "high",
+                    "deduction": 10,
+                    "description": (
+                        "Accounts have constrained delegation configured with Domain Controller "
+                        "hostnames as targets (non-critical service classes). An attacker who "
+                        "compromises a delegating account can still move laterally to DCs."
+                    ),
+                    "recommendation": (
+                        "Review whether delegation to DC targets is required. "
+                        "If not, remove the delegation entries. "
+                        "Ensure the 'sensitive and cannot be delegated' flag is set on "
+                        "all privileged accounts."
+                    ),
+                    "details": high_dc_hits,
+                })
+
+            if medium_hits:
+                findings.append({
+                    "title": (
+                        f"Constrained Delegation to High-Value Services: {len(medium_hits)} account(s)"
+                    ),
+                    "severity": "medium",
+                    "deduction": 5,
+                    "description": (
+                        "Accounts are delegating to high-value service classes (ldap/, cifs/, "
+                        "host/ etc.) on non-DC hosts. Depending on what those hosts are, this "
+                        "may still represent a significant escalation path."
+                    ),
+                    "recommendation": (
+                        "Review all constrained delegation targets and ensure they are required "
+                        "for legitimate business purposes. Restrict where possible."
+                    ),
+                    "details": medium_hits[:50],
+                })
+
+    except Exception as exc:
+        log.debug(f" [WARN] DC-targeting delegation analysis failed: {exc}")
 
     return findings
