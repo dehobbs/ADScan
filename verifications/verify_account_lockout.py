@@ -49,7 +49,7 @@ REMEDIATION = {
             "code": "Set-ADDefaultDomainPasswordPolicy `\n    -Identity <domain.fqdn> `\n    -LockoutThreshold 5 `\n    -LockoutDuration 00:30:00 `\n    -LockoutObservationWindow 00:30:00",
         },
         {
-            "text": "Or apply via Group Policy Editor (<code>gpedit.msc</code>) on the Domain Controller under <em>Default Domain Policy</em> at the path shown in the ADUC step above.",
+            "text": "Or apply via Group Policy Editor (<code>gpedit.msc</code>) on the Domain Controller under <em>Default Domain Policy</em> at the path shown in the GPMC step above.",
         },
         {
             "text": "For privileged accounts requiring a stricter policy, use <strong>Fine-Grained Password Policies (PSOs)</strong> to apply a lower threshold (e.g. 3 attempts) to Domain Admins without affecting all users.",
