@@ -67,6 +67,7 @@ def _is_disabled(entry):
 def run_check(connector, verbose=False):
     """Search for accounts with unconstrained delegation enabled."""
     findings = []
+    log = connector.log
 
     # Query all accounts (users + computers) with unconstrained delegation bit set
     # Use a bitwise AND filter: userAccountControl with 0x80000
@@ -81,8 +82,7 @@ def run_check(connector, verbose=False):
     )
 
     if not entries:
-        if verbose:
-            print("  [INFO] No accounts with unconstrained delegation found (or LDAP unavailable).")
+        log.debug("  [INFO] No accounts with unconstrained delegation found (or LDAP unavailable).")
         return findings
 
     user_accounts = []
@@ -107,10 +107,9 @@ def run_check(connector, verbose=False):
         else:
             computer_accounts.append(sam + disabled_suffix)
 
-    if verbose:
-        print(f"     Domain Controllers (expected, skipped): {len(dc_accounts)}")
-        print(f"     User accounts with unconstrained delegation: {len(user_accounts)}")
-        print(f"     Computer accounts with unconstrained delegation: {len(computer_accounts)}")
+    log.debug(f"     Domain Controllers (expected, skipped): {len(dc_accounts)}")
+    log.debug(f"     User accounts with unconstrained delegation: {len(user_accounts)}")
+    log.debug(f"     Computer accounts with unconstrained delegation: {len(computer_accounts)}")
 
     # ----------------------------------------------------------------
     # User accounts with unconstrained delegation (most severe)
