@@ -1,4 +1,6 @@
 """
+import logging
+_log = logging.getLogger(__name__)
 checks/check_constrained_delegation.py - Constrained Delegation Check
 
 Constrained Kerberos Delegation (KCD) restricts delegation to specific services.
@@ -46,7 +48,8 @@ _ATTRS = [
 def _uac_flag(entry, flag):
     try:
         return bool(int(entry.get("userAccountControl")) & flag)
-    except Exception:
+    except Exception as exc:
+        _log.debug(f"_uac_flag: unexpected error reading userAccountControl: {exc}")
         return False
 
 
@@ -59,7 +62,8 @@ def _get_delegate_to(entry):
     try:
         val = entry.get("msDS-AllowedToDelegateTo")
         return list(val) if val else []
-    except Exception:
+    except Exception as exc:
+        _log.debug(f"_get_delegate_to: unexpected error reading msDS-AllowedToDelegateTo: {exc}")
         return []
 
 
