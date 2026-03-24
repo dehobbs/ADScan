@@ -1,40 +1,40 @@
-"""
-verifications/verify_unconstrained_delegation.py
-Manual Verification and Remediation data for ADScan findings matching: unconstrained delegation
+""" verifications/verify_unconstrained_delegation.py
+Manual Verification and Remediation data for ADScan findings matching:
+  Computer Accounts with Unconstrained Delegation
 """
 
-MATCH_KEYS = ["unconstrained delegation"]
+MATCH_KEYS = ["computer accounts with unconstrained"]
 
 TOOLS = [
     {
         "tool": "NetExec",
         "icon": "netexec",
-        "desc": "Enumerate computers and users configured with unconstrained delegation.",
+        "desc": "Enumerate computer accounts configured with unconstrained delegation.",
         "code": "netexec ldap <DC_IP> -u <username> -p <password> --trusted-for-delegation",
-        "confirm": "Any non-DC host listed has unconstrained delegation — a critical risk.",
+        "confirm": "Any non-DC computer listed has unconstrained delegation — a critical risk.",
     },
     {
         "tool": "Impacket",
         "icon": "impacket",
         "desc": "Use findDelegation to enumerate all delegation types in the domain.",
         "code": "findDelegation.py <domain>/<username>:<password> -dc-ip <DC_IP>",
-        "confirm": "Look for <strong>Unconstrained</strong> in the Delegation Type column for non-DC hosts.",
+        "confirm": "Look for <strong>Unconstrained</strong> in the Delegation Type column for non-DC computer accounts.",
     },
     {
         "tool": "PowerShell",
         "icon": "ps",
-        "desc": "Query AD for computers and users with TrustedForDelegation set.",
-        "code": "Get-ADComputer -Filter {TrustedForDelegation -eq $true} `\n    -Properties TrustedForDelegation `\n    | Where-Object {$_.Name -notlike '*DC*'} `\n    | Select-Object Name,DNSHostName\n\nGet-ADUser -Filter {TrustedForDelegation -eq $true} `\n    | Select-Object Name,SamAccountName",
-        "confirm": "Any computer (excluding DCs) or user listed has unconstrained delegation.",
+        "desc": "Query AD for computer accounts with TrustedForDelegation set, excluding DCs.",
+        "code": "Get-ADComputer -Filter {TrustedForDelegation -eq $true} `\n    -Properties TrustedForDelegation `\n    | Where-Object {$_.Name -notlike '*DC*'} `\n    | Select-Object Name,DNSHostName",
+        "confirm": "Any computer listed (excluding DCs) has unconstrained delegation enabled.",
     },
     {
         "tool": "ADUC (dsa.msc)",
         "icon": "aduc",
-        "desc": "Check delegation settings on individual computer or user objects.",
+        "desc": "Check delegation settings on individual computer objects.",
         "steps": [
             "Open <code>dsa.msc</code> → View → Advanced Features",
-            "Locate the computer or user object → Properties → Delegation tab",
-            "<strong>Trust this computer/user for delegation to any service (Kerberos only)</strong> = Unconstrained",
+            "Locate the computer object → Properties → Delegation tab",
+            "<strong>Trust this computer for delegation to any service (Kerberos only)</strong> = Unconstrained",
         ],
     },
 ]
@@ -43,7 +43,7 @@ REMEDIATION = {
     "title": "Migrate to constrained or resource-based constrained delegation",
     "steps": [
         {
-            "text": "Remove unconstrained delegation flag from a computer:",
+            "text": "Remove unconstrained delegation flag from the computer account:",
             "code": "Set-ADComputer -Identity <computername> -TrustedForDelegation $false",
         },
         {
@@ -51,14 +51,10 @@ REMEDIATION = {
             "code": "Set-ADComputer -Identity <computername> `\n    -TrustedToAuthForDelegation $true `\n    -ServicePrincipalNames @{Add='cifs/<target>'}",
         },
         {
-            "text": "Add affected computer and user accounts to the <strong>Protected Users</strong> security group — members cannot be configured for unconstrained delegation.",
-        },
-        {
-            "text": "Enable <strong>Account is sensitive and cannot be delegated</strong> on all privileged accounts via ADUC or PowerShell: <code>Set-ADUser -Identity &lt;admin&gt; -AccountNotDelegated $true</code>",
+            "text": "Add the affected computer account to the <strong>Protected Users</strong> security group — members cannot be configured for unconstrained delegation.",
         },
     ],
 }
-
 
 REFERENCES = [
     {"title": "Unconstrained Delegation - Microsoft Docs", "url": "https://learn.microsoft.com/en-us/windows-server/security/kerberos/kerberos-constrained-delegation-overview", "tag": "vendor"},
