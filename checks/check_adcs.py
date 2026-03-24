@@ -42,6 +42,8 @@ import json
 import os
 import shutil
 import subprocess  # nosec B404 - subprocess is required to invoke certipy-ad
+import logging
+_log = logging.getLogger(__name__)
 
 CHECK_NAME     = "ADCS / PKI Vulnerabilities"
 CHECK_ORDER    = 6
@@ -157,14 +159,16 @@ def _get_str(entry, attr, default=""):
     try:
         v = entry.get(attr)
         return str(v) if v is not None else default
-    except Exception:
+    except Exception as exc:
+        _log.debug(f"_get_str({attr!r}): {exc}")
         return default
 
 def _get_int(entry, attr, default=0):
     try:
         v = entry.get(attr)
         return int(v) if v is not None else default
-    except Exception:
+    except Exception as exc:
+        _log.debug(f"_get_int({attr!r}): {exc}")
         return default
 
 def _get_list(entry, attr):
@@ -175,7 +179,8 @@ def _get_list(entry, attr):
         if isinstance(v, list):
             return [str(x) for x in v]
         return [str(v)]
-    except Exception:
+    except Exception as exc:
+        _log.debug(f"_get_list({attr!r}): {exc}")
         return []
 
 def _get_name(entry):
