@@ -69,21 +69,24 @@ def _filetime_to_dt(val):
         if v <= 0:
             return None
         return datetime.fromtimestamp((v / 10_000_000) - _FILETIME_EPOCH_OFFSET, tz=timezone.utc)
-    except Exception:
+    except Exception as exc:
+        _log.debug(f"_filetime_to_dt: unexpected error parsing filetime: {exc}")
         return None
 
 
 def _uac(entry, flag):
     try:
         return bool(int(entry.get("userAccountControl") or 0) & flag)
-    except Exception:
+    except Exception as exc:
+        _log.debug(f"_uac: unexpected error reading userAccountControl: {exc}")
         return False
 
 
 def _sam(entry):
     try:
         return str(entry.get("sAMAccountName") or "?")
-    except Exception:
+    except Exception as exc:
+        _log.debug(f"_sam: unexpected error reading sAMAccountName: {exc}")
         return "?"
 
 
