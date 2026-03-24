@@ -15,6 +15,7 @@ CHECK_CATEGORY = ["Domain Hygiene"]
 
 def run_check(connector, verbose=False):
     findings = []
+    log = connector.log
 
     # Machine Account Quota
     try:
@@ -51,8 +52,7 @@ def run_check(connector, verbose=False):
                     "details": [f"Current value: {quota_val}"],
                 })
     except Exception as exc:
-        if verbose:
-            print(f"[MiscHardening] Machine account quota error: {exc}")
+        log.warning(f"[MiscHardening] Machine account quota error: {exc}")
 
     # Tombstone lifetime
     try:
@@ -85,8 +85,7 @@ def run_check(connector, verbose=False):
                     "details": [f"Current tombstone lifetime: {tsl_val} days"],
                 })
     except Exception as exc:
-        if verbose:
-            print(f"[MiscHardening] Tombstone lifetime error: {exc}")
+        log.warning(f"[MiscHardening] Tombstone lifetime error: {exc}")
 
     # Guest account enabled
     try:
@@ -121,8 +120,7 @@ def run_check(connector, verbose=False):
                     "details": ["Guest account (SID ending -501) is enabled"],
                 })
     except Exception as exc:
-        if verbose:
-            print(f"[MiscHardening] Guest account error: {exc}")
+        log.warning(f"[MiscHardening] Guest account error: {exc}")
 
     # Schema Admins and Enterprise Admins permanent membership
     sensitive_groups = ["Schema Admins", "Enterprise Admins"]
@@ -158,8 +156,7 @@ def run_check(connector, verbose=False):
                         "details": human_members[:20],
                     })
         except Exception as exc:
-            if verbose:
-                print(f"[MiscHardening] {group_name} query error: {exc}")
+            log.warning(f"[MiscHardening] {group_name} query error: {exc}")
 
     # Audit policy guidance (informational)
     findings.append({
