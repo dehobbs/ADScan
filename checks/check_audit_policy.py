@@ -245,6 +245,7 @@ def _compare_to_baseline(configured):
 
 def run_check(connector, verbose=False):
     findings  = []
+    log = connector.log
     smb_conn  = getattr(connector, 'smb_conn',  None)
     dbg       = getattr(connector, 'debug_log', None)
 
@@ -290,11 +291,9 @@ def run_check(connector, verbose=False):
             except Exception:  # skip malformed GPO LDAP entries
                 continue
 
-    if verbose:
-        print(f'  [Audit Policy] Found {len(gpo_list)} GPO(s) via LDAP.')
-        for gname, gpath in gpo_list:
-            print(f'    GPO: {gname!r}  path: {gpath}')
-
+    log.debug(f'  [Audit Policy] Found {len(gpo_list)} GPO(s) via LDAP.')
+    for gname, gpath in gpo_list:
+        log.debug(f'    GPO: {gname!r}  path: {gpath}')
     if not gpo_list:
         findings.append({
             'title':          'Advanced Audit Policy -- No GPOs Found',
@@ -325,10 +324,8 @@ def run_check(connector, verbose=False):
         # We append the fixed audit subpath using single backslashes
         audit_rel = rel_path.rstrip('\\') + '\\Machine\\Microsoft\\Windows NT\\Audit\\audit.csv'
 
-        if verbose:
-            print(f'  [Audit Policy] GPO {gpo_name!r}')
-            print(f'    share={share!r}  path={audit_rel!r}')
-
+        log.debug(f'  [Audit Policy] GPO {gpo_name!r}')
+        log.debug(f'    share={share!r}  path={audit_rel!r}')
         raw, err = _smb_read_file(smb_conn, share, audit_rel)
         gpos_scanned += 1
 
@@ -340,19 +337,16 @@ def run_check(connector, verbose=False):
             )
 
         if raw is None:
-            if verbose:
-                print(f'    -> Not found or unreadable: {err}')
-            # Diagnostic: list the Audit directory if it exists
-            if verbose:
-                audit_dir = rel_path.rstrip('\\') + '\\Machine\\Microsoft\\Windows NT\\Audit\\*'
-                dir_entries = _smb_list_dir(smb_conn, share, audit_dir)
-                if dir_entries:
-                    print(f'    -> Audit dir contents: {dir_entries}')
-                else:
-                    # Try listing one level up
-                    nt_dir = rel_path.rstrip('\\') + '\\Machine\\Microsoft\\Windows NT\\*'
-                    nt_entries = _smb_list_dir(smb_conn, share, nt_dir)
-                    print(f'    -> Windows NT dir contents: {nt_entries}')
+            log.debug(f'    -> Not found or unreadable: {err}')            # Diagnostic: list the Audit directory if it exists
+            audit_dir = rel_path.rstrip('\\') + '\\Machine\\Microsoft\\Windows NT\\Audit\\*'
+            dir_entries = _smb_list_dir(smb_conn, share, audit_dir)
+            if dir_entries:
+                log.debug(f'    -> Audit dir contents: {dir_entries}')
+            else:
+                # Try listing one level up
+                nt_dir = rel_path.rstrip('\\') + '\\Machine\\Microsoft\\Windows NT\\*'
+                nt_entries = _smb_list_dir(smb_conn, share, nt_dir)
+                log.debug(f'    -> Windows NT dir contents: {nt_entries}')
             smb_errors.append((gpo_name, audit_rel, err or 'File not found'))
             continue
 
@@ -360,17 +354,10 @@ def run_check(connector, verbose=False):
         if parsed:
             gpos_with_audit.append(gpo_name)
             merged_config.update(parsed)
-            if verbose:
-                print(f'    -> Parsed {len(parsed)} subcategory entries from audit.csv.')
-        else:
-            if verbose:
-                print(f'    -> audit.csv found ({len(raw)} bytes) but could not be parsed.')
-            smb_errors.append((gpo_name, audit_rel, f'Parse failed ({len(raw)} bytes, encoding issue?)'))
+            log.debug(f'    -> Parsed {len(parsed)} subcategory entries from audit.csv.')        else:
+            log.debug(f'    -> audit.csv found ({len(raw)} bytes) but could not be parsed.')            smb_errors.append((gpo_name, audit_rel, f'Parse failed ({len(raw)} bytes, encoding issue?)'))
 
-    if verbose:
-        print(f'  [Audit Policy] Scanned: {gpos_scanned} GPO(s), '
-              f'found audit.csv in: {len(gpos_with_audit)}, '
-              f'errors: {len(smb_errors)}')
+    log.debug(f'  [Audit Policy] Scanned: {gpos_scanned} GPO(s), found audit.csv in: {len(gpos_with_audit)}, errors: {len(smb_errors)}')
 
     # ---------------------------------------------------------------------- #
     # Step 3: Compare merged config against baseline                         #
