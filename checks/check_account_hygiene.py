@@ -27,6 +27,8 @@ CHECK_CATEGORY = ["Account Hygiene"]
 
 from datetime import datetime, timezone, timedelta
 from collections import defaultdict
+import logging
+_log = logging.getLogger(__name__)
 
 _UAC_ACCOUNTDISABLE              = 0x2
 _UAC_PASSWD_NOTREQD              = 0x20
@@ -91,7 +93,8 @@ def _spns(entry):
         if not v:
             return []
         return list(v) if isinstance(v, (list, tuple, set)) else [str(v)]
-    except Exception:
+    except Exception as exc:
+        _log.debug(f"_spns: unexpected error reading servicePrincipalName: {exc}")
         return []
 
 
