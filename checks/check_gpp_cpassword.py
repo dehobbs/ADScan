@@ -88,7 +88,7 @@ def _find_cpasswords_in_xml(xml_content, source_path):
 
 def run_check(connector, verbose=False):
     findings = []
-    log = connector._log
+    log = connector.log
     all_hits = []
 
     try:
