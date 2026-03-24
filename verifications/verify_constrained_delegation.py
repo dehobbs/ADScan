@@ -3,7 +3,7 @@ verifications/verify_constrained_delegation.py
 Manual Verification and Remediation data for ADScan findings matching: constrained delegation
 """
 
-MATCH_KEYS = ["constrained delegation"]
+MATCH_KEYS = ["accounts with constrained delegation", "constrained delegation targeting", "constrained delegation configured"]
 
 TOOLS = [
     {
