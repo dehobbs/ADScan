@@ -25,6 +25,8 @@ Prerequisites:
 
 import io
 import csv
+import logging
+_log = logging.getLogger(__name__)
 
 CHECK_NAME     = "Advanced Audit Policy"
 CHECK_ORDER    = 23
@@ -174,7 +176,8 @@ def _smb_list_dir(smb_conn, share, smb_path):
         entries = smb_conn.listPath(share, smb_path)
         return [e.get_longname() for e in entries
                 if e.get_longname() not in ('.', '..')]
-    except Exception:
+    except Exception as exc:
+        _log.debug(f"_smb_list_dir({share!r}, {smb_path!r}): {exc}")
         return []
 
 
