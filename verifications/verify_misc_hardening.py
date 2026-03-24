@@ -13,6 +13,8 @@ MATCH_KEYS = [
     "ms-ds-machineaccountquota",
     "krbtgt password",
     "domain functional level",
+    "forest functional level",
+    "permanent members in",
 ]
 
 TOOLS = [
