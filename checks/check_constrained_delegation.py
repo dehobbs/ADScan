@@ -71,6 +71,7 @@ def _spn_service(spn):
 def run_check(connector, verbose=False):
     """Identify accounts with Constrained Delegation configured."""
     findings = []
+    log = connector.log
 
     # Query accounts with msDS-AllowedToDelegateTo set (KCD)
     entries = connector.ldap_search(
@@ -83,8 +84,7 @@ def run_check(connector, verbose=False):
         attributes=_ATTRS,
     )
 
-    if verbose:
-        print(f"     Accounts with msDS-AllowedToDelegateTo set: {len(entries) if entries else 0}")
+    log.debug(f"     Accounts with msDS-AllowedToDelegateTo set: {len(entries) if entries else 0}")
 
     t2a4d_accounts = []      # Protocol Transition accounts
     high_value_accounts = [] # Delegating to high-value SPNs
@@ -106,8 +106,7 @@ def run_check(connector, verbose=False):
 
         if has_t2a4d:
             t2a4d_accounts.append(account_info)
-            if verbose:
-                print(f"     [T2A4D] {sam} -> {', '.join(delegate_to[:5])}")
+            log.debug(f"     [T2A4D] {sam} -> {', '.join(delegate_to[:5])}")
         else:
             # Check if any delegated SPN is high-value
             risky_spns = [
@@ -116,8 +115,7 @@ def run_check(connector, verbose=False):
             ]
             if risky_spns:
                 high_value_accounts.append(f"{account_info} -> {', '.join(risky_spns[:3])}")
-                if verbose:
-                    print(f"     [HIGH-VALUE KCD] {sam} -> {', '.join(risky_spns)}")
+                log.debug(f"     [HIGH-VALUE KCD] {sam} -> {', '.join(risky_spns)}")
 
     # ----------------------------------------------------------------
     # Protocol Transition (S4U2Self capable) accounts
