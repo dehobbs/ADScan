@@ -121,6 +121,7 @@ def _get_protected_users_members(connector, protected_users_dn):
 
 def run_check(connector, verbose=False):
     findings = []
+    log = connector.log
 
     try:
         # -----------------------------------------------------------------------
@@ -155,9 +156,8 @@ def run_check(connector, verbose=False):
         # -----------------------------------------------------------------------
         protected_dns = _get_protected_users_members(connector, protected_users_dn)
 
-        if verbose:
-            print(f"  Protected Users DN  : {protected_users_dn}")
-            print(f"  Protected Users members: {len(protected_dns)}")
+        log.debug(f"  Protected Users DN  : {protected_users_dn}")
+        log.debug(f"  Protected Users members: {len(protected_dns)}")
 
         # -----------------------------------------------------------------------
         # 3. Check Tier-0 groups
@@ -181,8 +181,7 @@ def run_check(connector, verbose=False):
                     continue
                 if dn_lower not in protected_dns:
                     tier0_unprotected.append(f"{sam} (member of: {group_name})")
-                    if verbose:
-                        print(f"  [!] {sam} is NOT in Protected Users (Tier-0: {group_name})")
+                    log.debug(f"  [!] {sam} is NOT in Protected Users (Tier-0: {group_name})")
 
         if tier0_unprotected:
             findings.append({
@@ -210,8 +209,7 @@ def run_check(connector, verbose=False):
                 "details": tier0_unprotected,
             })
         else:
-            if verbose:
-                print("  [OK] All Tier-0 accounts are in Protected Users")
+            log.debug("  [OK] All Tier-0 accounts are in Protected Users")
 
         # -----------------------------------------------------------------------
         # 4. Check Tier-1 groups
@@ -232,8 +230,7 @@ def run_check(connector, verbose=False):
                 tier1_seen.add(dn_lower)
                 if dn_lower not in protected_dns:
                     tier1_unprotected.append(f"{sam} (member of: {group_name})")
-                    if verbose:
-                        print(f"  [!] {sam} is NOT in Protected Users (Tier-1: {group_name})")
+                    log.debug(f"  [!] {sam} is NOT in Protected Users (Tier-1: {group_name})")
 
         if tier1_unprotected:
             findings.append({
@@ -259,8 +256,7 @@ def run_check(connector, verbose=False):
                 "details": tier1_unprotected,
             })
         else:
-            if verbose:
-                print("  [OK] All Tier-1 accounts are in Protected Users (or groups are empty)")
+            log.debug("  [OK] All Tier-1 accounts are in Protected Users (or groups are empty)")
 
         # -----------------------------------------------------------------------
         # 5. Clean pass
