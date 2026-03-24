@@ -8,7 +8,7 @@ Execution order:
   1. LDAP checks  -- always run; enumerate CAs, templates, and flag ESC1-16 via
                      direct LDAP queries against the PKI Configuration NC.
   2. Certipy check -- run only when Certipy is installed and connector credentials
-                     are available; performs a full certipy find -vulnerable pass
+                     are available; performs a full certipy-find -vulnerable pass
                      and merges results with the LDAP findings.
 
 ESC checks implemented via LDAP:
@@ -214,7 +214,7 @@ def _config_dn(base_dn):
 # Certipy helpers
 # ---------------------------------------------------------------------------
 def _certipy_available():
-    return shutil.which("certipy") is not None
+    return shutil.which("certipy-find") is not None
 
 def _get_credential_info(connector):
     username = getattr(connector, "username", None)
@@ -261,10 +261,10 @@ def _is_ldaps_error(stdout, stderr):
     return any(pat in combined for pat in _LDAPS_ERROR_PATTERNS)
 
 def _run_certipy(creds, cwd=None, scheme=None):
-    """Invoke certipy find. scheme may be None (default LDAPS) or 'ldap'."""
+    """Invoke certipy-find. scheme may be None (default LDAPS) or 'ldap'."""
     upn = f"{creds['username']}@{creds['domain']}"
     cmd = [
-        "certipy", "find",
+        "certipy-find",
         "-u",      upn,
         "-p",      creds["password"],
         "-dc-ip",  creds["dc_ip"],
@@ -873,7 +873,7 @@ def _run_certipy_check(connector, verbose=False):
             upn = f"{creds['username']}@{creds['domain']}"
             scheme_note = " (LDAP fallback)" if ldap_fallback_used else ""
             dbg.log_subprocess(
-                cmd=["certipy", "find", "-u", upn, "-p", "<redacted>",
+                cmd=["certipy-find", "-u", upn, "-p", "<redacted>",
                      "-dc-ip", creds["dc_ip"],
                      "-enabled", "-vulnerable"]
                     + (["-ldap-scheme", "ldap"] if ldap_fallback_used else []),
@@ -900,10 +900,10 @@ def _run_certipy_check(connector, verbose=False):
                        else ". Check that credentials are valid and the DC is reachable.")
                 ),
                 "recommendation": (
-                    f"Run manually: certipy find -u {creds['username']}@{creds['domain']} "
+                    f"Run manually: certipy-find -u {creds['username']}@{creds['domain']} "
                     f"-p <password> -dc-ip {creds['dc_ip']} -scheme ldap -json -vulnerable"
                     if ldap_fallback_used else
-                    f"Run manually: certipy find -u {creds['username']}@{creds['domain']} "
+                    f"Run manually: certipy-find -u {creds['username']}@{creds['domain']} "
                     f"-p <password> -dc-ip {creds['dc_ip']} -json -vulnerable"
                 ),
                 "details": [
@@ -932,7 +932,7 @@ def _run_certipy_check(connector, verbose=False):
                 ),
                 "recommendation": (
                     "Ensure Certipy version >= 4.0 is installed (certipy-ad). "
-                    "Run certipy find manually with -json -output to verify output naming."
+                    "Run certipy-find manually with -json -output to verify output naming."
                 ),
                 "details": [f"stdout: {stdout[:500]}"],
             })
