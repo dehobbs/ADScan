@@ -10,7 +10,7 @@ TOOLS = [
         "tool": "Certipy",
         "icon": "impacket",
         "desc": "Enumerate accounts with msDS-KeyCredentialLink set (shadow credentials).",
-        "code": "certipy-ad -u <username>@<domain> -p <password> -dc-ip <DC_IP>",
+        "code": "certipy-ad find -u <username>@<domain> -p <password> -dc-ip <DC_IP>",
         "confirm": "Accounts with <strong>Key Credential</strong> entries not set by the OS are suspicious.",
     },
     {
