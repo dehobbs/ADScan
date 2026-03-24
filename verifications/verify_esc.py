@@ -13,6 +13,15 @@ MATCH_KEYS = [
     "write access to a certificate template",
     "manageca or managecertificates",
     "szoid_ntds_ca_security_ext globally",
+    "esc1:",
+    "esc2:",
+    "esc3:",
+    "esc4:",
+    "esc5:",
+    "esc6:",
+    "esc7:",
+    "esc8:",
+    "esc9:",
 ]
 
 TOOLS = [
