@@ -1,4 +1,6 @@
 """
+import logging
+_log = logging.getLogger(__name__)
 checks/check_kerberos.py - Kerberos Attack Surface Check
 
 Detects common Kerberos misconfigurations that enable credential-theft attacks.
@@ -54,7 +56,8 @@ _ATTRS = [
 def _uac(entry, flag):
     try:
         return bool(int(entry.get("userAccountControl")) & flag)
-    except Exception:
+    except Exception as exc:
+        _log.debug(f"_uac: unexpected error reading userAccountControl: {exc}")
         return False
 
 
@@ -65,7 +68,8 @@ def _is_disabled(entry):
 def _get_sam(entry):
     try:
         return str(entry.get("sAMAccountName"))
-    except Exception:
+    except Exception as exc:
+        _log.debug(f"_get_sam: unexpected error reading sAMAccountName: {exc}")
         return "?"
 
 
@@ -73,14 +77,16 @@ def _get_spns(entry):
     try:
         v = entry.get("servicePrincipalName")
         return list(v) if v else []
-    except Exception:
+    except Exception as exc:
+        _log.debug(f"_get_spns: unexpected error reading servicePrincipalName: {exc}")
         return []
 
 
 def _is_admin_count(entry):
     try:
         return int(entry.get("adminCount")) == 1
-    except Exception:
+    except Exception as exc:
+        _log.debug(f"_is_admin_count: unexpected error reading adminCount: {exc}")
         return False
 
 
@@ -101,7 +107,8 @@ def _is_des_only(entry):
         des_bits = etype & _DES_ONLY_MASK
         non_des_bits = etype & (_ETYPE_RC4 | _ETYPE_AES128 | _ETYPE_AES256)
         return bool(des_bits) and not bool(non_des_bits)
-    except Exception:
+    except Exception as exc:
+        _log.debug(f"_uses_des_only: unexpected error reading msDS-SupportedEncryptionTypes: {exc}")
         return False
 
 
