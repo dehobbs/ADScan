@@ -55,7 +55,7 @@ Usage inside check files (subprocess example)::
     dbg = getattr(connector, "debug_log", None)
     if dbg:
         dbg.log_subprocess(
-            cmd=["certipy-find", "..."],
+            cmd=["certipy-ad", "..."],
             cwd=str(cwd),
             returncode=rc,
             stdout=out,
