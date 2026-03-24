@@ -1,6 +1,4 @@
 """
-import logging
-_log = logging.getLogger(__name__)
 checks/check_constrained_delegation.py - Constrained Delegation Check
 
 Constrained Kerberos Delegation (KCD) restricts delegation to specific services.
@@ -20,6 +18,9 @@ Risk Scoring:
   - Accounts with KCD to high-value SPNs (cifs, ldap, host to DCs) -> high (-15 pts)
   - Any constrained delegation misconfiguration -> medium (-8 pts)
 """
+import logging
+_log = logging.getLogger(__name__)
+
 
 CHECK_NAME = "Constrained Delegation"
 CHECK_ORDER = 3
