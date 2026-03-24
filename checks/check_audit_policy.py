@@ -354,7 +354,8 @@ def run_check(connector, verbose=False):
         if parsed:
             gpos_with_audit.append(gpo_name)
             merged_config.update(parsed)
-            log.debug(f'    -> Parsed {len(parsed)} subcategory entries from audit.csv.')        else:
+            log.debug(f'    -> Parsed {len(parsed)} subcategory entries from audit.csv.')
+        else:
             log.debug(f'    -> audit.csv found ({len(raw)} bytes) but could not be parsed.')            smb_errors.append((gpo_name, audit_rel, f'Parse failed ({len(raw)} bytes, encoding issue?)'))
 
     log.debug(f'  [Audit Policy] Scanned: {gpos_scanned} GPO(s), found audit.csv in: {len(gpos_with_audit)}, errors: {len(smb_errors)}')
