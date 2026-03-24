@@ -53,6 +53,7 @@ def _has_value(entry, attr):
 
 def run_check(connector, verbose=False):
     findings = []
+    log = connector.log
     config_dn = "CN=Configuration," + connector.base_dn
     schema_dn = "CN=Schema," + config_dn
 
@@ -75,9 +76,8 @@ def run_check(connector, verbose=False):
     has_win_laps    = len(win_laps_schema) > 0
     has_any_laps    = has_legacy_laps or has_win_laps
 
-    if verbose:
-        print(f"     Legacy LAPS schema (ms-Mcs-AdmPwd)   : {'YES' if has_legacy_laps else 'NO'}")
-        print(f"     Windows LAPS schema (msLAPS-*)        : {'YES' if has_win_laps else 'NO'}")
+    log.debug(f"     Legacy LAPS schema (ms-Mcs-AdmPwd)   : {'YES' if has_legacy_laps else 'NO'}")
+    log.debug(f"     Windows LAPS schema (msLAPS-*)        : {'YES' if has_win_laps else 'NO'}")
 
     # -----------------------------------------------------------------------
     # 2. Computer account enumeration
@@ -114,10 +114,9 @@ def run_check(connector, verbose=False):
 
     coverage_pct = (laps_covered / total_non_dc * 100) if total_non_dc > 0 else 0
 
-    if verbose:
-        print(f"     Non-DC computer accounts             : {total_non_dc}")
-        print(f"     LAPS-covered computers               : {laps_covered}")
-        print(f"     Coverage                             : {coverage_pct:.1f}%")
+    log.debug(f"     Non-DC computer accounts             : {total_non_dc}")
+    log.debug(f"     LAPS-covered computers               : {laps_covered}")
+    log.debug(f"     Coverage                             : {coverage_pct:.1f}%")
 
     # -----------------------------------------------------------------------
     # Build findings
@@ -214,7 +213,6 @@ def run_check(connector, verbose=False):
             ] + [f"No LAPS: {n}" for n in no_laps[:50]],
         })
     else:
-        if verbose:
-            print(f"     [OK] LAPS coverage: {coverage_pct:.1f}%")
+        log.debug(f"     [OK] LAPS coverage: {coverage_pct:.1f}%")
 
     return findings
