@@ -1,6 +1,4 @@
 """
-import logging
-_log = logging.getLogger(__name__)
 checks/check_kerberos.py - Kerberos Attack Surface Check
 
 Detects common Kerberos misconfigurations that enable credential-theft attacks.
@@ -21,6 +19,9 @@ Risk Deductions:
   High    (-15): AS-REP Roastable accounts
   Medium  (-8) : DES-only encryption accounts
 """
+import logging
+_log = logging.getLogger(__name__)
+
 
 CHECK_NAME = "Kerberos Attack Surface"
 CHECK_ORDER = 5
