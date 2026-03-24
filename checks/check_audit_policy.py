@@ -337,7 +337,8 @@ def run_check(connector, verbose=False):
             )
 
         if raw is None:
-            log.debug(f'    -> Not found or unreadable: {err}')            # Diagnostic: list the Audit directory if it exists
+            log.debug(f'    -> Not found or unreadable: {err}')
+            # Diagnostic: list the Audit directory if it exists
             audit_dir = rel_path.rstrip('\\') + '\\Machine\\Microsoft\\Windows NT\\Audit\\*'
             dir_entries = _smb_list_dir(smb_conn, share, audit_dir)
             if dir_entries:
@@ -356,7 +357,8 @@ def run_check(connector, verbose=False):
             merged_config.update(parsed)
             log.debug(f'    -> Parsed {len(parsed)} subcategory entries from audit.csv.')
         else:
-            log.debug(f'    -> audit.csv found ({len(raw)} bytes) but could not be parsed.')            smb_errors.append((gpo_name, audit_rel, f'Parse failed ({len(raw)} bytes, encoding issue?)'))
+            log.debug(f'    -> audit.csv found ({len(raw)} bytes) but could not be parsed.')
+            smb_errors.append((gpo_name, audit_rel, f'Parse failed ({len(raw)} bytes, encoding issue?)'))
 
     log.debug(f'  [Audit Policy] Scanned: {gpos_scanned} GPO(s), found audit.csv in: {len(gpos_with_audit)}, errors: {len(smb_errors)}')
 
