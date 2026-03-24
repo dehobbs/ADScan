@@ -271,8 +271,7 @@ class ADConnector:
         try:
             tls = None
             if use_ssl:
-                tls = Tls(validate=ssl.CERT_NONE, version=ssl.PROTOCOL_TLS_CLIENT)
-                tls.ssl_options = {"check_hostname": False}
+                tls = Tls(validate=ssl.CERT_NONE, version=ssl.PROTOCOL_TLS)
 
             server = Server(
                 self.dc_host,
