@@ -1065,7 +1065,6 @@ def run_check(connector, verbose=False):
     _ESC_PREFIX_RE = _re.compile(r'^(ESC\d+)\b', _re.IGNORECASE)
 
     def _esc_key(title):
-        """Extract the ESC prefix from a finding title, e.g. 'ESC1' from 'ESC1: ...'."""
         m = _ESC_PREFIX_RE.match(title.strip())
         return m.group(1).upper() if m else None
 
