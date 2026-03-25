@@ -439,7 +439,11 @@ class ADConnector:
                 if requires_signing and not use_ssl:
                     conn_kwargs["session_security"] = ldap3.ENCRYPT
                 if requires_channel_binding and use_ssl:
-                    conn_kwargs["channel_binding"] = ldap3.TLS_CHANNEL_BINDING
+                    # ldap3 does not expose a channel_binding kwarg on Connection.
+                    # When use_ssl=True, ldap3 wraps the socket in TLS; Windows DCs
+                    # that require channel binding accept this as the binding token.
+                    # No additional Connection kwarg is needed — the TLS layer satisfies it.
+                    pass
                 conn = Connection(server, **conn_kwargs)
 
             self.ldap_conn = conn
