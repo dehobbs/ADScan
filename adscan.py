@@ -175,10 +175,10 @@ def parse_args():
 
     target_group = parser.add_argument_group("Target")
     target_group.add_argument(
-        "-d", "--domain", required=True, help="Target domain FQDN (e.g. corp.local)"
+        "-d", "--domain", required=False, help="Target domain FQDN (e.g. corp.local)"
     )
     target_group.add_argument(
-        "-dc-ip", "--dc-ip", dest="dc_ip", required=True,
+        "-dc-ip", "--dc-ip", dest="dc_ip", required=False,
         help="Domain Controller IP or hostname"
     )
     target_group.add_argument(
@@ -189,7 +189,7 @@ def parse_args():
     )
 
     auth_group = parser.add_argument_group("Authentication")
-    auth_group.add_argument("-u", "--username", required=True, help="Username for authentication")
+    auth_group.add_argument("-u", "--username", required=False, help="Username for authentication")
     auth_creds = auth_group.add_mutually_exclusive_group(required=False)
     auth_creds.add_argument("-p", "--password", help="Password for authentication")
     auth_creds.add_argument(
@@ -326,6 +326,20 @@ def main():
     if args.list_checks:
         list_checks()
         sys.exit(0)
+
+    # Validate required connection args (not needed for --list-checks, already exited above)
+    missing = []
+    if not args.domain:
+        missing.append("-d/--domain")
+    if not args.dc_ip:
+        missing.append("-dc-ip/--dc-ip")
+    if not args.username:
+        missing.append("-u/--username")
+    if missing:
+        import sys as _sys
+        print(f"adscan.py: error: the following arguments are required: {', '.join(missing)}", file=_sys.stderr)
+        _sys.exit(2)
+
 
     # --ccache implies --kerberos even if the flag was not set explicitly
     if args.ccache and not args.kerberos:
