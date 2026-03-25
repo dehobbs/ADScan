@@ -506,7 +506,7 @@ def _exec_summary_html(domain, dc_host, scan_time, score, grade, score_color, se
         "low":      ("#eff6ff", "#bfdbfe"),
         "info":     ("#f9fafb", "#e5e7eb"),
     }
-    for f in top3:
+    for i, f in enumerate(top3):
         sev = f.get("severity", "info").lower()
         accent = SEVERITY_COLORS.get(sev, SEVERITY_COLORS["info"])[0]
         bg, border = chip_bg_map.get(sev, ("#f9fafb", "#e5e7eb"))
@@ -515,14 +515,14 @@ def _exec_summary_html(domain, dc_host, scan_time, score, grade, score_color, se
             cats = ", ".join(cats)
         deduction = f.get("deduction", 0)
         chips_html += (
-            f'<div class="exec-chip" style="background:{bg};border:1px solid {border};">'
+            f'<a class="exec-chip" href="#finding-{i}" style="background:{bg};border:1px solid {border};">'
             f'<div class="exec-chip-bar" style="background:{accent};"></div>'
             f'<div class="exec-chip-body">'
             f'<div class="exec-chip-sev" style="color:{accent};">{html_mod.escape(sev.upper())}</div>'
             f'<div class="exec-chip-title">{html_mod.escape(f.get("title", ""))}</div>'
             f'<div class="exec-chip-meta">-{deduction} pts &nbsp;&bull;&nbsp; {html_mod.escape(cats)}</div>'
             f'</div>'
-            f'</div>'
+            f'</a>'
         )
 
     top_section = ""
@@ -998,6 +998,14 @@ details:not([open]) > summary > span:first-child { transform: rotate(-90deg) !im
   flex: 1;
   min-width: 200px;
   max-width: 320px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.exec-chip:hover, .exec-chip:focus {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  outline: none;
 }
 .exec-chip-bar {
   width: 3px;
