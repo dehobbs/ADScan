@@ -169,43 +169,44 @@ def _parse_smb_results(nxc_output):
         (unsigned_hosts, signed_hosts, smbv1_hosts)
 
     NetExec SMB output format:
-      SMB <ip> 445 <hostname> [*] Windows ... (name:<host>) (domain:<dom>)
-                                              (signing:True/False) (SMBv1:True/False)
+        SMB <ip> 445 <hostname> [*] Windows ... (name:<host>) (domain:<dom>)
+            (signing:True/False) (SMBv1:True/False)
 
-    A host is added to smbv1_hosts if SMBv1:True appears on its line,
-    regardless of its signing status (the two findings are independent).
+    signing: and SMBv1: are parsed independently so that a line missing
+    one token does not discard the other.  This prevents the common case
+    where older nxc versions or unreachable hosts omit SMBv1: from the
+    line, causing signing:False hosts to be silently dropped.
     """
     unsigned = []
     signed   = []
     smbv1    = []
 
-    line_re = re.compile(
-        r'^SMB\s+(\S+)\s+\d+\s+(\S+)'
-        r'.*?\(signing:(True|False)\)'
-        r'.*?\(SMBv1:(True|False)\)',
-        re.IGNORECASE,
-    )
+    # Match the SMB prefix + IP + port + hostname — anchors the line
+    host_re   = re.compile(r'^SMB\s+(\S+)\s+\d+\s+(\S+)', re.IGNORECASE)
+    # Independent token patterns — each optional relative to the other
+    sign_re   = re.compile(r'\(signing:(True|False)\)', re.IGNORECASE)
+    smbv1_re  = re.compile(r'\(SMBv1:(True|False)\)',  re.IGNORECASE)
 
     for line in nxc_output.splitlines():
-        m = line_re.search(line)
-        if m:
-            ip          = m.group(1)
-            hostname    = m.group(2)
-            signing_val = m.group(3)
-            smbv1_val   = m.group(4)
-            label = f"{hostname} ({ip})" if hostname != ip else ip
+        hm = host_re.search(line)
+        if not hm:
+            continue
+        ip       = hm.group(1)
+        hostname = hm.group(2)
+        label    = f"{hostname} ({ip})" if hostname != ip else ip
 
-            if signing_val.lower() == "false":
+        sm = sign_re.search(line)
+        if sm:
+            if sm.group(1).lower() == "false":
                 unsigned.append(label)
             else:
                 signed.append(label)
 
-            if smbv1_val.lower() == "true":
-                smbv1.append(label)
+        vm = smbv1_re.search(line)
+        if vm and vm.group(1).lower() == "true":
+            smbv1.append(label)
 
     return unsigned, signed, smbv1
-
-
 # ---------------------------------------------------------------------------
 # Main check entry point
 # ---------------------------------------------------------------------------
