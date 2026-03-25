@@ -98,33 +98,31 @@ COL_SETTING_VALUE = 6
 def _get_attr(entry, attr_name):
     """
     Safely extract a single string value from an ldap3 entry or plain dict.
-    ldap3 entry objects expose attributes via entry.<name>.value or
-    entry_attributes_as_dict; plain dicts use entry['attributes'][name].
+    connector.ldap_search() returns results from _entry_to_dict() as flat dicts
+    with attribute names as top-level keys (not nested under an 'attributes' key).
     """
-    # ldap3 Entry object
+    # Flat dict — returned by connector.ldap_search() via _entry_to_dict()
+    if isinstance(entry, dict):
+        val = entry.get(attr_name, "")
+        if val is None:
+            return ""
+        if isinstance(val, list):
+            return str(val[0]) if val else ""
+        return str(val)
+    # ldap3 Entry object — attribute access via dot notation
     if hasattr(entry, attr_name):
         val = getattr(entry, attr_name)
         if hasattr(val, 'value'):
             v = val.value
-            if isinstance(v, list):
-                return str(v[0]) if v else ""
+            if isinstance(v, list): return str(v[0]) if v else ""
             return str(v) if v is not None else ""
-    # entry_attributes_as_dict
+    # ldap3 Entry object — entry_attributes_as_dict fallback
     if hasattr(entry, 'entry_attributes_as_dict'):
         d = entry.entry_attributes_as_dict
         val = d.get(attr_name, "")
-        if isinstance(val, list):
-            return str(val[0]) if val else ""
-        return str(val) if val else ""
-    # plain dict with 'attributes' key
-    if isinstance(entry, dict):
-        val = entry.get('attributes', {}).get(attr_name, "")
-        if isinstance(val, list):
-            return str(val[0]) if val else ""
+        if isinstance(val, list): return str(val[0]) if val else ""
         return str(val) if val else ""
     return ""
-
-
 def _unc_to_share_and_path(unc_path):
     r"""
     Parse a Windows UNC path into (share_name, path_relative_to_share).
@@ -322,38 +320,52 @@ def run_check(connector, verbose=False):
             smb_errors.append((gpo_name, unc_path, 'Could not parse UNC path'))
             continue
 
-        # Build the full SMB path to audit.csv
-        # rel_path is e.g. \corp.local\Policies\{GUID}
-        # We append the fixed audit subpath using single backslashes
-        audit_rel = rel_path.rstrip('\\') + '\\Machine\\Microsoft\\Windows NT\\Audit\\audit.csv'
+        # Build the SMB path to audit.csv.
+        # rel_path is e.g. \\corp.local\\Policies\\{GUID}
+        # We append the fixed audit subpath using single backslashes.
+        # Windows DCs may use either "audit.csv" or "Audit.csv" — try both.
+        audit_dir_rel = rel_path.rstrip('\\') + '\\Machine\\Microsoft\\Windows NT\\Audit'
+        audit_rel = audit_dir_rel + '\\audit.csv'
 
         log.debug(f'  [Audit Policy] GPO {gpo_name!r}')
-        log.debug(f'    share={share!r}  path={audit_rel!r}')
-        raw, err = _smb_read_file(smb_conn, share, audit_rel)
-        gpos_scanned += 1
+        log.debug(f'    share={share!r} path={audit_rel!r}')
 
+        # Try to discover the actual filename by listing the Audit directory first.
+        # This handles case differences (audit.csv vs Audit.csv) and confirms the dir exists.
+        actual_audit_path = None
+        dir_listing = _smb_list_dir(smb_conn, share, audit_dir_rel + '\\*')
+        if dir_listing:
+            for fname in dir_listing:
+                if fname.lower() == 'audit.csv':
+                    actual_audit_path = audit_dir_rel + '\\' + fname
+                    break
+
+        if actual_audit_path is None:
+            # Directory listing failed or no audit.csv found — try direct read with both casings
+            for candidate in (audit_dir_rel + '\\audit.csv', audit_dir_rel + '\\Audit.csv'):
+                raw_try, err_try = _smb_read_file(smb_conn, share, candidate)
+                if raw_try is not None:
+                    actual_audit_path = candidate
+                    break
+
+        if actual_audit_path is None:
+            # Could not find audit.csv — record error and continue
+            raw, err = None, 'audit.csv not found (tried audit.csv and Audit.csv)'
+        else:
+            audit_rel = actual_audit_path
+            raw, err = _smb_read_file(smb_conn, share, audit_rel)
+
+        gpos_scanned += 1
         if dbg:
             dbg.log_smb(
                 operation='READ',
                 path=f'\\\\{connector.dc_host}\\{share}{audit_rel}',
                 result=f'{len(raw)} bytes' if raw else f'not found: {err}',
             )
-
         if raw is None:
             log.debug(f'    -> Not found or unreadable: {err}')
-            # Diagnostic: list the Audit directory if it exists
-            audit_dir = rel_path.rstrip('\\') + '\\Machine\\Microsoft\\Windows NT\\Audit\\*'
-            dir_entries = _smb_list_dir(smb_conn, share, audit_dir)
-            if dir_entries:
-                log.debug(f'    -> Audit dir contents: {dir_entries}')
-            else:
-                # Try listing one level up
-                nt_dir = rel_path.rstrip('\\') + '\\Machine\\Microsoft\\Windows NT\\*'
-                nt_entries = _smb_list_dir(smb_conn, share, nt_dir)
-                log.debug(f'    -> Windows NT dir contents: {nt_entries}')
             smb_errors.append((gpo_name, audit_rel, err or 'File not found'))
             continue
-
         parsed = _parse_audit_csv(raw)
         if parsed:
             gpos_with_audit.append(gpo_name)
