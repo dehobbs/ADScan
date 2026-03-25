@@ -8,6 +8,7 @@ Generates a self-contained HTML dashboard with:
   - Scan metadata table
   - Manual Verification tool cards (per finding)
   - Remediation guidance (per finding)
+  - Executive summary with score, grade, and top priority findings
 """
 from datetime import datetime
 import html as html_mod
@@ -429,6 +430,151 @@ def _finding_card(finding, idx):
 </div>"""
 
 
+def _exec_summary_html(domain, dc_host, scan_time, score, grade, score_color, sev_counts, findings):
+    """Build the Executive Summary card HTML inserted at the top of each report."""
+    # ---- prose paragraph ----
+    total = len(findings)
+    sev_parts = []
+    for sev in SEV_ORDER:
+        count = sev_counts.get(sev, 0)
+        if count == 0:
+            continue
+        color = SEVERITY_COLORS[sev][0]
+        label = sev.capitalize()
+        sev_parts.append(
+            f'<strong style="color:{color};">{count} {label}</strong>'
+        )
+    if len(sev_parts) > 1:
+        sev_str = ", ".join(sev_parts[:-1]) + f", and {sev_parts[-1]}"
+    elif sev_parts:
+        sev_str = sev_parts[0]
+    else:
+        sev_str = "none"
+
+    if total == 0:
+        posture = "an excellent"
+        issue_note = "indicating an excellent security posture with no issues detected."
+    elif score >= 90:
+        posture = "an excellent"
+        issue_note = (
+            f"indicating {posture} security posture. "
+            f"<strong>{total} informational finding{'s' if total != 1 else ''}</strong> "
+            f"{'were' if total != 1 else 'was'} identified: {sev_str}."
+        )
+    elif score >= 75:
+        issue_note = (
+            f"indicating a good security posture with some issues requiring attention. "
+            f"<strong>{total} finding{'s' if total != 1 else ''}</strong> "
+            f"{'were' if total != 1 else 'was'} identified: {sev_str}."
+        )
+    elif score >= 60:
+        issue_note = (
+            f"indicating a moderate security posture with several issues requiring prompt attention. "
+            f"<strong>{total} finding{'s' if total != 1 else ''}</strong> "
+            f"{'were' if total != 1 else 'was'} identified: {sev_str}."
+        )
+    else:
+        issue_note = (
+            f"indicating a poor security posture with significant issues requiring immediate attention. "
+            f"<strong>{total} finding{'s' if total != 1 else ''}</strong> "
+            f"{'were' if total != 1 else 'was'} identified: {sev_str}."
+        )
+
+    urgency = ""
+    if sev_counts.get("critical", 0) > 0 or sev_counts.get("high", 0) > 0:
+        urgency = (
+            " Immediate remediation of the critical and high-severity findings "
+            "is strongly recommended before the next assessment cycle."
+        )
+
+    paragraph = (
+        f'An authenticated security scan of <strong>{html_mod.escape(domain)}</strong> was '
+        f'conducted on <strong>{html_mod.escape(scan_time[:10])}</strong> against domain '
+        f'controller <strong>{html_mod.escape(dc_host)}</strong>. '
+        f'The domain received a security score of '
+        f'<strong style="color:{score_color};">{score}/100 (Grade {grade})</strong>, '
+        f'{issue_note}{urgency}'
+    )
+
+    # ---- top-3 priority finding chips (findings already sorted by severity) ----
+    top3 = findings[:3]
+    chips_html = ""
+    chip_bg_map = {
+        "critical": ("#fef2f2", "#fecaca"),
+        "high":     ("#fff7ed", "#fed7aa"),
+        "medium":   ("#fffbeb", "#fde68a"),
+        "low":      ("#eff6ff", "#bfdbfe"),
+        "info":     ("#f9fafb", "#e5e7eb"),
+    }
+    for f in top3:
+        sev = f.get("severity", "info").lower()
+        accent = SEVERITY_COLORS.get(sev, SEVERITY_COLORS["info"])[0]
+        bg, border = chip_bg_map.get(sev, ("#f9fafb", "#e5e7eb"))
+        cats = f.get("category", "Uncategorized")
+        if not isinstance(cats, str):
+            cats = ", ".join(cats)
+        deduction = f.get("deduction", 0)
+        chips_html += (
+            f'<div class="exec-chip" style="background:{bg};border:1px solid {border};">'
+            f'<div class="exec-chip-bar" style="background:{accent};"></div>'
+            f'<div class="exec-chip-body">'
+            f'<div class="exec-chip-sev" style="color:{accent};">{html_mod.escape(sev.upper())}</div>'
+            f'<div class="exec-chip-title">{html_mod.escape(f.get("title", ""))}</div>'
+            f'<div class="exec-chip-meta">-{deduction} pts &nbsp;&bull;&nbsp; {html_mod.escape(cats)}</div>'
+            f'</div>'
+            f'</div>'
+        )
+
+    top_section = ""
+    if top3:
+        n = len(top3)
+        top_section = (
+            f'<hr class="exec-divider">'
+            f'<div class="exec-top-label">Top {n} Priority Finding{"s" if n != 1 else ""}</div>'
+            f'<div class="exec-chips-row">{chips_html}</div>'
+        )
+
+    # ---- grade pill colours ----
+    if score >= 75:
+        pill_border, pill_bg = "#86efac", "#f0fdf4"
+    elif score >= 50:
+        pill_border, pill_bg = "#fde68a", "#fffbeb"
+    else:
+        pill_border, pill_bg = "#fca5a5", "#fef2f2"
+
+    grade_pill = (
+        f'<div class="exec-grade-pill" style="border-color:{pill_border};background:{pill_bg};">'
+        f'<div class="exec-grade-circle" style="background:{score_color};">{grade}</div>'
+        f'<div>'
+        f'<div class="exec-grade-score" style="color:{score_color};">{score} / 100</div>'
+        f'<div class="exec-grade-label">Security Score</div>'
+        f'</div>'
+        f'</div>'
+    )
+
+    icon_svg = (
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2.2" style="flex-shrink:0;opacity:.55;">'
+        '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>'
+        '<polyline points="14 2 14 8 20 8"/>'
+        '<line x1="16" y1="13" x2="8" y2="13"/>'
+        '<line x1="16" y1="17" x2="8" y2="17"/>'
+        '</svg>'
+    )
+
+    return (
+        f'<div class="exec-summary">'
+        f'<div class="exec-header">'
+        f'<div class="exec-title">{icon_svg} Executive Summary</div>'
+        f'{grade_pill}'
+        f'</div>'
+        f'<p class="exec-body">{paragraph}</p>'
+        f'{top_section}'
+        f'</div>'
+    )
+
+
+
 def generate_report(output_file, domain, dc_host, username, protocols, findings, score):
     """Generate a self-contained HTML report dashboard with sidebar navigation."""
     from collections import defaultdict
@@ -752,6 +898,150 @@ details > summary { list-style: none; }
 details > summary::-webkit-details-marker { display: none; }
 details[open] > summary > span:first-child { transform: rotate(0deg) !important; }
 details:not([open]) > summary > span:first-child { transform: rotate(-90deg) !important; }
+
+/* ---- Executive Summary card ---- */
+.exec-summary {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 28px 32px;
+  margin-bottom: 24px;
+  box-shadow: var(--card-shadow);
+  border-left: 5px solid var(--header-bg);
+  position: relative;
+  overflow: hidden;
+}
+.exec-summary::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 200px; height: 100%;
+  background: linear-gradient(135deg, transparent 55%, rgba(59,130,246,0.04) 100%);
+  pointer-events: none;
+}
+.exec-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.exec-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.exec-grade-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 1.5px solid #86efac;
+  background: #f0fdf4;
+  border-radius: 24px;
+  padding: 6px 16px 6px 10px;
+}
+.exec-grade-circle {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 800;
+  font-size: 1rem;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.exec-grade-score {
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.exec-grade-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+.exec-body {
+  font-size: 0.95rem;
+  line-height: 1.75;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  max-width: 820px;
+}
+.exec-body strong { color: var(--text-primary); }
+.exec-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 20px 0 16px;
+}
+.exec-top-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+.exec-chips-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.exec-chip {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border-radius: 8px;
+  padding: 10px 14px;
+  flex: 1;
+  min-width: 200px;
+  max-width: 320px;
+}
+.exec-chip-bar {
+  width: 3px;
+  border-radius: 2px;
+  align-self: stretch;
+  flex-shrink: 0;
+  min-height: 40px;
+}
+.exec-chip-sev {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 2px;
+}
+.exec-chip-title {
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+.exec-chip-meta {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+@media print {
+  .exec-summary {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    margin-bottom: 8mm !important;
+    border: 1px solid #cbd5e1 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+  .exec-summary::before { display: none !important; }
+  .exec-grade-pill { border: 1px solid #86efac !important; }
+  .exec-chip {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+  .exec-body { font-size: 0.88rem !important; }
+}
 
 /* ==================================================================
    PRINT / PDF STYLESHEET
@@ -1190,6 +1480,7 @@ function verifTab(btn, panelId) {
         </div>
       </div>
     </header>
+    {_exec_summary_html(domain, dc_host, scan_time, score, grade, score_color, sev_counts, findings)}
     <div class="container">
       <div class="score-section">
         <div class="gauge-wrap">
