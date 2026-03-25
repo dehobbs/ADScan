@@ -968,7 +968,7 @@ details:not([open]) > summary > span:first-child { transform: rotate(-90deg) !im
   line-height: 1.75;
   color: var(--text-secondary);
   margin-bottom: 4px;
-  max-width: 820px;
+  width: 100%;
 }
 .exec-body strong { color: var(--text-primary); }
 .exec-divider {
