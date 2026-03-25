@@ -1,13 +1,12 @@
-""" checks/check_smb_signing.py -- SMB Signing Enforcement & SMBv1 Detection
+""" checks/check_smb.py -- SMB Signing Enforcement & SMBv1 Detection
 
 Two-phase approach:
 
-Phase 1 -- LDAP computer export (ldapsearch)
-    ldapsearch -x -H ldap://<dc> -D "<user>@<domain>" -w "<pass>"
-              -b "<base_dn>" "(objectClass=computer)" dNSHostName cn
-    Parses dNSHostName (preferred) or cn attributes to build a target list
-    and writes one hostname per line to:
-        Reports/Artifacts/computers.txt
+Phase 1 -- LDAP computer enumeration (via connector.ldap_search)
+    Uses the already-established LDAP connection on the connector object,
+    which handles LDAP signing and LDAPS channel binding automatically.
+    Queries (objectClass=computer) for dNSHostName / cn attributes and
+    writes one hostname per line to: Reports/Artifacts/computers.txt
 
 Phase 2 -- SMB sweep (NetExec)
     nxc smb Reports/Artifacts/computers.txt -u <user> -p <pass> [-H <hash>]
@@ -16,28 +15,23 @@ Phase 2 -- SMB sweep (NetExec)
         (SMBv1:True)     -> hosts that still support the deprecated SMBv1 protocol
 
 Findings (from Phase 2 output):
-    SMB Signing:
-        Any signing:False  -> HIGH finding, -15 points
-        All signing:True   -> INFO / PASS finding, 0 points
-    SMBv1:
-        Any SMBv1:True     -> HIGH finding, -15 points
-        All SMBv1:False    -> INFO / PASS finding, 0 points
+    SMB Signing:  Any signing:False -> HIGH finding, -15 points
+                  All signing:True  -> INFO / PASS finding, 0 points
+    SMBv1:        Any SMBv1:True    -> HIGH finding, -15 points
+                  All SMBv1:False   -> INFO / PASS finding, 0 points
 
 Prerequisites:
-    ldapsearch  (usually provided by the ldap-utils / openldap-clients package)
-    nxc         (pip install netexec  or  pipx install netexec)
-
-    If either tool is missing the check emits an informational finding
-    (no deduction) with install instructions rather than raising an error.
+    nxc (pip install netexec or pipx install netexec)
+    Active LDAP connection on the connector (required for Phase 1 computer list)
 """
 
 import os
 import re
 import shutil
-import subprocess  # nosec B404 - subprocess is required to invoke netexec/nmap
+import subprocess  # nosec B404 - subprocess is required to invoke netexec
 
 CHECK_NAME     = "SMB Signing Enforcement"
-CHECK_ORDER    = 22          # runs right after Legacy Protocols (21)
+CHECK_ORDER    = 22  # runs right after Legacy Protocols (21)
 CHECK_CATEGORY = ["Protocol Security"]
 
 
@@ -45,19 +39,8 @@ CHECK_CATEGORY = ["Protocol Security"]
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _ldapsearch_available():
-    return shutil.which("ldapsearch") is not None
-
-
 def _nxc_available():
     return shutil.which("nxc") is not None
-
-
-def _domain_to_base_dn(domain):
-    """Convert 'corp.example.com' -> 'DC=corp,DC=example,DC=com'."""
-    if not domain:
-        return ""
-    return ",".join(f"DC={part}" for part in domain.split("."))
 
 
 def _run_cmd(cmd, timeout=120):
@@ -71,75 +54,38 @@ def _run_cmd(cmd, timeout=120):
     return result.returncode, result.stdout, result.stderr
 
 
-def _build_ldapsearch_cmd(connector):
+def _enumerate_computers_via_ldap(connector):
     """
-    Build the ldapsearch command list for querying computer objects.
+    Enumerate computer objects via the connector's existing LDAP connection.
 
-    ldapsearch -x -H ldap://<dc> -D "<user>@<domain>" -w "<pass>"
-               -b "<base_dn>" "(objectClass=computer)" dNSHostName cn
+    Uses connector.ldap_search() which already has LDAP signing / LDAPS
+    channel binding negotiated correctly, avoiding the 00002028
+    strongerAuthRequired error that ldapsearch -x raises on hardened DCs.
+
+    Returns a list of unique hostnames (dNSHostName preferred, cn fallback).
     """
-    dc_host  = getattr(connector, "dc_host",  None) or getattr(connector, "server", None)
-    domain   = getattr(connector, "domain",   "")
-    username = getattr(connector, "username", None) or ""
-    password = getattr(connector, "password", None) or ""
+    log = connector.log
+    if not getattr(connector, 'ldap_conn', None):
+        log.warning(" [SMB] No active LDAP connection on connector — cannot enumerate computers.")
+        return []
 
-    base_dn = _domain_to_base_dn(domain)
+    entries = connector.ldap_search(
+        search_filter='(objectClass=computer)',
+        attributes=['dNSHostName', 'cn'],
+    )
 
-    # Build bind DN: if username already contains '@' or '\' use as-is,
-    # otherwise append @domain so ldapsearch gets a valid UPN.
-    if domain and "@" not in username and "\\" not in username:
-        bind_dn = f"{username}@{domain}"
-    else:
-        bind_dn = username
-
-    cmd = [
-        "ldapsearch",
-        "-x",                          # simple auth (not SASL)
-        "-H", f"ldap://{dc_host}",     # LDAP URI
-        "-D", bind_dn,                 # bind DN / UPN
-        "-w", password,                # password
-        "-b", base_dn,                 # search base
-        "(objectClass=computer)",      # filter
-        "dNSHostName", "cn",           # requested attributes
-    ]
-    return cmd
-
-
-def _parse_ldapsearch_computers(ldap_output):
-    """
-    Parse ldapsearch LDIF output and return a list of unique hostnames.
-
-    Preference order per entry:
-      1. dNSHostName  (fully-qualified, e.g. 'WS01.corp.example.com')
-      2. cn           (short name, e.g. 'WS01')
-
-    Lines of interest look like:
-      dNSHostName: WS01.corp.example.com
-      cn: WS01
-    """
     targets = []
-    seen    = set()
-
-    # Split into LDIF entries (blank line separates entries)
-    entries = re.split(r'\n\n+', ldap_output)
-
-    dns_re = re.compile(r'^dNSHostName:\s+(\S+)', re.IGNORECASE | re.MULTILINE)
-    cn_re  = re.compile(r'^cn:\s+(\S+)',          re.IGNORECASE | re.MULTILINE)
-
+    seen = set()
     for entry in entries:
-        host = None
-        m = dns_re.search(entry)
-        if m:
-            host = m.group(1).strip()
-        else:
-            m2 = cn_re.search(entry)
-            if m2:
-                host = m2.group(1).strip()
-
+        # connector.ldap_search returns flat dicts from _entry_to_dict()
+        dns = (entry.get('dNSHostName') or '').strip()
+        cn  = (entry.get('cn') or '').strip()
+        host = dns or cn
         if host and host not in seen:
             seen.add(host)
             targets.append(host)
 
+    log.debug(" [SMB] Enumerated %d computer(s) via LDAP.", len(targets))
     return targets
 
 
@@ -147,9 +93,9 @@ def _build_nxc_smb_auth_args(connector):
     """Return the nxc SMB authentication arguments as a list."""
     username = getattr(connector, "username", None)
     password = getattr(connector, "password", None)
-    nt_hash  = getattr(connector, "nt_hash",  None)
-    lm_hash  = getattr(connector, "lm_hash",  "") or ""
-    domain   = getattr(connector, "domain",   "")
+    nt_hash  = getattr(connector, "nt_hash", None)
+    lm_hash  = getattr(connector, "lm_hash", "") or ""
+    domain   = getattr(connector, "domain", "")
 
     args = ["-u", username or ""]
     if nt_hash:
@@ -173,19 +119,15 @@ def _parse_smb_results(nxc_output):
             (signing:True/False) (SMBv1:True/False)
 
     signing: and SMBv1: are parsed independently so that a line missing
-    one token does not discard the other.  This prevents the common case
-    where older nxc versions or unreachable hosts omit SMBv1: from the
-    line, causing signing:False hosts to be silently dropped.
+    one token does not discard the other.
     """
     unsigned = []
     signed   = []
     smbv1    = []
 
-    # Match the SMB prefix + IP + port + hostname — anchors the line
-    host_re   = re.compile(r'^SMB\s+(\S+)\s+\d+\s+(\S+)', re.IGNORECASE)
-    # Independent token patterns — each optional relative to the other
-    sign_re   = re.compile(r'\(signing:(True|False)\)', re.IGNORECASE)
-    smbv1_re  = re.compile(r'\(SMBv1:(True|False)\)',  re.IGNORECASE)
+    host_re  = re.compile(r'^SMB\s+(\S+)\s+\d+\s+(\S+)', re.IGNORECASE)
+    sign_re  = re.compile(r'\(signing:(True|False)\)',         re.IGNORECASE)
+    smbv1_re = re.compile(r'\(SMBv1:(True|False)\)',           re.IGNORECASE)
 
     for line in nxc_output.splitlines():
         hm = host_re.search(line)
@@ -207,46 +149,26 @@ def _parse_smb_results(nxc_output):
             smbv1.append(label)
 
     return unsigned, signed, smbv1
+
+
 # ---------------------------------------------------------------------------
 # Main check entry point
 # ---------------------------------------------------------------------------
 
 def run_check(connector, verbose=False):
     findings = []
-    log = connector.log
+    log      = connector.log
 
-    # ---------------------------------------------------------------------- #
-    # Pre-flight: check required tools                                        #
-    # ---------------------------------------------------------------------- #
-    if not _ldapsearch_available():
-        findings.append({
-            "title":       "SMB Signing Enforcement -- ldapsearch Not Found",
-            "severity":    "info",
-            "deduction":   0,
-            "description": (
-                "ldapsearch is required for Phase 1 (computer enumeration) "
-                "but was not found on PATH. "
-                "Install with: sudo apt install ldap-utils  "
-                "(Debian/Ubuntu) or sudo yum install openldap-clients (RHEL/CentOS)."
-            ),
-            "recommendation": (
-                "Install ldap-utils / openldap-clients and re-run ADScan."
-            ),
-            "details": [
-                "ldapsearch not found on PATH.",
-                "Debian/Ubuntu: sudo apt install ldap-utils",
-                "RHEL/CentOS:   sudo yum install openldap-clients",
-            ],
-        })
-        return findings
-
+    # ----------------------------------------------------------------------
+    # Pre-flight: check nxc
+    # ----------------------------------------------------------------------
     if not _nxc_available():
         findings.append({
-            "title":       "SMB Signing Enforcement -- NetExec Not Found",
-            "severity":    "info",
-            "deduction":   0,
+            "title": "SMB Signing Enforcement -- NetExec Not Found",
+            "severity": "info",
+            "deduction": 0,
             "description": (
-                "NetExec (nxc) is required for Phase 2 (SMB sweep) "
+                "NetExec (nxc) is required for the SMB sweep "
                 "but was not found on PATH. "
                 "Install with: pip install netexec"
             ),
@@ -262,156 +184,101 @@ def run_check(connector, verbose=False):
         })
         return findings
 
-    # ---------------------------------------------------------------------- #
-    # Gather connection info from connector                                   #
-    # ---------------------------------------------------------------------- #
-    dc_host       = getattr(connector, "dc_host",      None) or getattr(connector, "server", None)
+    # ----------------------------------------------------------------------
+    # Gather connection info
+    # ----------------------------------------------------------------------
+    dc_host      = getattr(connector, "dc_host", None) or getattr(connector, "server", None)
     artifacts_dir = getattr(connector, "artifacts_dir", "Reports/Artifacts")
-    dbg           = getattr(connector, "debug_log",    None)
+    dbg          = getattr(connector, "debug_log", None)
 
     if not dc_host:
         findings.append({
-            "title":          "SMB Signing Enforcement -- No DC Host Available",
-            "severity":       "info",
-            "deduction":      0,
-            "description":    "Could not determine the Domain Controller address from the connector.",
+            "title": "SMB Signing Enforcement -- No DC Host Available",
+            "severity": "info",
+            "deduction": 0,
+            "description": "Could not determine the Domain Controller address from the connector.",
             "recommendation": "Ensure the connector is initialised with a valid dc_host.",
-            "details":        ["dc_host not available on connector object."],
+            "details": ["dc_host not available on connector object."],
         })
         return findings
 
     os.makedirs(artifacts_dir, exist_ok=True)
     targets_file = os.path.join(artifacts_dir, "computers.txt")
 
-    # ---------------------------------------------------------------------- #
-    # Phase 1: Computer enumeration via ldapsearch                           #
-    # ---------------------------------------------------------------------- #
-    ldap_cmd = _build_ldapsearch_cmd(connector)
-
-    # Redact password in display
-    display_cmd = list(ldap_cmd)
-    try:
-        pw_idx = display_cmd.index("-w")
-        display_cmd[pw_idx + 1] = "***"
-    except ValueError:
-        pass
-    log.debug("  [SMB] Phase 1: enumerating computers via ldapsearch ...")
-    log.debug("  Command: %s", ' '.join(display_cmd))
-
-    try:
-        rc1, out1, err1 = _run_cmd(ldap_cmd, timeout=120)
-    except subprocess.TimeoutExpired:
-        findings.append({
-            "title":          "SMB Signing Enforcement -- LDAP Export Timed Out",
-            "severity":       "medium",
-            "deduction":      0,
-            "description":    "ldapsearch computer enumeration timed out after 120 seconds.",
-            "recommendation": "Check network connectivity to the Domain Controller.",
-            "details":        ["ldapsearch timed out after 120 s."],
-        })
-        return findings
-    except Exception as e:
-        findings.append({
-            "title":          "SMB Signing Enforcement -- LDAP Export Failed",
-            "severity":       "info",
-            "deduction":      0,
-            "description":    f"ldapsearch raised an exception: {e}",
-            "recommendation": "Verify ldapsearch is installed and credentials are valid.",
-            "details":        [str(e)],
-        })
-        return findings
-
-    if dbg:
-        dbg.log_subprocess(
-            cmd=ldap_cmd,
-            cwd=None,
-            returncode=rc1,
-            stdout=out1,
-            stderr=err1,
-        )
-
-    if out1:
-        log.debug("  [SMB] ldapsearch output (first 20 lines):")
-        for line in out1.splitlines()[:20]:
-            log.debug("    %s", line)
-
-    targets = _parse_ldapsearch_computers(out1)
+    # ----------------------------------------------------------------------
+    # Phase 1: Computer enumeration via connector.ldap_search()
+    # Uses the already-established signed/encrypted LDAP connection —
+    # avoids ldapsearch -x which fails with 00002028 on hardened DCs.
+    # ----------------------------------------------------------------------
+    log.debug(" [SMB] Phase 1: enumerating computers via connector LDAP ...")
+    targets = _enumerate_computers_via_ldap(connector)
 
     if not targets:
         findings.append({
-            "title":    "SMB Signing Enforcement -- No Computers Found via LDAP",
+            "title": "SMB Signing Enforcement -- No Computers Found via LDAP",
             "severity": "info",
             "deduction": 0,
             "description": (
-                "ldapsearch returned no parseable computer entries. "
-                "Check that credentials have LDAP read access and that "
-                "the base DN is correct."
+                "The LDAP computer enumeration returned no results. "
+                "Ensure the connector has an active LDAP connection and "
+                "the account has read access to computer objects."
             ),
-            "recommendation": "Verify LDAP credentials and domain connectivity.",
-            "details": [f"ldapsearch exit code: {rc1}"] + out1.splitlines()[:10],
+            "recommendation": "Verify LDAP connectivity and account permissions.",
+            "details": ["connector.ldap_search(objectClass=computer) returned 0 entries."],
         })
         return findings
 
-    # Write one hostname per line to computers.txt
     with open(targets_file, "w", encoding="utf-8") as fh:
         fh.write("\n".join(targets) + "\n")
+    log.debug(" [SMB] Found %d computer(s). List saved to: %s", len(targets), targets_file)
 
-    log.debug("  [SMB] Found %d computer(s).", len(targets))
-    log.debug("  Computer list saved to: %s", targets_file)
-
-    # ---------------------------------------------------------------------- #
-    # Phase 2: SMB sweep via NetExec (signing + SMBv1)                      #
-    # ---------------------------------------------------------------------- #
+    # ----------------------------------------------------------------------
+    # Phase 2: SMB sweep via NetExec
+    # ----------------------------------------------------------------------
     smb_auth = _build_nxc_smb_auth_args(connector)
     smb_cmd  = ["nxc", "smb", targets_file] + smb_auth
 
-    log.debug("  [SMB] Phase 2: sweeping %d host(s) for signing and SMBv1 ...", len(targets))
-    log.debug("  Command: %s", ' '.join(smb_cmd))
+    log.debug(" [SMB] Phase 2: sweeping %d host(s) for signing and SMBv1 ...", len(targets))
+    log.debug(" [SMB] Command: %s", ' '.join(smb_cmd))
 
     try:
         rc2, out2, err2 = _run_cmd(smb_cmd, timeout=300)
     except subprocess.TimeoutExpired:
         findings.append({
-            "title":          "SMB Signing Enforcement -- SMB Sweep Timed Out",
-            "severity":       "medium",
-            "deduction":      0,
-            "description":    "NetExec SMB sweep timed out after 300 seconds.",
+            "title": "SMB Signing Enforcement -- SMB Sweep Timed Out",
+            "severity": "medium",
+            "deduction": 0,
+            "description": "NetExec SMB sweep timed out after 300 seconds.",
             "recommendation": "Check network connectivity or reduce the number of targets.",
-            "details":        ["nxc smb sweep timed out."],
+            "details": ["nxc smb sweep timed out."],
         })
         return findings
     except Exception as e:
         findings.append({
-            "title":          "SMB Signing Enforcement -- SMB Sweep Failed",
-            "severity":       "info",
-            "deduction":      0,
-            "description":    f"nxc smb sweep raised an exception: {e}",
+            "title": "SMB Signing Enforcement -- SMB Sweep Failed",
+            "severity": "info",
+            "deduction": 0,
+            "description": f"nxc smb sweep raised an exception: {e}",
             "recommendation": "Verify nxc is installed and credentials are valid.",
-            "details":        [str(e)],
+            "details": [str(e)],
         })
         return findings
 
     if dbg:
         dbg.log_subprocess(
-            cmd=smb_cmd,
-            cwd=None,
-            returncode=rc2,
-            stdout=out2,
-            stderr=err2,
+            cmd=smb_cmd, cwd=None, returncode=rc2, stdout=out2, stderr=err2,
         )
-
     if out2:
-        log.debug("  [SMB] nxc smb output (first 30 lines):")
+        log.debug(" [SMB] nxc smb output (first 30 lines):")
         for line in out2.splitlines()[:30]:
-            log.debug("    %s", line)
+            log.debug("  %s", line)
 
     unsigned_hosts, signed_hosts, smbv1_hosts = _parse_smb_results(out2)
-
     total_scanned = len(unsigned_hosts) + len(signed_hosts)
 
-    # ---------------------------------------------------------------------- #
-    # Finding 1: SMB Signing                                                 #
-    # ---------------------------------------------------------------------- #
+    # ----------------------------------------------------------------------
+    # Finding 1: SMB Signing
+    # ----------------------------------------------------------------------
     if unsigned_hosts:
         detail_lines = [
             f"Computer list: {targets_file}",
@@ -419,12 +286,9 @@ def run_check(connector, verbose=False):
             "",
             "Hosts with SMB signing NOT enforced (signing:False):",
         ] + [f"  {h}" for h in sorted(unsigned_hosts)]
-
         findings.append({
-            "title": (
-                f"SMB Signing Not Enforced: {len(unsigned_hosts)} host(s) vulnerable"
-            ),
-            "severity":  "high",
+            "title": f"SMB Signing Not Enforced: {len(unsigned_hosts)} host(s) vulnerable",
+            "severity": "high",
             "deduction": 15,
             "description": (
                 f"{len(unsigned_hosts)} of {total_scanned} scanned host(s) do not require "
@@ -443,10 +307,9 @@ def run_check(connector, verbose=False):
             "affected_count": len(unsigned_hosts),
             "details": detail_lines,
         })
-
     elif total_scanned > 0:
         findings.append({
-            "title":    "SMB Signing Enforced on All Scanned Hosts",
+            "title": "SMB Signing Enforced on All Scanned Hosts",
             "severity": "info",
             "deduction": 0,
             "description": (
@@ -459,11 +322,9 @@ def run_check(connector, verbose=False):
                 f"Scanned: {total_scanned} host(s) | All have signing:True",
             ],
         })
-
     else:
-        # nxc ran but produced no parseable SMB lines
         findings.append({
-            "title":    "SMB Signing Enforcement -- No SMB Results Parsed",
+            "title": "SMB Signing Enforcement -- No SMB Results Parsed",
             "severity": "info",
             "deduction": 0,
             "description": (
@@ -474,15 +335,12 @@ def run_check(connector, verbose=False):
                 "Review the debug log for raw nxc smb output. "
                 f"Computer list: {targets_file}"
             ),
-            "details": (
-                [f"nxc smb exit code: {rc2}"]
-                + out2.splitlines()[:20]
-            ),
+            "details": [f"nxc smb exit code: {rc2}"] + out2.splitlines()[:20],
         })
 
-    # ---------------------------------------------------------------------- #
-    # Finding 2: SMBv1                                                       #
-    # ---------------------------------------------------------------------- #
+    # ----------------------------------------------------------------------
+    # Finding 2: SMBv1
+    # ----------------------------------------------------------------------
     if smbv1_hosts:
         smbv1_detail_lines = [
             f"Computer list: {targets_file}",
@@ -490,10 +348,9 @@ def run_check(connector, verbose=False):
             "",
             "Hosts with SMBv1 enabled (SMBv1:True):",
         ] + [f"  {h}" for h in sorted(smbv1_hosts)]
-
         findings.append({
             "title": f"SMBv1 Enabled: {len(smbv1_hosts)} host(s) vulnerable",
-            "severity":  "high",
+            "severity": "high",
             "deduction": 15,
             "description": (
                 f"{len(smbv1_hosts)} of {total_scanned} scanned host(s) still support "
@@ -513,10 +370,9 @@ def run_check(connector, verbose=False):
             "affected_count": len(smbv1_hosts),
             "details": smbv1_detail_lines,
         })
-
     elif total_scanned > 0:
         findings.append({
-            "title":    "SMBv1 Disabled on All Scanned Hosts",
+            "title": "SMBv1 Disabled on All Scanned Hosts",
             "severity": "info",
             "deduction": 0,
             "description": (
