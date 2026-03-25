@@ -949,29 +949,6 @@ def _run_certipy_check(connector, verbose=False):
 
         parsed = _parse_certipy_json(actual_json)
         if parsed:
-            if ldap_fallback_used:
-                # Prepend an info note that LDAPS was unavailable
-                parsed.insert(0, {
-                    "title":     "Certipy: LDAPS Unavailable — Ran via Plain LDAP",
-                    "severity":  "info",
-                    "deduction": 0,
-                    "description": (
-                        "LDAPS (port 636) on the Domain Controller returned an SSL error. "
-                        "Certipy automatically retried using plain LDAP (port 389). "
-                        "Results may be less complete than a full LDAPS-authenticated run. "
-                        "Consider configuring a valid certificate on the DC to enable LDAPS."
-                    ),
-                    "recommendation": (
-                        "Enable LDAPS on the DC by installing a certificate whose Subject "
-                        "or SAN matches the DC FQDN, or use Active Directory Certificate "
-                        "Services to auto-enroll a DC certificate. "
-                        "Verify with: openssl s_client -connect <DC_IP>:636"
-                    ),
-                    "details": [
-                        f"DC: {creds['dc_ip']}",
-                        "LDAPS error detected — fallback to port 389 (plain LDAP) used.",
-                    ],
-                })
             findings.extend(parsed)
         else:
             findings.append({
