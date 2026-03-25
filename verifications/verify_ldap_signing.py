@@ -1,6 +1,6 @@
-"""
-verifications/verify_ldap_signing.py
-Manual Verification and Remediation data for ADScan findings matching: LDAP Signing
+""" verifications/verify_ldap_signing.py
+Manual Verification and Remediation data for ADScan findings matching:
+  LDAP Signing
 """
 
 MATCH_KEYS = ["ldap signing"]
@@ -26,19 +26,18 @@ REMEDIATION = {
     "title": "Enforce LDAP signing and channel binding via Group Policy",
     "steps": [
         {
-            "text": "Create or edit a GPO linked to the <strong>Domain Controllers OU</strong> and navigate to:",
-            "code": "Computer Configuration -> Windows Settings -> Security Settings\n-> Local Policies -> Security Options\n-> Domain controller: LDAP server signing requirements -> Require signing",
+            "text": "Create or edit a GPO linked to the <strong>Domain Controllers OU</strong> and configure LDAP signing:",
+            "code": "Computer Configuration -> Policies -> Windows Settings -> Security Settings\n-> Local Policies -> Security Options\n-> Domain controller: LDAP server signing requirements -> Require signing",
         },
         {
-            "text": "Enable LDAP Channel Binding via the same GPO:",
-            "code": "Computer Configuration -> Administrative Templates\n-> System -> KDC\n-> Domain Controller: LDAP server channel binding token requirements -> Always",
+            "text": "In the same GPO, enable LDAP Channel Binding:",
+            "code": "Computer Configuration -> Policies -> Windows Settings -> Security Settings\n-> Local Policies -> Security Options\n-> Domain Controller: LDAP server channel binding token requirements -> Always",
         },
         {
             "text": "Verify no legacy LDAP clients rely on unsigned LDAP before enforcing. Use event ID <strong>2886</strong> and <strong>2887</strong> in the Directory Service event log to identify non-compliant clients.",
         },
     ],
 }
-
 
 REFERENCES = [
     {"title": "Microsoft: LDAP Signing Requirements (ADV190023)", "url": "https://support.microsoft.com/en-us/topic/2020-ldap-channel-binding-and-ldap-signing-requirements-for-windows-ef185fb8-00f7-167d-744c-f299a66fc00a", "tag": "vendor"},
