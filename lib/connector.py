@@ -390,13 +390,10 @@ class ADConnector:
         port = 636 if use_ssl else 389
         self._log.info(" [*] Connecting via %s to %s:%s ...", proto_label, self.dc_host, port)
 
-        # If plain LDAP requires signing but we have no way to sign, skip it.
-        # Signed NTLM over plain LDAP uses ldap3.SIGN; Kerberos/GSSAPI handles
-        # signing natively. Either way we proceed — ldap3 will raise if it fails.
         if requires_signing and not use_ssl:
-            self._log.info("  [*] LDAP signing required — will use NTLM session signing (SIGN)")
+            self._log.info("  [*] LDAP signing required — applying NTLM session encryption (ENCRYPT)")
         if requires_channel_binding and use_ssl:
-            self._log.info("  [*] LDAPS channel binding required — TLS layer satisfies this automatically")
+            self._log.info("  [*] LDAPS channel binding required — attempting CBT-aware bind")
 
         try:
             tls = None
@@ -440,21 +437,42 @@ class ADConnector:
                     authentication=NTLM,
                     auto_bind=False,
                 )
-                # Apply NTLM session signing when plain LDAP signing is enforced.
-                # ldap3.SIGN is the correct constant (not ENCRYPT).
+                # When plain LDAP signing is enforced, ldap3.ENCRYPT (sign+seal) satisfies
+                # the Windows "require integrity" policy (LDAP_SERVER_REQUIRE_SIGNING).
                 if requires_signing and not use_ssl:
-                    conn_kwargs["session_security"] = ldap3.SIGN
+                    conn_kwargs["session_security"] = ldap3.ENCRYPT
+                # When LDAPS channel binding is enforced (error 80090346), we need to pass
+                # a TLS channel binding token. ldap3 >= 2.10.x exposes this as
+                # ldap3.TLS_CHANNEL_BINDING. On older ldap3 (2.9.x) the attribute does not
+                # exist; we catch that and emit a clear upgrade message.
+                if requires_channel_binding and use_ssl:
+                    _cbt = getattr(ldap3, "TLS_CHANNEL_BINDING", None)
+                    if _cbt is not None:
+                        conn_kwargs["channel_binding"] = _cbt
+                    else:
+                        self._log.warning(
+                            " [!] LDAPS channel binding (80090346) is enforced but your ldap3"
+                            " version does not support it. Upgrade with:"
+                            " pip install 'ldap3>=2.10.0rc1'"
+                        )
                 conn = Connection(server, **conn_kwargs)
                 conn.open()
                 conn.bind()
 
             if not conn.bound:
-                result_desc = conn.result.get("description", "unknown") if conn.result else "unknown"
-                result_msg  = conn.result.get("message", "") if conn.result else ""
+                rc  = conn.result.get("result", -1) if conn.result else -1
+                desc = conn.result.get("description", "unknown") if conn.result else "unknown"
+                msg  = conn.result.get("message", "") if conn.result else ""
                 self._log.warning(
                     " [!] %s bind to %s:%s failed: %s %s",
-                    proto_label, self.dc_host, port, result_desc, result_msg,
+                    proto_label, self.dc_host, port, desc, msg,
                 )
+                # Special hint for 80090346 (channel binding required, ldap3 too old)
+                if use_ssl and "80090346" in msg:
+                    self._log.warning(
+                        " [!] Hint: DC requires LDAPS channel binding. Upgrade ldap3:"
+                        " pip install 'ldap3>=2.10.0rc1'"
+                    )
                 try:
                     conn.unbind()
                 except Exception:
