@@ -1,40 +1,50 @@
 # ADScan - Python Dependencies
 # Install with: pip install -r requirements.txt
+#
+# All packages are pinned to exact versions (==) that have been tested together.
+# Upgrade with care — run the full test suite after any version bump.
+#
+# Compatibility notes:
+#   - certipy-ad 4.8.2 hard-requires pyasn1==0.4.8 (see its setup.py).
+#     Do NOT upgrade pyasn1 without first upgrading certipy-ad to 5.x
+#     (which requires Python >=3.12 and carries breaking API changes).
+#   - pyasn1-modules 0.4.1 is the newest release whose dependency range
+#     (pyasn1>=0.4.6,<0.7.0) is satisfied by pyasn1==0.4.8.
+#   - impacket 0.13.0 is compatible with certipy-ad 4.8.2.
+#   - cryptography 44.0.3 satisfies certipy-ad's >=39.0 requirement
+#     without the potential API breaks introduced in 45.x/46.x.
 
 # LDAP/LDAPS connectivity (required for LDAP-based checks)
-ldap3>=2.9.1
+ldap3==2.10.2
 
 # SMB connectivity and NTLM authentication (required for SMB checks and pass-the-hash)
-# impacket 0.12.0+ dropped the pyasn1<0.5.0 constraint that caused conflicts with certipy-ad
-impacket>=0.12.0
+impacket==0.13.0
 
 # ---------------------------------------------------------------------------
-# Certipy-AD - ADCS / PKI vulnerability scanner (required for check_adcs_certipy)
-# Install: pip install certipy-ad
+# Certipy-AD - ADCS / PKI vulnerability scanner (required for check_adcs.py)
+# Pinned to 4.x — 5.x requires Python >=3.12 and has breaking API changes.
 # GitHub: https://github.com/ly4k/Certipy
 # ---------------------------------------------------------------------------
-certipy-ad>=4.8.2
-
-# Certipy dependencies (installed automatically with certipy-ad, listed for clarity)
+certipy-ad==4.8.2
 
 # Cryptography toolkit
-cryptography>=41.0.0
+# 44.0.3 satisfies certipy-ad 4.8.2 (>=39.0) without 45.x/46.x API risk
+cryptography==44.0.3
 
-# ASN.1 parsing (used by certipy and impacket for certificate/protocol parsing)
-# >=0.4.8 allows pip to satisfy both impacket and certipy-ad requirements
-pyasn1>=0.4.8
-pyasn1-modules>=0.2.8
+# ASN.1 parsing
+# pyasn1 0.4.8 is hard-required by certipy-ad 4.8.2 — do not change independently
+pyasn1==0.4.8
+# pyasn1-modules 0.4.1: latest release compatible with pyasn1>=0.4.6,<0.7.0
+pyasn1-modules==0.4.1
 
 # DNS resolution
-dnspython>=2.4.0
+dnspython==2.8.0
 
 # HTTP/HTTPS requests (used by certipy for web enrollment checks)
-requests>=2.31.0
+requests==2.32.5
 
 # OpenSSL Python bindings
-pyOpenSSL>=23.2.0
-
-# LDAP3 is already listed above and shared with base ADScan checks
+pyOpenSSL==26.0.0
 
 # Safe XML parsing — prevents XML bomb / entity expansion attacks (CWE-20 / Bandit B314)
-defusedxml>=0.7.1
+defusedxml==0.7.1
