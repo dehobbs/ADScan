@@ -752,6 +752,245 @@ details > summary { list-style: none; }
 details > summary::-webkit-details-marker { display: none; }
 details[open] > summary > span:first-child { transform: rotate(0deg) !important; }
 details:not([open]) > summary > span:first-child { transform: rotate(-90deg) !important; }
+
+/* ==================================================================
+   PRINT / PDF STYLESHEET
+   Optimised for A4/Letter -- use browser Print to Save as PDF
+   ================================================================== */
+@media print {
+  /* ---- Page setup ---- */
+  @page {
+    size: A4;
+    margin: 18mm 16mm 18mm 16mm;
+  }
+  @page :first {
+    margin-top: 12mm;
+  }
+
+  /* ---- Force colour preservation ---- */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* ---- Hide interactive / screen-only elements ---- */
+  .sidebar,
+  .sb-toggle-btn,
+  .toggle-wrapper,
+  .chips-area,
+  .sev-chip,
+  .clear-btn,
+  #clear-btn,
+  .filter-hint,
+  #filter-hint,
+  .sidebar-search,
+  .sidebar-footer,
+  .verif-tab-bar,
+  footer a[href] {
+    display: none !important;
+  }
+
+  /* ---- Collapse the app shell to a single column ---- */
+  body, html {
+    background: #fff !important;
+    color: #1a1a1a !important;
+  }
+
+  .app-shell {
+    display: block !important;
+  }
+
+  .main-col {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  /* ---- Header ---- */
+  header {
+    position: static !important;
+    background: #1e293b !important;
+    color: #fff !important;
+    padding: 12px 16px !important;
+    box-shadow: none !important;
+    margin-bottom: 8mm !important;
+    border-radius: 0 !important;
+  }
+
+  header h1  { font-size: 1.2rem !important; }
+  .subtitle  { font-size: 0.75rem !important; }
+
+  /* ---- Container ---- */
+  .container {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* ---- Score section ---- */
+  .score-section {
+    display: flex !important;
+    align-items: center !important;
+    gap: 24px !important;
+    padding: 16px 20px !important;
+    margin-bottom: 8mm !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: none !important;
+    border-radius: 8px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    background: #fff !important;
+  }
+
+  .score-info h2 { font-size: 1rem !important; }
+
+  /* ---- Metadata grid ---- */
+  .meta-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px !important;
+    padding: 14px 16px !important;
+    margin-bottom: 8mm !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: none !important;
+    border-radius: 6px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    background: #fff !important;
+  }
+
+  .meta-key { font-size: 0.68rem !important; }
+  .meta-val { font-size: 0.85rem !important; }
+
+  /* ---- Section header ---- */
+  .section-header {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    margin-bottom: 6px !important;
+  }
+
+  /* ---- Finding cards ---- */
+  .finding-card {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    margin-bottom: 8mm !important;
+    box-shadow: none !important;
+    border-radius: 6px !important;
+    background: #fff !important;
+    color: #1a1a1a !important;
+  }
+
+  .finding-card h3 { font-size: 0.95rem !important; }
+
+  .finding-card p,
+  .finding-card li {
+    color: #333 !important;
+    font-size: 0.85rem !important;
+  }
+
+  /* ---- Force-open all details/summary sections ---- */
+  details > *:not(summary) {
+    display: block !important;
+  }
+
+  details > summary {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  /* Suppress the animated chevron arrows */
+  details > summary > span:first-child {
+    display: none !important;
+  }
+
+  /* ---- Affected objects: cap at 20 entries for print ---- */
+  details ul li:nth-child(n+21) {
+    display: none !important;
+  }
+
+  /* ---- Verification tool cards ---- */
+  .verif-tabs-wrap {
+    margin-top: 8px !important;
+  }
+
+  /* Show ALL tab panels in print (not just the active one) */
+  .verif-panel {
+    display: block !important;
+  }
+
+  .verif-card {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    margin-bottom: 6px !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+  }
+
+  .verif-tool-name { font-size: 0.88rem !important; }
+  .verif-desc      { font-size: 0.82rem !important; }
+  .verif-confirm   { font-size: 0.78rem !important; }
+
+  /* ---- Code blocks ---- */
+  .verif-code,
+  .remed-code,
+  pre,
+  code {
+    background: #f4f4f4 !important;
+    color: #1a1a1a !important;
+    font-size: 0.75rem !important;
+    white-space: pre-wrap !important;
+    word-break: break-all !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 4px !important;
+    padding: 8px 10px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* ---- Remediation box ---- */
+  .remed-box {
+    background: #f0fdf4 !important;
+    border: 1.5px solid #86efac !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .remed-title { color: #16a34a !important; }
+  .remed-num   { color: #16a34a !important; border-color: #86efac !important; }
+
+  .remed-step {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .remed-step-body p { font-size: 0.83rem !important; }
+
+  /* ---- References: print URLs inline ---- */
+  details a[href]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.7rem;
+    color: #555;
+    word-break: break-all;
+  }
+
+  header a::after,
+  footer a::after {
+    content: none !important;
+  }
+
+  /* ---- Footer ---- */
+  footer {
+    display: block !important;
+    text-align: center !important;
+    font-size: 0.72rem !important;
+    color: #555 !important;
+    border-top: 1px solid #e2e8f0 !important;
+    margin-top: 8mm !important;
+    padding-top: 4mm !important;
+    page-break-before: avoid !important;
+  }
+}
 """.strip()
 
     # ================================================================
