@@ -15,7 +15,7 @@
 #     without the potential API breaks introduced in 45.x/46.x.
 
 # LDAP/LDAPS connectivity (required for LDAP-based checks)
-ldap3==2.10.2
+ldap3==2.9.1
 
 # SMB connectivity and NTLM authentication (required for SMB checks and pass-the-hash)
 impacket==0.13.0
