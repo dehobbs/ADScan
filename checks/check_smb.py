@@ -28,7 +28,8 @@ Prerequisites:
 import os
 import re
 import shutil
-import subprocess  # nosec B404 - subprocess is required to invoke netexec
+import subprocess
+from datetime import datetime  # nosec B404 - subprocess is required to invoke netexec
 
 CHECK_NAME     = "SMB Signing Enforcement"
 CHECK_ORDER    = 22  # runs right after Legacy Protocols (21)
@@ -203,7 +204,8 @@ def run_check(connector, verbose=False):
         return findings
 
     os.makedirs(artifacts_dir, exist_ok=True)
-    targets_file = os.path.join(artifacts_dir, "computers.txt")
+    run_ts       = datetime.now().strftime("%Y%m%d_%H%M%S")
+    targets_file = os.path.join(artifacts_dir, f"computers_{run_ts}.txt")
 
     # ----------------------------------------------------------------------
     # Phase 1: Computer enumeration via connector.ldap_search()
