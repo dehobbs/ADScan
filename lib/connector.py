@@ -104,14 +104,37 @@ class ADConnector:
     # ------------------------------------------------------------------
 
     def connect(self):
-        """Attempt connections for each configured protocol."""
+        """Attempt connections for each configured protocol.
+
+        Before making authenticated connections, probes the DC to detect
+        whether LDAP signing and/or LDAPS channel binding are enforced,
+        then applies the appropriate ldap3 parameters automatically.
+        """
         connected = False
+
+        # ── Probe DC security requirements (1-2 second overhead) ──────────
+        needs_ldap  = any(p in ("ldap", "ldaps") for p in self.protocols)
+        if needs_ldap and HAS_LDAP3:
+            self._log.info(" [*] Probing DC for LDAP signing / channel binding requirements...")
+            reqs = self._probe_dc_requirements()
+        else:
+            reqs = {
+                "requires_signing":         False,
+                "requires_channel_binding": False,
+                "ldap_available":           False,
+                "ldaps_available":          False,
+            }
+
         for proto in self.protocols:
             if proto in ("ldap", "ldaps"):
                 if not HAS_LDAP3:
                     self._log.warning(" [WARN] ldap3 not installed - skipping %s. Run: pip install ldap3", proto.upper())
                     continue
-                if self._connect_ldap(use_ssl=(proto == "ldaps")):
+                if self._connect_ldap(
+                    use_ssl=(proto == "ldaps"),
+                    requires_signing=reqs["requires_signing"],
+                    requires_channel_binding=reqs["requires_channel_binding"],
+                ):
                     connected = True
             elif proto == "smb":
                 if not HAS_IMPACKET:
@@ -263,10 +286,113 @@ class ADConnector:
             return self.ccache_path
         return os.environ.get("KRB5CCNAME")
 
-    def _connect_ldap(self, use_ssl=False):
+    def _probe_dc_requirements(self):
+        """Probe the DC to detect whether LDAP signing and/or LDAPS channel
+        binding are enforced, before attempting a full authenticated bind.
+
+        Returns a dict:
+            {
+                "requires_signing":          bool,  # plain LDAP signing enforced
+                "requires_channel_binding":  bool,  # LDAPS CBT enforced
+                "ldap_available":            bool,  # port 389 reachable
+                "ldaps_available":           bool,  # port 636 reachable
+            }
+
+        Detection method:
+            - Plain LDAP: anonymous simple bind -> result code 8
+              (strongerAuthRequired) means signing is required.
+            - LDAPS: NTLM bind without CBT -> extended error 80090346
+              (SEC_E_BAD_BINDINGS) means channel binding is required.
+        """
+        result = {
+            "requires_signing":         False,
+            "requires_channel_binding": False,
+            "ldap_available":           False,
+            "ldaps_available":          False,
+        }
+
+        if not HAS_LDAP3:
+            return result
+
+        # ── Probe 1: plain LDAP signing requirement (port 389) ──────────────
+        try:
+            srv = Server(
+                self.dc_host, port=389, use_ssl=False,
+                get_info=ALL, connect_timeout=max(5, self.timeout // 3),
+            )
+            # Anonymous simple bind — DC will reject with result 8 if signing required
+            probe = Connection(srv, authentication=SIMPLE, auto_bind=False)
+            probe.open()
+            probe.bind()
+            result["ldap_available"] = True
+            rc = probe.result.get("result", 0)
+            desc = (probe.result.get("description") or "").lower()
+            err  = (probe.result.get("message") or "").lower()
+            # Result 8 = strongerAuthRequired; also check description text
+            if rc == 8 or "strongerauthrequ" in desc or "stronger" in err:
+                result["requires_signing"] = True
+                self._log.info(
+                    "  [probe] LDAP signing is REQUIRED on %s (result code %s)",
+                    self.dc_host, rc,
+                )
+            else:
+                self._log.info(
+                    "  [probe] LDAP signing is NOT enforced on %s", self.dc_host
+                )
+            try:
+                probe.unbind()
+            except Exception:
+                pass
+        except Exception as e:
+            self._log.debug("  [probe] LDAP signing probe failed: %s", e)
+
+        # ── Probe 2: LDAPS channel binding requirement (port 636) ───────────
+        try:
+            tls = Tls(validate=ssl.CERT_NONE, version=ssl.PROTOCOL_TLS)
+            srv = Server(
+                self.dc_host, port=636, use_ssl=True, tls=tls,
+                get_info=ALL, connect_timeout=max(5, self.timeout // 3),
+            )
+            # NTLM bind without channel binding token — DC returns 80090346
+            # (SEC_E_BAD_BINDINGS) in the extended error if CBT is enforced.
+            user = f"{self.domain}\\{self.username}"
+            pwd  = self.password if self.password else f"{self.lm_hash}:{self.nt_hash}"
+            probe = Connection(
+                srv, user=user, password=pwd,
+                authentication=NTLM, auto_bind=False,
+            )
+            probe.open()
+            probe.bind()
+            result["ldaps_available"] = True
+            rc  = probe.result.get("result", 0)
+            msg = (probe.result.get("message") or "").lower()
+            # 80090346 = SEC_E_BAD_BINDINGS — channel binding mismatch
+            if rc != 0 and ("80090346" in msg or "bad bindings" in msg or "channel binding" in msg):
+                result["requires_channel_binding"] = True
+                self._log.info(
+                    "  [probe] LDAPS channel binding is REQUIRED on %s", self.dc_host
+                )
+            elif rc == 0:
+                self._log.info(
+                    "  [probe] LDAPS channel binding is NOT enforced on %s", self.dc_host
+                )
+            try:
+                probe.unbind()
+            except Exception:
+                pass
+        except Exception as e:
+            self._log.debug("  [probe] LDAPS channel binding probe failed: %s", e)
+
+        return result
+
+    def _connect_ldap(self, use_ssl=False, requires_signing=False, requires_channel_binding=False):
         proto_label = "LDAPS" if use_ssl else "LDAP"
         port = 636 if use_ssl else 389
         self._log.info(" [*] Connecting via %s to %s:%s ...", proto_label, self.dc_host, port)
+        if requires_signing and not use_ssl:
+            self._log.info("  [*] Applying NTLM session signing (ENCRYPT) for plain LDAP")
+        if requires_channel_binding and use_ssl:
+            self._log.info("  [*] Applying TLS channel binding token for LDAPS")
 
         try:
             tls = None
@@ -283,6 +409,8 @@ class ADConnector:
             )
 
             if self.use_kerberos:
+                # Kerberos (GSSAPI) inherently satisfies both signing and
+                # channel binding requirements — no extra parameters needed.
                 ccache = self._resolve_ccache()
                 if not ccache:
                     self._log.warning(
@@ -300,13 +428,19 @@ class ADConnector:
                 )
             else:
                 user = f"{self.domain}\\{self.username}"
-                conn = Connection(
-                    server,
+                pwd  = self.password if self.password else f"{self.lm_hash}:{self.nt_hash}"
+                conn_kwargs = dict(
                     user=user,
-                    password=self.password if self.password else f"{self.lm_hash}:{self.nt_hash}",
+                    password=pwd,
                     authentication=NTLM,
                     auto_bind=True,
                 )
+                # Apply signing or channel binding based on probe results
+                if requires_signing and not use_ssl:
+                    conn_kwargs["session_security"] = ldap3.ENCRYPT
+                if requires_channel_binding and use_ssl:
+                    conn_kwargs["channel_binding"] = ldap3.TLS_CHANNEL_BINDING
+                conn = Connection(server, **conn_kwargs)
 
             self.ldap_conn = conn
             self._log.info(" [*] Connected via %s to %s:%s - OK", proto_label, self.dc_host, port)
@@ -318,7 +452,6 @@ class ADConnector:
         except Exception as e:
             self._log.warning(" [!] %s connection to %s:%s FAILED: %s", proto_label, self.dc_host, port, e)
             return False
-
     def _connect_smb(self):
         self._log.info(" [*] Connecting via SMB to %s:445 ...", self.dc_host)
         try:
