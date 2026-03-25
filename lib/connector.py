@@ -389,10 +389,14 @@ class ADConnector:
         proto_label = "LDAPS" if use_ssl else "LDAP"
         port = 636 if use_ssl else 389
         self._log.info(" [*] Connecting via %s to %s:%s ...", proto_label, self.dc_host, port)
+
+        # If plain LDAP requires signing but we have no way to sign, skip it.
+        # Signed NTLM over plain LDAP uses ldap3.SIGN; Kerberos/GSSAPI handles
+        # signing natively. Either way we proceed — ldap3 will raise if it fails.
         if requires_signing and not use_ssl:
-            self._log.info("  [*] Applying NTLM session signing (ENCRYPT) for plain LDAP")
+            self._log.info("  [*] LDAP signing required — will use NTLM session signing (SIGN)")
         if requires_channel_binding and use_ssl:
-            self._log.info("  [*] Applying TLS channel binding token for LDAPS")
+            self._log.info("  [*] LDAPS channel binding required — TLS layer satisfies this automatically")
 
         try:
             tls = None
@@ -409,8 +413,7 @@ class ADConnector:
             )
 
             if self.use_kerberos:
-                # Kerberos (GSSAPI) inherently satisfies both signing and
-                # channel binding requirements — no extra parameters needed.
+                # Kerberos (GSSAPI) inherently satisfies signing and channel binding.
                 ccache = self._resolve_ccache()
                 if not ccache:
                     self._log.warning(
@@ -424,27 +427,39 @@ class ADConnector:
                     server,
                     authentication=SASL,
                     sasl_mechanism=GSSAPI,
-                    auto_bind=True,
+                    auto_bind=False,
                 )
+                conn.open()
+                conn.bind()
             else:
                 user = f"{self.domain}\\{self.username}"
-                pwd  = self.password if self.password else f"{self.lm_hash}:{self.nt_hash}"
+                pwd = self.password if self.password else f"{self.lm_hash}:{self.nt_hash}"
                 conn_kwargs = dict(
                     user=user,
                     password=pwd,
                     authentication=NTLM,
-                    auto_bind=True,
+                    auto_bind=False,
                 )
-                # Apply signing or channel binding based on probe results
+                # Apply NTLM session signing when plain LDAP signing is enforced.
+                # ldap3.SIGN is the correct constant (not ENCRYPT).
                 if requires_signing and not use_ssl:
-                    conn_kwargs["session_security"] = ldap3.ENCRYPT
-                if requires_channel_binding and use_ssl:
-                    # ldap3 does not expose a channel_binding kwarg on Connection.
-                    # When use_ssl=True, ldap3 wraps the socket in TLS; Windows DCs
-                    # that require channel binding accept this as the binding token.
-                    # No additional Connection kwarg is needed — the TLS layer satisfies it.
-                    pass
+                    conn_kwargs["session_security"] = ldap3.SIGN
                 conn = Connection(server, **conn_kwargs)
+                conn.open()
+                conn.bind()
+
+            if not conn.bound:
+                result_desc = conn.result.get("description", "unknown") if conn.result else "unknown"
+                result_msg  = conn.result.get("message", "") if conn.result else ""
+                self._log.warning(
+                    " [!] %s bind to %s:%s failed: %s %s",
+                    proto_label, self.dc_host, port, result_desc, result_msg,
+                )
+                try:
+                    conn.unbind()
+                except Exception:
+                    pass
+                return False
 
             self.ldap_conn = conn
             self._log.info(" [*] Connected via %s to %s:%s - OK", proto_label, self.dc_host, port)
