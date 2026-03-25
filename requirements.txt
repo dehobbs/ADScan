@@ -1,8 +1,9 @@
 # ADScan - Python Dependencies
 # Install with: pip install -r requirements.txt
 #
-# All packages are pinned to exact versions (==) that have been tested together.
+# Most packages are pinned to exact versions (==) that have been tested together.
 # Upgrade with care — run the full test suite after any version bump.
+# Exception: ldap3 is pinned to >=2.10.0rc1 (minimum for LDAPS channel binding support).
 #
 # Compatibility notes:
 #   - certipy-ad 4.8.2 hard-requires pyasn1==0.4.8 (see its setup.py).
@@ -17,7 +18,7 @@
 #     26.0.0 requires >=46; 25.2.0+ requires >=45.
 
 # LDAP/LDAPS connectivity (required for LDAP-based checks)
-ldap3==2.9.1
+ldap3>=2.10.0rc1  # 2.10.x required for LDAPS channel binding (TLS_CHANNEL_BINDING) support
 
 # SMB connectivity and NTLM authentication (required for SMB checks and pass-the-hash)
 impacket==0.13.0
