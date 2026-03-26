@@ -206,3 +206,107 @@ class ScoringConfig:
         if override_count:
             parts.append(f"{override_count} title override(s)")
         return f"{self._source} — {', '.join(parts)}"
+
+
+# ---------------------------------------------------------------------------
+# Ratio-based scoring  (Option 2 + 3)
+# ---------------------------------------------------------------------------
+
+def compute_scores(findings: list, scoring_config: "ScoringConfig") -> dict:
+    """
+    Compute the overall score and per-category sub-scores using a ratio-based
+    model: score = points_earned / points_possible * 100.
+
+    A finding with severity "info" (deduction == 0) is treated as informational
+    and does NOT contribute to points_possible — it neither helps nor hurts the
+    score.
+
+    Returns a dict with two keys:
+        "overall"    : int  (0-100, rounded)
+        "categories" : dict mapping category_name -> {
+            "score"    : int   (0-100),
+            "earned"   : int   (points earned — only from passing checks),
+            "possible" : int   (total points possible in this category),
+            "counts"   : {     (finding counts by severity)
+                "critical": int, "high": int, "medium": int,
+                "low": int, "info": int, "pass": int,
+            },
+        }
+
+    A "passing" check is one where finding["severity"] == "info" and
+    deduction == 0.  Any finding with a non-zero deduction is a failure.
+
+    NOTE: the same check_category may appear in multiple findings.  Each
+    non-info finding contributes its weight to points_possible and 0 to
+    points_earned; each info finding contributes its weight to both (it
+    passed).  Info findings with deduction==0 still get the severity-weight
+    of "info" which is 0, so they add nothing numerically — instead we use
+    the check's implicit weight via its category.
+
+    Simpler model used here:
+        - Every non-info finding: possible += weight, earned += 0  (failed)
+        - Every info finding:     possible += weight, earned += weight (passed)
+        - weight = scoring_config.deduction_for(finding) if non-zero,
+          else fall back to _BUILTIN_SEVERITY_WEIGHTS for the severity tier.
+    """
+    from collections import defaultdict
+
+    # category_name -> {"earned": int, "possible": int, "counts": dict}
+    cat: dict = defaultdict(lambda: {
+        "earned": 0, "possible": 0,
+        "counts": {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0, "pass": 0},
+    })
+
+    total_earned   = 0
+    total_possible = 0
+
+    for finding in findings:
+        sev     = str(finding.get("severity", "info")).lower()
+        cats    = finding.get("check_category") or finding.get("category") or ["Uncategorised"]
+        if isinstance(cats, str):
+            cats = [cats]
+
+        # Determine weight for this finding
+        weight = scoring_config.deduction_for(finding)
+        # Info findings have weight 0 by convention — treat them as 0-point passes
+        is_pass = (sev == "info") or (weight == 0)
+
+        for cat_name in cats:
+            entry = cat[cat_name]
+            if is_pass:
+                # Passing check: earns its weight (0 for info, which adds nothing)
+                entry["earned"]   += weight
+                entry["possible"] += weight
+                entry["counts"]["pass"] += 1
+            else:
+                # Failing check: contributes weight to possible but 0 to earned
+                entry["possible"] += weight
+                sev_key = sev if sev in entry["counts"] else "info"
+                entry["counts"][sev_key] += 1
+
+        # Overall totals (use first category only to avoid double-counting)
+        if is_pass:
+            total_earned   += weight
+            total_possible += weight
+        else:
+            total_possible += weight
+
+    # Build category sub-scores
+    category_scores: dict = {}
+    for cat_name, data in sorted(cat.items()):
+        poss = data["possible"]
+        earned = data["earned"]
+        sub_score = round(earned / poss * 100) if poss > 0 else 100
+        category_scores[cat_name] = {
+            "score":    sub_score,
+            "earned":   earned,
+            "possible": poss,
+            "counts":   data["counts"],
+        }
+
+    overall = round(total_earned / total_possible * 100) if total_possible > 0 else 100
+
+    return {
+        "overall":    overall,
+        "categories": category_scores,
+    }
