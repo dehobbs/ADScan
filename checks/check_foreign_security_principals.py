@@ -1,6 +1,7 @@
 CHECK_NAME = "Foreign Security Principals in Privileged Groups"
 CHECK_ORDER = 67
 CHECK_CATEGORY = ["Groups Hygiene"]
+CHECK_WEIGHT   = 20   # max deduction at stake for this check module
 
 # Sensitive local group names to check for FSP membership
 SENSITIVE_GROUPS = [
