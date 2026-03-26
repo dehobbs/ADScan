@@ -10,7 +10,7 @@ TOOLS = [
         "tool": "PowerShell",
         "icon": "ps",
         "desc": "Check the IF_ENFORCEENCRYPTICERTREQUEST flag on each CA via LDAP.",
-        "code": "Get-ADObject -SearchBase \"CN=Enrollment Services,CN=Public Key Services,CN=Services,CN=Configuration,DC=<domain>,DC=<tld>\" \`\n    -Filter * -Properties flags \`\n    | Select-Object Name,flags",
+        "code": "Get-ADObject -SearchBase \"CN=Enrollment Services,CN=Public Key Services,CN=Services,CN=Configuration,DC=<domain>,DC=<tld>\" \\`\n    -Filter * -Properties flags \\`\n    | Select-Object Name,flags",
         "confirm": "If the <strong>flags</strong> value does not have bit 0x200 set (i.e. <code>flags -band 0x200</code> returns 0), the CA is vulnerable.",
     },
     {
