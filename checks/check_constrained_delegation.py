@@ -26,6 +26,7 @@ _log = logging.getLogger(__name__)
 CHECK_NAME = "Constrained Delegation"
 CHECK_ORDER = 3
 CHECK_CATEGORY = ["Kerberos"]
+CHECK_WEIGHT   = 20   # max deduction at stake for this check module
 
 # userAccountControl flags
 _UAC_TRUSTED_TO_AUTH_FOR_DELEGATION = 0x1000000  # Protocol Transition / S4U2Self
