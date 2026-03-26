@@ -22,6 +22,7 @@ EOL reference dates (Microsoft):
 CHECK_NAME = "Deprecated Operating Systems"
 CHECK_ORDER = 20
 CHECK_CATEGORY = ["Deprecated Operating Systems"]
+CHECK_WEIGHT   = 20   # max deduction at stake for this check module
 
 # Strings to match against operatingSystem attribute (case-insensitive substring)
 EOL_CRITICAL_WORKSTATIONS = [
