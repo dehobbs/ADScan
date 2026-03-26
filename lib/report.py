@@ -575,7 +575,37 @@ def _exec_summary_html(domain, dc_host, scan_time, score, grade, score_color, se
 
 
 
-def generate_report(output_file, domain, dc_host, username, protocols, findings, score):
+def _category_scores_html(category_scores):
+    """Build the category sub-scores grid HTML (Option 3)."""
+    if not category_scores:
+        return ""
+    items_html = ""
+    for cat, info in sorted(category_scores.items()):
+        earned  = info.get("earned", 0)
+        maximum = info.get("maximum", 0)
+        if maximum == 0:
+            pct = 100
+        else:
+            pct = round(earned / maximum * 100)
+        grade_str = _grade(pct)
+        bar_color = _score_color(pct)
+        items_html += f"""<div class="cat-card">
+  <div class="cat-card-header">
+    <span class="cat-card-name">{html_mod.escape(cat)}</span>
+    <span class="cat-card-grade" style="background:{bar_color};">{grade_str}</span>
+  </div>
+  <div class="cat-bar-track">
+    <div class="cat-bar-fill" style="width:{pct}%;background:{bar_color};"></div>
+  </div>
+  <div class="cat-card-score" style="color:{bar_color};">{earned}/{maximum} pts</div>
+</div>"""
+    return f"""<div class="cat-grid-section">
+  <div class="cat-grid-label">Category Scores</div>
+  <div class="cat-grid">{items_html}</div>
+</div>"""
+
+
+def generate_report(output_file, domain, dc_host, username, protocols, findings, score, category_scores=None):
     """Generate a self-contained HTML report dashboard with sidebar navigation."""
     from collections import defaultdict
     scan_time = __import__('datetime').datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -677,7 +707,9 @@ def generate_report(output_file, domain, dc_host, username, protocols, findings,
     else:
         score_summary = f"{len(findings)} finding(s) identified. Click a severity chip to filter."
 
-    # ================================================================
+    # ---- Category sub-scores HTML ----
+    cat_scores_html = _category_scores_html(category_scores or {})
+
     # CSS (plain string — no f-string, no {{ }} escaping needed)
     # ================================================================
     css = """
@@ -1289,6 +1321,90 @@ details:not([open]) > summary > span:first-child { transform: rotate(-90deg) !im
     page-break-before: avoid !important;
   }
 }
+
+/* ---- Category score grid ---- */
+.cat-grid-section {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  box-shadow: var(--card-shadow);
+}
+.cat-grid-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+.cat-card {
+  background: var(--rec-bg);
+  border-radius: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+}
+.cat-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.cat-card-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 75%;
+}
+.cat-card-grade {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fff;
+  border-radius: 4px;
+  padding: 1px 7px;
+  flex-shrink: 0;
+}
+.cat-bar-track {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.cat-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+.cat-card-score {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: right;
+}
+@media print {
+  .cat-grid-section {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+  }
+  .cat-card {
+    border: 1px solid #e2e8f0 !important;
+    background: #f8fafc !important;
+  }
+  .cat-bar-track {
+    background: #e2e8f0 !important;
+  }
+}
 """.strip()
 
     # ================================================================
@@ -1518,6 +1634,7 @@ function verifTab(btn, panelId) {
         <div><div class="meta-key">Scan Time</div><div class="meta-val">{html_mod.escape(scan_time)}</div></div>
         <div><div class="meta-key">Total Findings</div><div class="meta-val">{len(findings)}</div></div>
       </div>
+      {cat_scores_html}
       <div class="section-header">
         <h2>Findings (<span id="visible-count">{len(findings)}</span>)</h2>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
