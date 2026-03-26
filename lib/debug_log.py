@@ -247,14 +247,23 @@ class DebugLogger:
             f" CWD        : {cwd or '(not set)'}",
             f" Return code: {returncode}",
         ]
+        # Redact credential strings from subprocess output
+        # (e.g. nxc prints "domain\\user:password" on [+] success lines)
+        import re as _re_out
+        def _redact_output(text):
+            return _re_out.sub(
+                r'([A-Za-z0-9._-]+\\[A-Za-z0-9._-]+):(\S+)',
+                r'\1:REDACTED',
+                text or "",
+            )
         if stdout and stdout.strip():
             lines.append(" stdout:")
-            lines.extend(" " + line for line in stdout.rstrip().splitlines())
+            lines.extend(" " + line for line in _redact_output(stdout).rstrip().splitlines())
         else:
             lines.append(" stdout     : (empty)")
         if stderr and stderr.strip():
             lines.append(" stderr:")
-            lines.extend(" " + line for line in stderr.rstrip().splitlines())
+            lines.extend(" " + line for line in _redact_output(stderr).rstrip().splitlines())
         else:
             lines.append(" stderr     : (empty)")
         self._write(lines)
