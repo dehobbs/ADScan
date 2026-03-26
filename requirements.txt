@@ -6,13 +6,13 @@
 # Exception: ldap3 is pinned to >=2.10.0rc1 (minimum for LDAPS channel binding support).
 #
 # Compatibility notes:
-#   - certipy-ad 5.0.4 hard-requires pyasn1==0.4.8 (see its setup.py).
+#   - certipy-ad 4.8.2 hard-requires pyasn1==0.4.8 (see its setup.py).
 #     Do NOT upgrade pyasn1 without first upgrading certipy-ad to 5.x
 #     (which requires Python >=3.12 and carries breaking API changes).
 #   - pyasn1-modules 0.4.1 is the newest release whose dependency range
 #     (pyasn1>=0.4.6,<0.7.0) is satisfied by pyasn1==0.4.8.
-#   - impacket 0.13.0 is compatible with certipy-ad 5.0.4.
-#   - cryptography 42.0.8 is pinned by certipy-ad 5.0.4 (~=42.0.8)
+#   - impacket 0.13.0 is compatible with certipy-ad 4.8.2.
+#   - cryptography 44.0.3 satisfies certipy-ad's >=39.0 requirement
 #     and fits within pyOpenSSL 25.1.0's range (>=41.0.5,<46).
 #   - pyOpenSSL 25.1.0: highest release compatible with cryptography<45.
 #     26.0.0 requires >=46; 25.2.0+ requires >=45.
@@ -25,17 +25,17 @@ impacket==0.13.0
 
 # ---------------------------------------------------------------------------
 # Certipy-AD - ADCS / PKI vulnerability scanner (required for check_adcs.py)
-# Requires Python >=3.12.
+# Pinned to 4.x — 5.x requires Python >=3.12 and has breaking API changes.
 # GitHub: https://github.com/ly4k/Certipy
 # ---------------------------------------------------------------------------
-certipy-ad==5.0.4
+certipy-ad==4.8.2
 
 # Cryptography toolkit
-# 42.0.8 is pinned by certipy-ad 5.0.4 (~=42.0.8)
-cryptography==42.0.8
+# 44.0.3 satisfies certipy-ad 4.8.2 (>=39.0) and pyOpenSSL 25.1.0 (>=41.0.5,<46)
+cryptography==44.0.3
 
 # ASN.1 parsing
-# pyasn1 0.4.8 is hard-required by certipy-ad 5.0.4 — do not change independently
+# pyasn1 0.4.8 is hard-required by certipy-ad 4.8.2 — do not change independently
 pyasn1==0.4.8
 # pyasn1-modules 0.4.1: latest release compatible with pyasn1>=0.4.6,<0.7.0
 pyasn1-modules==0.4.1
@@ -47,7 +47,7 @@ dnspython==2.8.0
 requests==2.32.5
 
 # OpenSSL Python bindings
-# 25.1.0 is the highest version whose cryptography range (>=41.0.5,<46) includes 42.0.8
+# 25.1.0 is the highest version whose cryptography range (>=41.0.5,<46) includes 44.0.3
 pyOpenSSL==25.1.0
 
 # Safe XML parsing — prevents XML bomb / entity expansion attacks (CWE-20 / Bandit B314)
