@@ -26,6 +26,7 @@ Risk Deductions:
 CHECK_NAME = "Privileged Accounts"
 CHECK_ORDER = 4
 CHECK_CATEGORY = ["Privileged Accounts"]
+CHECK_WEIGHT   = 20   # max deduction at stake for this check module
 
 from datetime import datetime, timezone, timedelta
 
