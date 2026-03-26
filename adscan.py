@@ -497,7 +497,8 @@ def main():
     log.info("")
     log.info("=" * 60)
 
-    findings = []
+    findings   = []
+    checks_run = []  # metadata for every check that executes (clean or not)
 
     for check in checks:
         log.info("")
@@ -510,6 +511,12 @@ def main():
 
             # Record end of check in debug log
             dbg.log_check_end(check.CHECK_NAME, result)
+
+            # Record this check for scoring purposes regardless of outcome
+            checks_run.append({
+                "categories": list(getattr(check, "CHECK_CATEGORY", ["Uncategorised"])),
+                "weight":     int(getattr(check, "CHECK_WEIGHT", 0)),
+            })
 
             if result:
                 for finding in result:
@@ -553,7 +560,7 @@ def main():
 
     formats = ["html", "json", "csv", "docx"] if args.format == "all" else [args.format]
     # Compute ratio-based overall + per-category scores
-    score_data      = compute_scores(findings, scoring)
+    score_data      = compute_scores(findings, scoring, checks_run=checks_run)
     score           = score_data["overall"]
     category_scores = score_data["categories"]
 
