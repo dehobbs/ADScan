@@ -1,6 +1,7 @@
 CHECK_NAME = "Legacy FRS SYSVOL Replication"
 CHECK_ORDER = 71
 CHECK_CATEGORY = ["Domain Hygiene"]
+CHECK_WEIGHT   = 10   # max deduction at stake for this check module
 
 # msDFSR-Flags values for the domain SYSVOL migration state
 # These are stored on CN=DFSR-GlobalSettings,CN=System,<domain>
