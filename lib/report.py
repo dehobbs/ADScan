@@ -1703,6 +1703,15 @@ def generate_docx_report(output_file, domain, dc_host, username, protocols, find
         shd.set(qn("w:fill"), hex_color)
         tcPr.append(shd)
 
+    def _set_para_bg(para, hex_color):
+        """Shade a paragraph background (for code/evidence blocks)."""
+        pPr = para._p.get_or_add_pPr()
+        shd = OxmlElement("w:shd")
+        shd.set(qn("w:val"), "clear")
+        shd.set(qn("w:color"), "auto")
+        shd.set(qn("w:fill"), hex_color)
+        pPr.append(shd)
+
     scan_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     grade = _grade(score)
     proto_str = ", ".join(protocols) if protocols else "N/A"
@@ -1875,12 +1884,20 @@ def generate_docx_report(output_file, domain, dc_host, username, protocols, find
         details = f.get("details", [])
         if details:
             n = len(details)
-            doc.add_heading(f"Details ({n} item{'s' if n != 1 else ''})", level=3)
-            for item in details[:50]:
-                p = doc.add_paragraph(style="List Bullet")
-                p.add_run(str(item)).font.size = Pt(9)
-            if n > 50:
-                doc.add_paragraph(f"... and {n - 50} more items (see HTML or JSON report).")
+            doc.add_heading(f"Evidence ({n} item{'s' if n != 1 else ''})", level=3)
+            # Render ALL evidence items in a monospace code-style block (no cap)
+            for item in details:
+                line_text = str(item).replace("[[REDACTED]]", "[REDACTED]")
+                ev_p = doc.add_paragraph()
+                ev_p.paragraph_format.space_before = Pt(0)
+                ev_p.paragraph_format.space_after = Pt(1)
+                ev_p.paragraph_format.left_indent = Cm(0.5)
+                _set_para_bg(ev_p, "F1F5F9")
+                ev_run = ev_p.add_run(line_text)
+                ev_run.font.name = "Courier New"
+                ev_run.font.size = Pt(8)
+                if "[REDACTED]" in line_text:
+                    ev_run.font.color.rgb = RGBColor(0xDC, 0x26, 0x26)
         if idx < len(sorted_findings):
             doc.add_paragraph()
 
