@@ -1657,3 +1657,233 @@ def generate_csv_report(output_file, domain, dc_host, username, protocols, findi
                 "affected_count": f.get("affected_count", len(details)),
                 "details_sample": sample,
             })
+
+
+# ---------------------------------------------------------------------------
+# DOCX output
+# ---------------------------------------------------------------------------
+def generate_docx_report(output_file, domain, dc_host, username, protocols, findings, score):
+    """Write a Microsoft Word (.docx) report using python-docx."""
+    try:
+        from docx import Document
+        from docx.shared import Pt, RGBColor, Cm
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.enum.table import WD_TABLE_ALIGNMENT
+        from docx.oxml.ns import qn
+        from docx.oxml import OxmlElement
+    except ImportError:
+        raise ImportError(
+            "python-docx is required for DOCX export. "
+            "Install it with: pip install python-docx"
+        )
+    from datetime import datetime
+
+    def _grade(s):
+        if s >= 90: return "A"
+        if s >= 75: return "B"
+        if s >= 60: return "C"
+        if s >= 40: return "D"
+        return "F"
+
+    SEV_RGB = {
+        "critical": RGBColor(0xDC, 0x26, 0x26),
+        "high":     RGBColor(0xEA, 0x58, 0x0C),
+        "medium":   RGBColor(0xD9, 0x77, 0x06),
+        "low":      RGBColor(0x25, 0x63, 0xEB),
+        "info":     RGBColor(0x6B, 0x72, 0x80),
+    }
+    SEV_ORDER_D = ["critical", "high", "medium", "low", "info"]
+
+    def _set_cell_bg(cell, hex_color):
+        tc = cell._tc
+        tcPr = tc.get_or_add_tcPr()
+        shd = OxmlElement("w:shd")
+        shd.set(qn("w:val"), "clear")
+        shd.set(qn("w:color"), "auto")
+        shd.set(qn("w:fill"), hex_color)
+        tcPr.append(shd)
+
+    scan_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    grade = _grade(score)
+    proto_str = ", ".join(protocols) if protocols else "N/A"
+
+    sev_counts = {s: 0 for s in SEV_ORDER_D}
+    for f in findings:
+        sev = f.get("severity", "info").lower()
+        if sev in sev_counts:
+            sev_counts[sev] += 1
+
+    sorted_findings = sorted(
+        findings,
+        key=lambda f: SEV_ORDER_D.index(f.get("severity", "info").lower())
+        if f.get("severity", "info").lower() in SEV_ORDER_D else 99,
+    )
+
+    doc = Document()
+
+    for section in doc.sections:
+        section.top_margin    = Cm(2.0)
+        section.bottom_margin = Cm(2.0)
+        section.left_margin   = Cm(2.5)
+        section.right_margin  = Cm(2.5)
+
+    # --- Cover block ---
+    title_para = doc.add_paragraph()
+    title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = title_para.add_run("ADScan Security Report")
+    run.bold = True
+    run.font.size = Pt(26)
+    run.font.color.rgb = RGBColor(0x1E, 0x40, 0xAF)
+    doc.add_paragraph()
+
+    meta_tbl = doc.add_table(rows=5, cols=2)
+    meta_tbl.style = "Table Grid"
+    meta_tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
+    for i, (label, value) in enumerate([
+        ("Domain",    domain or "N/A"),
+        ("DC Host",   dc_host or "N/A"),
+        ("Username",  username or "N/A"),
+        ("Protocols", proto_str),
+        ("Scan Time", scan_time),
+    ]):
+        lc = meta_tbl.rows[i].cells[0]
+        vc = meta_tbl.rows[i].cells[1]
+        _set_cell_bg(lc, "EFF6FF")
+        lc.text = label
+        lc.paragraphs[0].runs[0].bold = True
+        lc.paragraphs[0].runs[0].font.size = Pt(10)
+        vc.text = value
+        vc.paragraphs[0].runs[0].font.size = Pt(10)
+
+    doc.add_paragraph()
+    score_para = doc.add_paragraph()
+    score_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    sr = score_para.add_run(f"Security Score: {score}/100  \u2014  Grade: {grade}")
+    sr.bold = True
+    sr.font.size = Pt(16)
+    sr.font.color.rgb = (
+        RGBColor(0x16, 0xA3, 0x4A) if score >= 75
+        else RGBColor(0xD9, 0x77, 0x06) if score >= 50
+        else RGBColor(0xDC, 0x26, 0x26)
+    )
+    doc.add_page_break()
+
+    # --- Executive Summary ---
+    h1 = doc.add_heading("Executive Summary", level=1)
+    h1.runs[0].font.color.rgb = RGBColor(0x1E, 0x40, 0xAF)
+    sum_tbl = doc.add_table(rows=2, cols=6)
+    sum_tbl.style = "Table Grid"
+    sum_tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
+    hdr_labels = ["Critical", "High", "Medium", "Low", "Info", "Total"]
+    hdr_bgs    = ["FEF2F2",  "FFF7ED", "FFFBEB", "EFF6FF", "F9FAFB", "F3F4F6"]
+    for j, (hdr, bg) in enumerate(zip(hdr_labels, hdr_bgs)):
+        cell = sum_tbl.rows[0].cells[j]
+        _set_cell_bg(cell, bg)
+        p = cell.paragraphs[0]
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r = p.add_run(hdr)
+        r.bold = True
+        r.font.size = Pt(9)
+        if hdr.lower() in SEV_RGB:
+            r.font.color.rgb = SEV_RGB[hdr.lower()]
+    for j, val in enumerate([sev_counts.get(s, 0) for s in SEV_ORDER_D] + [len(findings)]):
+        cell = sum_tbl.rows[1].cells[j]
+        p = cell.paragraphs[0]
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r = p.add_run(str(val))
+        r.bold = True
+        r.font.size = Pt(11)
+    doc.add_paragraph()
+
+    top = [f for f in sorted_findings if f.get("severity", "").lower() in ("critical", "high")][:10]
+    if top:
+        doc.add_heading("Top Priority Findings", level=2)
+        for f in top:
+            sev = f.get("severity", "info").lower()
+            p = doc.add_paragraph(style="List Bullet")
+            sr2 = p.add_run(f"[{sev.upper()}] ")
+            sr2.bold = True
+            sr2.font.color.rgb = SEV_RGB.get(sev, RGBColor(0, 0, 0))
+            p.add_run(f.get("title", "(untitled)"))
+    doc.add_page_break()
+
+    # --- Findings Overview ---
+    doc.add_heading("Findings Overview", level=1).runs[0].font.color.rgb = RGBColor(0x1E, 0x40, 0xAF)
+    if not findings:
+        doc.add_paragraph("No findings were identified during this scan.")
+    else:
+        ov_tbl = doc.add_table(rows=1, cols=4)
+        ov_tbl.style = "Table Grid"
+        for j, h in enumerate(["Severity", "Title", "Category", "Deduction"]):
+            cell = ov_tbl.rows[0].cells[j]
+            _set_cell_bg(cell, "1E40AF")
+            p = cell.paragraphs[0]
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            r = p.add_run(h)
+            r.bold = True
+            r.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+            r.font.size = Pt(9)
+        sev_bg = {"critical":"FEF2F2","high":"FFF7ED","medium":"FFFBEB","low":"EFF6FF","info":"F9FAFB"}
+        for f in sorted_findings:
+            sev = f.get("severity", "info").lower()
+            cats = f.get("category", "Uncategorized")
+            if not isinstance(cats, str): cats = ", ".join(cats)
+            trow = ov_tbl.add_row()
+            sc = trow.cells[0]
+            _set_cell_bg(sc, sev_bg.get(sev, "F9FAFB"))
+            sp = sc.paragraphs[0]
+            sp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            sr3 = sp.add_run(sev.upper())
+            sr3.bold = True
+            sr3.font.size = Pt(8)
+            sr3.font.color.rgb = SEV_RGB.get(sev, RGBColor(0, 0, 0))
+            trow.cells[1].text = f.get("title", "")
+            trow.cells[1].paragraphs[0].runs[0].font.size = Pt(9)
+            trow.cells[2].text = cats
+            trow.cells[2].paragraphs[0].runs[0].font.size = Pt(9)
+            dp = trow.cells[3].paragraphs[0]
+            dp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            ded = f.get("deduction", 0)
+            dr = dp.add_run(f"-{ded}" if ded else "0")
+            dr.font.size = Pt(9)
+            if ded: dr.font.color.rgb = RGBColor(0xDC, 0x26, 0x26)
+    doc.add_page_break()
+
+    # --- Detailed Findings ---
+    doc.add_heading("Detailed Findings", level=1).runs[0].font.color.rgb = RGBColor(0x1E, 0x40, 0xAF)
+    for idx, f in enumerate(sorted_findings, start=1):
+        sev = f.get("severity", "info").lower()
+        title = f.get("title", "(untitled)")
+        h2 = doc.add_heading(f"{idx}. {title}", level=2)
+        for r in h2.runs:
+            r.font.color.rgb = SEV_RGB.get(sev, RGBColor(0, 0, 0))
+        meta_p = doc.add_paragraph()
+        mr = meta_p.add_run(f"Severity: {sev.upper()}")
+        mr.bold = True
+        mr.font.color.rgb = SEV_RGB.get(sev, RGBColor(0, 0, 0))
+        cats = f.get("category", "Uncategorized")
+        if not isinstance(cats, str): cats = ", ".join(cats)
+        meta_p.add_run(f"  |  Category: {cats}")
+        ded = f.get("deduction", 0)
+        if ded: meta_p.add_run(f"  |  Score Deduction: -{ded}")
+        desc = f.get("description", "")
+        if desc:
+            doc.add_heading("Description", level=3)
+            doc.add_paragraph(desc)
+        rec = f.get("recommendation", "")
+        if rec:
+            doc.add_heading("Recommendation", level=3)
+            doc.add_paragraph(rec)
+        details = f.get("details", [])
+        if details:
+            n = len(details)
+            doc.add_heading(f"Details ({n} item{'s' if n != 1 else ''})", level=3)
+            for item in details[:50]:
+                p = doc.add_paragraph(str(item), style="List Bullet")
+                p.runs[0].font.size = Pt(9)
+            if n > 50:
+                doc.add_paragraph(f"... and {n - 50} more items (see HTML or JSON report).")
+        if idx < len(sorted_findings):
+            doc.add_paragraph()
+
+    doc.save(output_file)
