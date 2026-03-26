@@ -1016,11 +1016,13 @@ details:not([open]) > summary > span:first-child { transform: rotate(-90deg) !im
   text-transform: uppercase;
   color: var(--text-muted);
   margin-bottom: 12px;
+  text-align: center;
 }
 .exec-chips-row {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  justify-content: center;
 }
 .exec-chip {
   display: flex;
