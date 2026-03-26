@@ -24,6 +24,7 @@ Risk Deductions:
 CHECK_NAME = "Account Hygiene"
 CHECK_ORDER = 8
 CHECK_CATEGORY = ["Account Hygiene"]
+CHECK_WEIGHT   = 20   # max deduction at stake for this check module
 
 from datetime import datetime, timezone, timedelta
 from collections import defaultdict
