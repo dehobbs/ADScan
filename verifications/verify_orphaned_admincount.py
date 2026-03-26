@@ -10,7 +10,7 @@ TOOLS = [
         "tool": "PowerShell",
         "icon": "ps",
         "desc": "Find user accounts with adminCount=1 that are no longer members of any privileged group.",
-        "code": "# Get all privileged group members\n$privGroups = @(\"Domain Admins\",\"Enterprise Admins\",\"Schema Admins\",\"Administrators\",\"Account Operators\",\"Backup Operators\",\"Server Operators\",\"Print Operators\")\n$privMembers = $privGroups | ForEach-Object { Get-ADGroupMember -Identity $_ -Recursive } | Select-Object -ExpandProperty SamAccountName -Unique\n\n# Find accounts with adminCount=1 not in any privileged group\nGet-ADUser -Filter {adminCount -eq 1} -Properties adminCount,memberOf \`\n    | Where-Object { $_.SamAccountName -notin $privMembers } \`\n    | Select-Object Name,SamAccountName,Enabled",
+        "code": "# Get all privileged group members\n$privGroups = @(\"Domain Admins\",\"Enterprise Admins\",\"Schema Admins\",\"Administrators\",\"Account Operators\",\"Backup Operators\",\"Server Operators\",\"Print Operators\")\n$privMembers = $privGroups | ForEach-Object { Get-ADGroupMember -Identity $_ -Recursive } | Select-Object -ExpandProperty SamAccountName -Unique\n\n# Find accounts with adminCount=1 not in any privileged group\nGet-ADUser -Filter {adminCount -eq 1} -Properties adminCount,memberOf \\`\n    | Where-Object { $_.SamAccountName -notin $privMembers } \\`\n    | Select-Object Name,SamAccountName,Enabled",
         "confirm": "Accounts returned have <strong>adminCount=1</strong> set but are not members of any privileged group. This means SDProp is applying over-restrictive ACLs to accounts that no longer need them.",
     },
 ]
