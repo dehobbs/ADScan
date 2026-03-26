@@ -11,6 +11,7 @@ Checks:
 CHECK_NAME = "Replication Health"
 CHECK_ORDER = 17
 CHECK_CATEGORY = ["Domain Hygiene"]
+CHECK_WEIGHT   = 10   # max deduction at stake for this check module
 
 def run_check(connector, verbose=False):
     findings = []
