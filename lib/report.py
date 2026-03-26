@@ -1881,6 +1881,20 @@ def generate_docx_report(output_file, domain, dc_host, username, protocols, find
         if rec:
             doc.add_heading("Recommendation", level=3)
             doc.add_paragraph(rec)
+        # Raw command + output block (e.g. nxc, certipy)
+        raw_output = f.get("raw_output", "")
+        if raw_output:
+            doc.add_heading("Command & Output", level=3)
+            _cmd_block_para = doc.add_paragraph()
+            _cmd_block_para.paragraph_format.space_before = Pt(2)
+            _cmd_block_para.paragraph_format.space_after = Pt(2)
+            _cmd_block_para.paragraph_format.left_indent = Cm(0.3)
+            _set_para_bg(_cmd_block_para, "0F172A")
+            _cmd_run = _cmd_block_para.add_run(raw_output)
+            _cmd_run.font.name = "Courier New"
+            _cmd_run.font.size = Pt(7.5)
+            _cmd_run.font.color.rgb = RGBColor(0xE2, 0xE8, 0xF0)
+
         details = f.get("details", [])
         if details:
             n = len(details)
