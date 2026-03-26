@@ -48,6 +48,7 @@ _log = logging.getLogger(__name__)
 CHECK_NAME     = "ADCS / PKI Vulnerabilities"
 CHECK_ORDER    = 6
 CHECK_CATEGORY = ["ADCS / PKI Vulnerabilities"]
+CHECK_WEIGHT   = 20   # max deduction at stake for this check module
 
 # ---------------------------------------------------------------------------
 # Template / CA flag constants (LDAP checks)
