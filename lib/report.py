@@ -1885,15 +1885,86 @@ def generate_docx_report(output_file, domain, dc_host, username, protocols, find
         raw_output = f.get("raw_output", "")
         if raw_output:
             doc.add_heading("Command & Output", level=3)
-            _cmd_block_para = doc.add_paragraph()
-            _cmd_block_para.paragraph_format.space_before = Pt(2)
-            _cmd_block_para.paragraph_format.space_after = Pt(2)
-            _cmd_block_para.paragraph_format.left_indent = Cm(0.3)
-            _set_para_bg(_cmd_block_para, "F1F5F9")
-            _cmd_run = _cmd_block_para.add_run(raw_output)
-            _cmd_run.font.name = "Courier New"
-            _cmd_run.font.size = Pt(7.5)
-            _cmd_run.font.color.rgb = RGBColor(0x1E, 0x29, 0x3B)
+            try:
+                from PIL import Image, ImageDraw, ImageFont
+                import io as _io
+                _pad = 16
+                _font_size = 13
+                _line_spacing = 4
+                _border = 2
+                # Try to load a monospace font, fall back to default
+                _pil_font = None
+                for _fp in [
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+                    "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
+                    "/usr/share/fonts/truetype/freefont/FreeMono.ttf",
+                    "C:/Windows/Fonts/cour.ttf",
+                    "C:/Windows/Fonts/consola.ttf",
+                ]:
+                    try:
+                        _pil_font = ImageFont.truetype(_fp, _font_size)
+                        break
+                    except Exception:
+                        pass
+                if _pil_font is None:
+                    _pil_font = ImageFont.load_default()
+                _lines = raw_output.split("\n")
+                # Measure dimensions
+                _dummy_img = Image.new("RGB", (1, 1))
+                _dummy_draw = ImageDraw.Draw(_dummy_img)
+                _line_heights = []
+                _line_widths = []
+                for _ln in _lines:
+                    _bb = _dummy_draw.textbbox((0, 0), _ln if _ln else " ", font=_pil_font)
+                    _line_widths.append(_bb[2] - _bb[0])
+                    _line_heights.append(_bb[3] - _bb[1])
+                _max_w = max(_line_widths) if _line_widths else 100
+                _line_h = max(_line_heights) if _line_heights else _font_size + 2
+                _img_w = _max_w + _pad * 2 + _border * 2
+                _img_h = ((_line_h + _line_spacing) * len(_lines)) + _pad * 2 + _border * 2
+                # Draw image
+                _img = Image.new("RGB", (_img_w, _img_h), color=(255, 255, 255))
+                _draw = ImageDraw.Draw(_img)
+                # Border
+                _draw.rectangle(
+                    [0, 0, _img_w - 1, _img_h - 1],
+                    outline=(180, 180, 180),
+                    width=_border,
+                )
+                # Text
+                _y = _pad + _border
+                for _ln in _lines:
+                    _draw.text((_pad + _border, _y), _ln, font=_pil_font, fill=(30, 41, 59))
+                    _y += _line_h + _line_spacing
+                # Save to bytes
+                _buf = _io.BytesIO()
+                _img.save(_buf, format="PNG")
+                _buf.seek(0)
+                # Embed in DOCX — scale to fit page width (approx 16cm)
+                _max_width_cm = 16.0
+                _dpi = 96
+                _img_w_cm = (_img_w / _dpi) * 2.54
+                if _img_w_cm > _max_width_cm:
+                    _scale = _max_width_cm / _img_w_cm
+                    _display_w = Cm(_max_width_cm)
+                else:
+                    _display_w = Cm(_img_w_cm)
+                _img_para = doc.add_paragraph()
+                _img_para.paragraph_format.space_before = Pt(4)
+                _img_para.paragraph_format.space_after = Pt(6)
+                _img_run = _img_para.add_run()
+                _img_run.add_picture(_buf, width=_display_w)
+            except Exception as _pil_err:
+                # Fallback: plain styled paragraph if Pillow unavailable
+                _cmd_block_para = doc.add_paragraph()
+                _cmd_block_para.paragraph_format.space_before = Pt(2)
+                _cmd_block_para.paragraph_format.space_after = Pt(2)
+                _cmd_block_para.paragraph_format.left_indent = Cm(0.3)
+                _set_para_bg(_cmd_block_para, "F8FAFC")
+                _cmd_run = _cmd_block_para.add_run(raw_output)
+                _cmd_run.font.name = "Courier New"
+                _cmd_run.font.size = Pt(7.5)
+                _cmd_run.font.color.rgb = RGBColor(0x1E, 0x29, 0x3B)
 
         details = f.get("details", [])
         if details:
