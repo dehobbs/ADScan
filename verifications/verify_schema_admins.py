@@ -10,7 +10,7 @@ TOOLS = [
         "tool": "PowerShell",
         "icon": "ps",
         "desc": "List current members of the Schema Admins group.",
-        "code": "Get-ADGroupMember -Identity \"Schema Admins\" -Recursive \`\n    | Select-Object Name,SamAccountName,objectClass",
+        "code": "Get-ADGroupMember -Identity \"Schema Admins\" -Recursive \\`\n    | Select-Object Name,SamAccountName,objectClass",
         "confirm": "Any member other than the built-in Administrator (for legacy domains) or no members at all is the expected state. Any enabled, named user account listed confirms the finding.",
     },
 ]
