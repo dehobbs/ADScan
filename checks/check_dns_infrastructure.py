@@ -15,6 +15,7 @@ Risk Deductions:
 CHECK_NAME = "DNS & Infrastructure"
 CHECK_ORDER = 12
 CHECK_CATEGORY = ["Network Hygiene"]
+CHECK_WEIGHT   = 15   # max deduction at stake for this check module
 
 
 def _get_str(entry, attr, default=""):
