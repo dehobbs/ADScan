@@ -589,7 +589,8 @@ def _category_scores_html(category_scores):
             pct = round(earned / maximum * 100)
         grade_str = _grade(pct)
         bar_color = _score_color(pct)
-        items_html += f"""<div class="cat-card">
+        cat_slug = cat.lower().replace(" ", "-").replace("&", "and").replace("/", "-")
+        items_html += f"""<div class="cat-card" data-catslug="{cat_slug}" onclick="toggleCategoryFilter(this)" style="cursor:pointer;">
   <div class="cat-card-header">
     <span class="cat-card-name">{html_mod.escape(cat)}</span>
     <span class="cat-card-grade" style="background:{bar_color};">{grade_str}</span>
@@ -1349,6 +1350,18 @@ details:not([open]) > summary > span:first-child { transform: rotate(-90deg) !im
   padding: 12px 14px;
   border: 1px solid var(--border);
 }
+.cat-card:hover {
+  border-color: var(--sidebar-active);
+  box-shadow: 0 2px 8px rgba(59,130,246,0.15);
+  transform: translateY(-1px);
+  transition: all .15s ease;
+}
+.cat-card.cat-active {
+  border-color: var(--sidebar-active);
+  box-shadow: 0 0 0 2px var(--sidebar-active);
+  background: rgba(59,130,246,0.07);
+}
+
 .cat-card-header {
   display: flex;
   justify-content: space-between;
@@ -1491,6 +1504,7 @@ function sidebarNav(link, e) {
 })();
 // ---- Severity chip filter ----
 var activeFilters = {};
+var activeCatFilters = {};
 function toggleSeverityFilter(btn) {
   var sev = btn.getAttribute('data-sev');
   var color = btn.getAttribute('data-color') || '#6b7280';
@@ -1507,37 +1521,62 @@ function toggleSeverityFilter(btn) {
   }
   applyFilters();
 }
+function toggleCategoryFilter(card) {
+  var slug = card.getAttribute('data-catslug');
+  if (!slug) return;
+  if (activeCatFilters[slug]) {
+    delete activeCatFilters[slug];
+    card.classList.remove('cat-active');
+  } else {
+    activeCatFilters[slug] = true;
+    card.classList.add('cat-active');
+  }
+  applyFilters();
+}
+
 function applyFilters() {
-  var keys = Object.keys(activeFilters);
+  var sevKeys = Object.keys(activeFilters);
+  var catKeys = Object.keys(activeCatFilters);
   var cards = document.querySelectorAll('.finding-card');
   var clearBtn = document.getElementById('clear-btn');
   var hintEl = document.getElementById('filter-hint');
   var countEl = document.getElementById('visible-count');
   var noRes = document.getElementById('no-results');
   var vis = 0;
-  if (keys.length === 0) {
+  var hasFilter = sevKeys.length > 0 || catKeys.length > 0;
+  if (!hasFilter) {
     cards.forEach(function(c) { c.style.display = ''; });
     vis = cards.length;
     if (clearBtn) clearBtn.style.display = 'none';
     if (hintEl) hintEl.textContent = '';
   } else {
     cards.forEach(function(c) {
-      var match = !!activeFilters[c.getAttribute('data-severity')];
-      c.style.display = match ? '' : 'none';
-      if (match) vis++;
+      var sevMatch = sevKeys.length === 0 || !!activeFilters[c.getAttribute('data-severity')];
+      var cardCats = (c.getAttribute('data-category') || '').split(' ');
+      var catMatch = catKeys.length === 0 || cardCats.some(function(slug) { return !!activeCatFilters[slug]; });
+      var show = sevMatch && catMatch;
+      c.style.display = show ? '' : 'none';
+      if (show) vis++;
     });
     if (clearBtn) clearBtn.style.display = 'inline-block';
-    if (hintEl) hintEl.textContent = 'Showing: ' + keys.join(', ');
+    var hints = [];
+    if (sevKeys.length) hints.push('severity: ' + sevKeys.join(', '));
+    if (catKeys.length) hints.push('category: ' + catKeys.join(', '));
+    if (hintEl) hintEl.textContent = 'Showing: ' + hints.join(' | ');
   }
   if (countEl) countEl.textContent = vis;
   if (noRes) noRes.style.display = vis === 0 ? 'block' : 'none';
 }
 function clearFilters() {
   activeFilters = {};
+  activeCatFilters = {};
   document.querySelectorAll('.sev-chip').forEach(function(b) {
     b.classList.remove('active');
     b.style.borderColor = 'transparent';
     b.style.color = '';
+  });
+  document.querySelectorAll('.cat-card').forEach(function(c) {
+    c.classList.remove('cat-active');
   });
   applyFilters();
 }
