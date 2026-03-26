@@ -13,6 +13,7 @@ Checks:
 CHECK_NAME = "ACL / Permissions"
 CHECK_ORDER = 15
 CHECK_CATEGORY = ["Privileged Accounts"]
+CHECK_WEIGHT   = 25   # max deduction at stake for this check module
 
 def run_check(connector, verbose=False):
     findings = []
