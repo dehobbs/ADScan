@@ -1889,11 +1889,11 @@ def generate_docx_report(output_file, domain, dc_host, username, protocols, find
             _cmd_block_para.paragraph_format.space_before = Pt(2)
             _cmd_block_para.paragraph_format.space_after = Pt(2)
             _cmd_block_para.paragraph_format.left_indent = Cm(0.3)
-            _set_para_bg(_cmd_block_para, "0F172A")
+            _set_para_bg(_cmd_block_para, "F1F5F9")
             _cmd_run = _cmd_block_para.add_run(raw_output)
             _cmd_run.font.name = "Courier New"
             _cmd_run.font.size = Pt(7.5)
-            _cmd_run.font.color.rgb = RGBColor(0xE2, 0xE8, 0xF0)
+            _cmd_run.font.color.rgb = RGBColor(0x1E, 0x29, 0x3B)
 
         details = f.get("details", [])
         if details:
