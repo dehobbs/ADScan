@@ -10,7 +10,7 @@ TOOLS = [
         "tool": "PowerShell",
         "icon": "ps",
         "desc": "Read the ms-DS-MachineAccountQuota attribute on the domain root.",
-        "code": "Get-ADObject -Identity (Get-ADDomain).DistinguishedName \`\n    -Properties ms-DS-MachineAccountQuota \`\n    | Select-Object ms-DS-MachineAccountQuota",
+        "code": "Get-ADObject -Identity (Get-ADDomain).DistinguishedName \\`\n    -Properties ms-DS-MachineAccountQuota \\`\n    | Select-Object ms-DS-MachineAccountQuota",
         "confirm": "Any value other than <strong>0</strong> confirms the finding. Default is 10.",
     },
     {
