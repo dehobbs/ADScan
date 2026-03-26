@@ -17,6 +17,7 @@ Risk Deductions:
 CHECK_NAME = "LAPS Deployment"
 CHECK_ORDER = 11
 CHECK_CATEGORY = ["Privileged Accounts"]
+CHECK_WEIGHT   = 20   # max deduction at stake for this check module
 
 _UAC_ACCOUNTDISABLE    = 0x2
 _UAC_SERVER_TRUST      = 0x2000   # DC
