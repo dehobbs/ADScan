@@ -9,6 +9,7 @@ Checks:
 CHECK_NAME = "Optional Features"
 CHECK_ORDER = 16
 CHECK_CATEGORY = ["Domain Hygiene"]
+CHECK_WEIGHT   = 10   # max deduction at stake for this check module
 
 def run_check(connector, verbose=False):
     findings = []
