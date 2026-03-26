@@ -26,6 +26,7 @@ _log = logging.getLogger(__name__)
 CHECK_NAME = "Kerberos Attack Surface"
 CHECK_ORDER = 5
 CHECK_CATEGORY = ["Kerberos"]
+CHECK_WEIGHT   = 20   # max deduction at stake for this check module
 
 # UAC flags
 _UAC_ACCOUNTDISABLE        = 0x2
