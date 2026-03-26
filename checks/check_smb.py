@@ -261,7 +261,7 @@ def run_check(connector, verbose=False):
     except subprocess.TimeoutExpired:
         findings.append({
             "title": "SMB Signing Enforcement -- SMB Sweep Timed Out",
-            "severity": "medium",
+            "severity": "info",
             "deduction": 0,
             "description": "NetExec SMB sweep timed out after 300 seconds.",
             "recommendation": "Check network connectivity or reduce the number of targets.",
