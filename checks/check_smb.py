@@ -300,7 +300,7 @@ def run_check(connector, verbose=False):
     _cmd_str = ' '.join(_smb_cmd_log)
     _out_redacted = _re_raw.sub(
         r'([A-Za-z0-9._-]+\\[A-Za-z0-9._-]+):(\S+)',
-        r'\\1:REDACTED',
+        r'\1:REDACTED',
         out2 or "",
     )
     _raw_output = _cmd_str + "\n\n" + _out_redacted.rstrip()
