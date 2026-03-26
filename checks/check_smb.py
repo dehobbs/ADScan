@@ -294,6 +294,16 @@ def run_check(connector, verbose=False):
             )
             log.debug("  %s", _safe)
 
+    # Build redacted raw output string for DOCX report evidence
+    import re as _re_raw
+    _cmd_str = ' '.join(_smb_cmd_log)
+    _out_redacted = _re_raw.sub(
+        r'([A-Za-z0-9._-]+\\[A-Za-z0-9._-]+):(\S+)',
+        r'\\1:REDACTED',
+        out2 or "",
+    )
+    _raw_output = _cmd_str + "\n\n" + _out_redacted.rstrip()
+
     unsigned_hosts, signed_hosts, smbv1_hosts = _parse_smb_results(out2)
     total_scanned = len(unsigned_hosts) + len(signed_hosts)
 
@@ -327,6 +337,7 @@ def run_check(connector, verbose=False):
             ),
             "affected_count": len(unsigned_hosts),
             "details": detail_lines,
+            "raw_output": _raw_output,
         })
     elif total_scanned > 0:
         findings.append({
@@ -342,6 +353,7 @@ def run_check(connector, verbose=False):
                 f"Computer list: {targets_file}",
                 f"Scanned: {total_scanned} host(s) | All have signing:True",
             ],
+            "raw_output": _raw_output,
         })
     else:
         findings.append({
@@ -363,6 +375,7 @@ def run_check(connector, verbose=False):
                 )
                 for ln in out2.splitlines()[:20]
             ],
+            "raw_output": _raw_output,
         })
 
     # ----------------------------------------------------------------------
@@ -396,6 +409,7 @@ def run_check(connector, verbose=False):
             ),
             "affected_count": len(smbv1_hosts),
             "details": smbv1_detail_lines,
+            "raw_output": _raw_output,
         })
     elif total_scanned > 0:
         findings.append({
@@ -411,6 +425,7 @@ def run_check(connector, verbose=False):
                 f"Computer list: {targets_file}",
                 f"Scanned: {total_scanned} host(s) | All have SMBv1:False",
             ],
+            "raw_output": _raw_output,
         })
 
     return findings
