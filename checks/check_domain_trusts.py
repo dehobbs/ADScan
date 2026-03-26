@@ -53,6 +53,7 @@ Risk Deductions:
 CHECK_NAME = "Domain Trusts"
 CHECK_ORDER = 7
 CHECK_CATEGORY = ["Domain Hygiene"]
+CHECK_WEIGHT   = 20   # max deduction at stake for this check module
 
 # trustAttributes bit flags
 _TA_NON_TRANSITIVE          = 0x00000001
