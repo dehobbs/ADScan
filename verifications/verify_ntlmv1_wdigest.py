@@ -10,14 +10,14 @@ TOOLS = [
         "tool": "PowerShell",
         "icon": "ps",
         "desc": "Check the LmCompatibilityLevel (NTLMv1) registry value on Domain Controllers.",
-        "code": "Invoke-Command -ComputerName <DC_FQDN> -ScriptBlock {\n    Get-ItemProperty \`\n        -Path \"HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa\" \`\n        -Name LmCompatibilityLevel -ErrorAction SilentlyContinue\n}",
+        "code": "Invoke-Command -ComputerName <DC_FQDN> -ScriptBlock {\n    Get-ItemProperty \\`\n        -Path \"HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa\" \\`\n        -Name LmCompatibilityLevel -ErrorAction SilentlyContinue\n}",
         "confirm": "Values below <strong>3</strong> allow NTLMv1. A value of <strong>5</strong> is recommended (send NTLMv2 only, refuse LM and NTLMv1).",
     },
     {
         "tool": "PowerShell",
         "icon": "ps",
         "desc": "Check if WDigest authentication is enabled (UseLogonCredential = 1 stores cleartext in LSASS).",
-        "code": "Invoke-Command -ComputerName <DC_FQDN> -ScriptBlock {\n    Get-ItemProperty \`\n        -Path \"HKLM:\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\WDigest\" \`\n        -Name UseLogonCredential -ErrorAction SilentlyContinue\n}",
+        "code": "Invoke-Command -ComputerName <DC_FQDN> -ScriptBlock {\n    Get-ItemProperty \\`\n        -Path \"HKLM:\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\WDigest\" \\`\n        -Name UseLogonCredential -ErrorAction SilentlyContinue\n}",
         "confirm": "A value of <strong>1</strong> means WDigest is enabled and cleartext credentials are cached in memory. Absence of the key or a value of <strong>0</strong> means it is disabled.",
     },
 ]
