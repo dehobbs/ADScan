@@ -285,8 +285,14 @@ def run_check(connector, verbose=False):
         )
     if out2:
         log.debug(" [SMB] nxc smb output (first 30 lines):")
+        import re as _re_smb_out
         for line in out2.splitlines()[:30]:
-            log.debug("  %s", line)
+            _safe = _re_smb_out.sub(
+                r'([A-Za-z0-9._-]+\\[A-Za-z0-9._-]+):(\S+)',
+                r'\1:REDACTED',
+                line,
+            )
+            log.debug("  %s", _safe)
 
     unsigned_hosts, signed_hosts, smbv1_hosts = _parse_smb_results(out2)
     total_scanned = len(unsigned_hosts) + len(signed_hosts)
