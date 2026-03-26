@@ -1,6 +1,7 @@
 CHECK_NAME = "LAPS Coverage"
 CHECK_ORDER = 52
 CHECK_CATEGORY = ["Privileged Accounts"]
+CHECK_WEIGHT   = 20   # max deduction at stake for this check module
 
 def run_check(connector, verbose=False):
     """
