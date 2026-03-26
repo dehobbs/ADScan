@@ -34,6 +34,7 @@ from datetime import datetime  # nosec B404 - subprocess is required to invoke n
 CHECK_NAME     = "SMB Signing Enforcement"
 CHECK_ORDER    = 22  # runs right after Legacy Protocols (21)
 CHECK_CATEGORY = ["Protocol Security"]
+CHECK_WEIGHT   = 15   # max deduction at stake for this check module
 
 
 # ---------------------------------------------------------------------------
