@@ -106,19 +106,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 .cat-formula{font-size:10px;color:var(--text-muted);margin-top:8px;
   border-top:1px solid var(--border);padding-top:6px;}
 
-/* ── Score formula explanation ── */
-.formula-box{background:var(--card-bg);border:1px solid var(--border);
-  border-radius:10px;padding:18px 20px;margin-bottom:28px;box-shadow:var(--card-shadow);}
-.formula-box h3{font-size:14px;font-weight:600;margin-bottom:10px;}
-.formula-row{display:flex;align-items:baseline;gap:12px;margin-bottom:6px;flex-wrap:wrap;}
-.formula-eq{font-family:monospace;font-size:13px;background:var(--bg);
-  padding:6px 10px;border-radius:6px;border:1px solid var(--border);}
-.formula-note{font-size:12px;color:var(--text-secondary);}
-.formula-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px;}
-.formula-table th{text-align:left;padding:4px 10px;
-  font-size:11px;text-transform:uppercase;color:var(--text-muted);font-weight:600;}
-.formula-table td{padding:5px 10px;border-top:1px solid var(--border);}
-.formula-table tr:first-child td{border-top:none;}
 
 /* ── Existing findings section (unchanged) ── */
 .findings-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
@@ -221,32 +208,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
     </div>
   </div>
 
-  <!-- ── Formula explanation callout (new) ── -->
-  <div class="callout">
-    <strong>&#128202; How the score is calculated (Option 2+3)</strong>
-    Each check contributes a <em>weight</em> based on its severity (critical=20, high=15, medium=8, low=5).
-    The overall score = <strong>points earned / points possible × 100</strong>, where points are earned only
-    for checks that pass. Category sub-scores use the same formula scoped to their checks only.
-    A single category with many failures can no longer reduce the overall score to zero.
-  </div>
 
-  <!-- ── Formula detail box ── -->
-  <div class="formula-box" style="margin-bottom:28px;">
-    <h3>&#9654; Scoring Formula</h3>
-    <div class="formula-row">
-      <div class="formula-eq">overall = Σ(passing weights) / Σ(all weights) × 100</div>
-      <div class="formula-note">Rounded to nearest integer. Floor: 0. Ceiling: 100.</div>
-    </div>
-    <table class="formula-table">
-      <tr><th>Severity</th><th>Weight (points possible)</th><th>Earned if passing</th><th>Earned if failing</th></tr>
-      <tr><td>Critical</td><td>20 pts</td><td>20 pts ✓</td><td>0 pts ✗</td></tr>
-      <tr><td>High</td><td>15 pts</td><td>15 pts ✓</td><td>0 pts ✗</td></tr>
-      <tr><td>Medium</td><td>8 pts</td><td>8 pts ✓</td><td>0 pts ✗</td></tr>
-      <tr><td>Low</td><td>5 pts</td><td>5 pts ✓</td><td>0 pts ✗</td></tr>
-    </table>
-  </div>
-
-  <!-- ══════════════════════════════════════════════════════════════
+    <!-- ══════════════════════════════════════════════════════════════
        CATEGORY SUB-SCORES  (new section)
   ═══════════════════════════════════════════════════════════════ -->
   <div class="section-title">
