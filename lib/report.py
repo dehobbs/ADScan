@@ -582,7 +582,7 @@ def _category_scores_html(category_scores):
     items_html = ""
     for cat, info in sorted(category_scores.items()):
         earned  = info.get("earned", 0)
-        maximum = info.get("maximum", 0)
+        maximum = info.get("possible", 0)
         if maximum == 0:
             pct = 100
         else:
@@ -1667,7 +1667,7 @@ function verifTab(btn, panelId) {
 # ---------------------------------------------------------------------------
 # JSON output
 # ---------------------------------------------------------------------------
-def generate_json_report(output_file, domain, dc_host, username, protocols, findings, score):
+def generate_json_report(output_file, domain, dc_host, username, protocols, findings, score, category_scores=None):
     """Write a machine-readable JSON report."""
     import json
     from datetime import datetime
@@ -1723,7 +1723,7 @@ def generate_json_report(output_file, domain, dc_host, username, protocols, find
 # ---------------------------------------------------------------------------
 # CSV output
 # ---------------------------------------------------------------------------
-def generate_csv_report(output_file, domain, dc_host, username, protocols, findings, score):
+def generate_csv_report(output_file, domain, dc_host, username, protocols, findings, score, category_scores=None):
     """Write a flat CSV report — one row per finding."""
     import csv
     from datetime import datetime
@@ -1779,7 +1779,7 @@ def generate_csv_report(output_file, domain, dc_host, username, protocols, findi
 # ---------------------------------------------------------------------------
 # DOCX output
 # ---------------------------------------------------------------------------
-def generate_docx_report(output_file, domain, dc_host, username, protocols, findings, score):
+def generate_docx_report(output_file, domain, dc_host, username, protocols, findings, score, category_scores=None):
     """Write a Microsoft Word (.docx) report using python-docx."""
     try:
         from docx import Document
