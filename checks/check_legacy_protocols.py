@@ -11,6 +11,7 @@ Checks:
 CHECK_NAME = "Legacy Protocols"
 CHECK_ORDER = 21
 CHECK_CATEGORY = ["Protocol Security"]
+CHECK_WEIGHT   = 15   # max deduction at stake for this check module
 
 
 def run_check(connector, verbose=False):
