@@ -241,7 +241,20 @@ def run_check(connector, verbose=False):
     smb_cmd  = ["nxc", "smb", targets_file] + smb_auth
 
     log.debug(" [SMB] Phase 2: sweeping %d host(s) for signing and SMBv1 ...", len(targets))
-    log.debug(" [SMB] Command: %s", ' '.join(smb_cmd))
+    # Redact password before logging the command
+    _smb_cmd_log = []
+    _skip_next = False
+    _pw_flags = {"-p", "--password", "-P", "--secret", "--hashes", "--hash"}
+    for _tok in smb_cmd:
+        if _skip_next:
+            _smb_cmd_log.append("REDACTED")
+            _skip_next = False
+        elif _tok in _pw_flags:
+            _smb_cmd_log.append(_tok)
+            _skip_next = True
+        else:
+            _smb_cmd_log.append(_tok)
+    log.debug(" [SMB] Command: %s", ' '.join(_smb_cmd_log))
 
     try:
         rc2, out2, err2 = _run_cmd(smb_cmd, timeout=300)
