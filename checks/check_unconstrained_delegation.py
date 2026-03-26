@@ -18,6 +18,7 @@ Risk:
 CHECK_NAME = "Unconstrained Delegation"
 CHECK_ORDER = 2
 CHECK_CATEGORY = ["Kerberos"]
+CHECK_WEIGHT   = 25   # max deduction at stake for this check module
 
 # userAccountControl flags
 _UAC_TRUSTED_FOR_DELEGATION = 0x80000   # Unconstrained delegation
