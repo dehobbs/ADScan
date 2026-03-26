@@ -1,6 +1,7 @@
 CHECK_NAME = "GPP / cpassword (MS14-025)"
 CHECK_ORDER = 62
 CHECK_CATEGORY = ["Domain Hygiene"]
+CHECK_WEIGHT   = 20   # max deduction at stake for this check module
 
 import defusedxml.ElementTree as ET
 import base64
