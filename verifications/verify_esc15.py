@@ -10,7 +10,7 @@ TOOLS = [
         "tool": "PowerShell",
         "icon": "ps",
         "desc": "Identify Schema Version 1 certificate templates with client authentication EKUs.",
-        "code": "Get-ADObject -SearchBase \"CN=Certificate Templates,CN=Public Key Services,CN=Services,CN=Configuration,DC=<domain>,DC=<tld>\" \`\n    -Filter * -Properties msPKI-Template-Schema-Version,pKIExtendedKeyUsage,msPKI-Certificate-Name-Flag \`\n    | Where-Object { $_.'msPKI-Template-Schema-Version' -eq 1 } \`\n    | Select-Object Name,'msPKI-Template-Schema-Version',pKIExtendedKeyUsage",
+        "code": "Get-ADObject -SearchBase \"CN=Certificate Templates,CN=Public Key Services,CN=Services,CN=Configuration,DC=<domain>,DC=<tld>\" \\`\n    -Filter * -Properties msPKI-Template-Schema-Version,pKIExtendedKeyUsage,msPKI-Certificate-Name-Flag \\`\n    | Where-Object { $_.'msPKI-Template-Schema-Version' -eq 1 } \\`\n    | Select-Object Name,'msPKI-Template-Schema-Version',pKIExtendedKeyUsage",
         "confirm": "Templates with schema version <strong>1</strong> and client authentication EKU (<code>1.3.6.1.5.5.7.3.2</code>) are potentially affected.",
     },
     {
