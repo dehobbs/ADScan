@@ -216,7 +216,30 @@ class DebugLogger:
         self._seq += 1
         self._check_seq += 1
         tag = f"[SUBPROCESS #{self._seq}]"
-        cmd_str = " ".join(str(c) for c in cmd) if isinstance(cmd, list) else str(cmd)
+        # Redact password values before logging
+        _PASSWORD_FLAGS = {"-p", "--password", "-P", "--secret", "--hashes", "--hash"}
+        def _redact_cmd(cmd):
+            if isinstance(cmd, str):
+                import re as _re
+                return _re.sub(
+                    r'(?<=[\s]|^)(-p|--password|-P|--secret|--hashes|--hash)(\s+)(\S+)',
+                    lambda m: m.group(1) + m.group(2) + 'REDACTED',
+                    cmd
+                )
+            out = []
+            skip_next = False
+            for tok in cmd:
+                if skip_next:
+                    out.append("REDACTED")
+                    skip_next = False
+                elif str(tok) in _PASSWORD_FLAGS:
+                    out.append(str(tok))
+                    skip_next = True
+                else:
+                    out.append(str(tok))
+            return out
+        cmd_redacted = _redact_cmd(cmd)
+        cmd_str = " ".join(cmd_redacted) if isinstance(cmd_redacted, list) else cmd_redacted
         lines = [
             "",
             f"{tag} --- Subprocess ---",
