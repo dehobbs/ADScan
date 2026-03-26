@@ -212,42 +212,30 @@ class ScoringConfig:
 # Ratio-based scoring  (Option 2 + 3)
 # ---------------------------------------------------------------------------
 
-def compute_scores(findings: list, scoring_config: "ScoringConfig") -> dict:
+def compute_scores(
+    findings: list,
+    scoring_config: "ScoringConfig",
+    checks_run: list | None = None,
+) -> dict:
     """
-    Compute the overall score and per-category sub-scores using a ratio-based
-    model: score = points_earned / points_possible * 100.
+    Compute the overall score and per-category sub-scores.
 
-    A finding with severity "info" (deduction == 0) is treated as informational
-    and does NOT contribute to points_possible — it neither helps nor hurts the
-    score.
+    Model: start with full possible points for every check that ran, then
+    deduct points for each failing finding.
 
-    Returns a dict with two keys:
-        "overall"    : int  (0-100, rounded)
-        "categories" : dict mapping category_name -> {
-            "score"    : int   (0-100),
-            "earned"   : int   (points earned — only from passing checks),
-            "possible" : int   (total points possible in this category),
-            "counts"   : {     (finding counts by severity)
-                "critical": int, "high": int, "medium": int,
-                "low": int, "info": int, "pass": int,
-            },
-        }
+        possible = sum of CHECK_WEIGHT for every check that ran in this category
+        earned   = possible - sum of deductions for failing findings in this category
+        score    = earned / possible * 100  (100 if possible == 0)
 
-    A "passing" check is one where finding["severity"] == "info" and
-    deduction == 0.  Any finding with a non-zero deduction is a failure.
-
-    NOTE: the same check_category may appear in multiple findings.  Each
-    non-info finding contributes its weight to points_possible and 0 to
-    points_earned; each info finding contributes its weight to both (it
-    passed).  Info findings with deduction==0 still get the severity-weight
-    of "info" which is 0, so they add nothing numerically — instead we use
-    the check's implicit weight via its category.
-
-    Simpler model used here:
-        - Every non-info finding: possible += weight, earned += 0  (failed)
-        - Every info finding:     possible += weight, earned += weight (passed)
-        - weight = scoring_config.deduction_for(finding) if non-zero,
-          else fall back to _BUILTIN_SEVERITY_WEIGHTS for the severity tier.
+    Args:
+        findings:      list of finding dicts (failures only — checks return [] when clean)
+        scoring_config: ScoringConfig instance used to resolve per-finding deductions
+        checks_run:    list of dicts, one per check module that was executed:
+                         { "categories": [...], "weight": int }
+                       When provided, clean checks still contribute their weight to
+                       possible so the score reflects the full set of checks run.
+                       When None (backwards-compat), falls back to the old behaviour
+                       (only failing findings contribute to possible).
     """
     from collections import defaultdict
 
@@ -257,44 +245,65 @@ def compute_scores(findings: list, scoring_config: "ScoringConfig") -> dict:
         "counts": {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0, "pass": 0},
     })
 
-    total_earned   = 0
+    # ------------------------------------------------------------------ #
+    # Step 1: seed possible from every check that ran (even clean ones)  #
+    # ------------------------------------------------------------------ #
+    if checks_run:
+        for chk in checks_run:
+            weight = int(chk.get("weight", 0))
+            if weight <= 0:
+                continue
+            for cat_name in chk.get("categories", []):
+                cat[cat_name]["possible"] += weight
+                # Start earned at full possible; deductions reduce it below
+                cat[cat_name]["earned"]   += weight
+
+    # ------------------------------------------------------------------ #
+    # Step 2: subtract deductions for failing findings                    #
+    # ------------------------------------------------------------------ #
+    total_possible = sum(
+        sum(v["possible"] for v in cat.values())
+        for _ in [None]   # evaluated once after seeding
+    )
+    # Re-derive per-category totals cleanly
     total_possible = 0
+    total_earned   = 0
+
+    # Track which (cat, finding-title) pairs we've seen to avoid double-
+    # counting when a finding appears in multiple categories.
+    _seen: set = set()
 
     for finding in findings:
-        sev     = str(finding.get("severity", "info")).lower()
-        cats    = finding.get("check_category") or finding.get("category") or ["Uncategorised"]
+        sev    = str(finding.get("severity", "info")).lower()
+        cats   = finding.get("check_category") or finding.get("category") or ["Uncategorised"]
         if isinstance(cats, str):
             cats = [cats]
 
-        # Determine weight for this finding
-        weight = scoring_config.deduction_for(finding)
-        # Info findings have weight 0 by convention — treat them as 0-point passes
+        weight  = scoring_config.deduction_for(finding)
         is_pass = (sev == "info") or (weight == 0)
+        if is_pass:
+            # info findings carry no deduction — record as pass, don't touch earned
+            for cat_name in cats:
+                cat[cat_name]["counts"]["pass"] += 1
+            continue
 
         for cat_name in cats:
             entry = cat[cat_name]
-            if is_pass:
-                # Passing check: earns its weight (0 for info, which adds nothing)
-                entry["earned"]   += weight
-                entry["possible"] += weight
-                entry["counts"]["pass"] += 1
-            else:
-                # Failing check: contributes weight to possible but 0 to earned
-                entry["possible"] += weight
-                sev_key = sev if sev in entry["counts"] else "info"
-                entry["counts"][sev_key] += 1
+            # Reduce earned by this finding's deduction (floor at 0)
+            entry["earned"] = max(0, entry["earned"] - weight)
+            sev_key = sev if sev in entry["counts"] else "info"
+            entry["counts"][sev_key] += 1
 
-        # Overall totals (use first category only to avoid double-counting)
-        if is_pass:
-            total_earned   += weight
-            total_possible += weight
-        else:
-            total_possible += weight
+            if not checks_run:
+                # Legacy fallback: also add weight to possible (old behaviour)
+                entry["possible"] += weight
 
-    # Build category sub-scores
+    # ------------------------------------------------------------------ #
+    # Step 3: build category sub-scores                                   #
+    # ------------------------------------------------------------------ #
     category_scores: dict = {}
     for cat_name, data in sorted(cat.items()):
-        poss = data["possible"]
+        poss   = data["possible"]
         earned = data["earned"]
         sub_score = round(earned / poss * 100) if poss > 0 else 100
         category_scores[cat_name] = {
@@ -303,6 +312,8 @@ def compute_scores(findings: list, scoring_config: "ScoringConfig") -> dict:
             "possible": poss,
             "counts":   data["counts"],
         }
+        total_possible += poss
+        total_earned   += earned
 
     overall = round(total_earned / total_possible * 100) if total_possible > 0 else 100
 
