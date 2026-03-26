@@ -19,6 +19,7 @@ Risk Deductions:
 CHECK_NAME = "Domain Controllers"
 CHECK_ORDER = 13
 CHECK_CATEGORY = ["Domain Hygiene"]
+CHECK_WEIGHT   = 20   # max deduction at stake for this check module
 
 _LEGACY_OS_KEYWORDS = [
     "windows server 2003", "windows server 2008",
