@@ -25,7 +25,7 @@ import os
 from datetime import datetime
 
 from lib.connector import ADConnector
-from lib.report import generate_report, generate_json_report, generate_csv_report
+from lib.report import generate_report, generate_json_report, generate_csv_report, generate_docx_report
 from lib.audit_log import AuditLogger
 from lib.debug_log import DebugLogger
 from lib.scoring import ScoringConfig
@@ -251,9 +251,9 @@ def parse_args():
     )
     output_group.add_argument(
         "--format",
-        choices=["html", "json", "csv", "all"],
+        choices=["html", "json", "csv", "docx", "all"],
         default="html",
-        help="Output format(s): html, json, csv, or all (default: html)",
+        help="Output format(s): html, json, csv, docx, or all (default: html)",
     )
     output_group.add_argument(
         "--log-file",
@@ -551,7 +551,7 @@ def main():
     log.info("=" * 60)
     connector.disconnect()
 
-    formats = ["html", "json", "csv"] if args.format == "all" else [args.format]
+    formats = ["html", "json", "csv", "docx"] if args.format == "all" else [args.format]
     report_args = dict(
         domain=args.domain,
         dc_host=args.dc_ip,
@@ -571,6 +571,8 @@ def main():
             generate_json_report(output_file=out_path, **report_args)
         elif fmt == "csv":
             generate_csv_report(output_file=out_path, **report_args)
+        elif fmt == "docx":
+            generate_docx_report(output_file=out_path, **report_args)
         log.info("[+] Saved : %s", out_path)
 
     log.info("")
