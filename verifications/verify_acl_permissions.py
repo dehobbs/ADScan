@@ -52,7 +52,7 @@ REMEDIATION = {
         },
         {
             "text": "Review and harden certificate template ACLs (ESC4). Remove GenericWrite, WriteDACL, WriteOwner from non-PKI-admin accounts using the Certificate Authority MMC (certsrv.msc) or:",
-            "code": "certutil -setreg policy\EditFlags -EDITF_ATTRIBUTESUBJECTALTNAME2",
+            "code": "certutil -setreg policy\\EditFlags -EDITF_ATTRIBUTESUBJECTALTNAME2",
         },
         {
             "text": "For RBCD misconfigurations: remove the msDS-AllowedToActOnBehalfOfOtherIdentity attribute from any computer account where it is not intentionally set.",
