@@ -10,7 +10,7 @@ TOOLS = [
         "tool": "PowerShell",
         "icon": "ps",
         "desc": "List all enabled user accounts that have never logged on (lastLogonTimestamp is null).",
-        "code": "Get-ADUser -Filter {Enabled -eq $true} -Properties lastLogonTimestamp,whenCreated \`\n    | Where-Object { $_.lastLogonTimestamp -eq $null } \`\n    | Select-Object Name,SamAccountName,whenCreated \`\n    | Sort-Object whenCreated",
+        "code": "Get-ADUser -Filter {Enabled -eq $true} -Properties lastLogonTimestamp,whenCreated \\`\n    | Where-Object { $_.lastLogonTimestamp -eq $null } \\`\n    | Select-Object Name,SamAccountName,whenCreated \\`\n    | Sort-Object whenCreated",
         "confirm": "Accounts returned have never authenticated to the domain. Cross-reference against HR records to determine if they are legitimate stale accounts.",
     },
 ]
