@@ -18,6 +18,7 @@ Risk Criteria:
 CHECK_NAME = "Domain Password Policy"
 CHECK_ORDER = 1
 CHECK_CATEGORY = ["Account Hygiene"]
+CHECK_WEIGHT   = 20   # max deduction at stake for this check module
 
 # LDAP attributes for the Default Domain Policy (stored on domainDNS object)
 _POLICY_ATTRS = [
