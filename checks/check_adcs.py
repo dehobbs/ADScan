@@ -867,7 +867,7 @@ def _run_certipy_check(connector, verbose=False):
     # Generate a stable output name for this run so that both the initial
     # LDAPS attempt and any LDAP fallback write to the same file — preventing
     # duplicate <domain>_Certipy.txt / .json files in the artifacts directory.
-    _ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    _ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
     _safe_domain = creds["domain"].replace(".", "_")
     _output_name = f"adscan_certipy_{_safe_domain}_{_ts}"
 
