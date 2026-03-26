@@ -37,7 +37,6 @@ Prerequisites for Certipy section:
 Artifact saved to:
   Reports/Artifacts/adscan_certipy_<domain>_<timestamp>.json
 """
-import datetime
 import glob
 import json
 import os
@@ -267,13 +266,8 @@ def _is_ldaps_error(stdout, stderr):
     combined = (stdout + stderr).lower()
     return any(pat in combined for pat in _LDAPS_ERROR_PATTERNS)
 
-def _run_certipy(creds, cwd=None, scheme=None, output_name=None):
-    """Invoke certipy-ad find. scheme may be None (default LDAPS) or 'ldap'.
-    output_name, if provided, is passed as -output so Certipy writes
-    <output_name>.json / <output_name>.txt instead of the default
-    <domain>_Certipy.* names.  Using an explicit name prevents duplicate
-    files when the LDAPS->LDAP fallback re-runs Certipy in the same directory.
-    """
+def _run_certipy(creds, cwd=None, scheme=None):
+    """Invoke certipy-ad find. scheme may be None (default LDAPS) or 'ldap'."""
     upn = f"{creds['username']}@{creds['domain']}"
     cmd = [
         "certipy-ad",
@@ -286,8 +280,6 @@ def _run_certipy(creds, cwd=None, scheme=None, output_name=None):
     ]
     if scheme:
         cmd += ["-ldap-scheme", scheme]
-    if output_name:
-        cmd += ["-output", output_name]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120, cwd=cwd)  # nosec B603 - cmd is a fully validated list, no shell interpolation
     return result.returncode, result.stdout, result.stderr
 
@@ -864,32 +856,21 @@ def _run_certipy_check(connector, verbose=False):
                                               os.path.join("Reports", "Artifacts")))
     os.makedirs(artifacts_dir, exist_ok=True)
 
-    # Generate a stable output name for this run so that both the initial
-    # LDAPS attempt and any LDAP fallback write to the same file — preventing
-    # duplicate <domain>_Certipy.txt / .json files in the artifacts directory.
-    _ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
-    _safe_domain = creds["domain"].replace(".", "_")
-    _output_name = f"adscan_certipy_{_safe_domain}_{_ts}"
-
     try:
-        returncode, stdout, stderr = _run_certipy(
-            creds, cwd=artifacts_dir, output_name=_output_name
-        )
+        returncode, stdout, stderr = _run_certipy(creds, cwd=artifacts_dir)
 
         # ----------------------------------------------------------------
-        # LDAPS -> LDAP fallback
+        # LDAPS → LDAP fallback
         # If Certipy failed with an SSL/TLS error (e.g. LDAPS not configured
         # on the DC) automatically retry using plain LDAP (port 389).
-        # The same output_name is reused so the fallback run overwrites the
-        # failed LDAPS attempt rather than creating a second file.
         # ----------------------------------------------------------------
         ldap_fallback_used = False
-        # Trigger LDAPS->LDAP fallback whenever SSL error patterns appear in output,
+        # Trigger LDAPS→LDAP fallback whenever SSL error patterns appear in output,
         # regardless of return code — Certipy may return 0 even on SSL failure.
         if _is_ldaps_error(stdout, stderr):
             log.debug("  [Certipy] LDAPS connection failed — retrying with plain LDAP (-scheme ldap)...")
             returncode, stdout, stderr = _run_certipy(
-                creds, cwd=artifacts_dir, scheme="ldap", output_name=_output_name
+                creds, cwd=artifacts_dir, scheme="ldap"
             )
             ldap_fallback_used = True
 
@@ -901,8 +882,7 @@ def _run_certipy_check(connector, verbose=False):
             dbg.log_subprocess(
                 cmd=["certipy-ad", "find", "-u", upn, "-p", "<redacted>",
                      "-dc-ip", creds["dc_ip"],
-                     "-enabled", "-vulnerable",
-                     "-output", _output_name]
+                     "-enabled", "-vulnerable"]
                     + (["-ldap-scheme", "ldap"] if ldap_fallback_used else []),
                 cwd=str(artifacts_dir) if artifacts_dir else None,
                 returncode=returncode,
@@ -941,16 +921,11 @@ def _run_certipy_check(connector, verbose=False):
             })
             return findings
 
-        # Locate the output file Certipy wrote.
-        # We passed -output <_output_name> so Certipy writes <_output_name>.json
-        # and <_output_name>.txt.  Look for that specific file first; fall back
-        # to the newest .json in the directory for robustness.
-        _expected_json = os.path.join(artifacts_dir, f"{_output_name}.json")
-        if os.path.isfile(_expected_json):
-            actual_json = _expected_json
-        else:
-            _found = glob.glob(os.path.join(artifacts_dir, "*.json"))
-            actual_json = max(_found, key=os.path.getmtime) if _found else None
+        # Detect which output file Certipy actually wrote
+        # Certipy writes output named after the domain (e.g. <domain>_Certipy.json).
+        # Find the most recently modified JSON file in the artifacts directory.
+        _found = glob.glob(os.path.join(artifacts_dir, "*.json"))
+        actual_json = max(_found, key=os.path.getmtime) if _found else None
 
         if actual_json is None:
             findings.append({
