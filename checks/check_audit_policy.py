@@ -31,6 +31,7 @@ _log = logging.getLogger(__name__)
 CHECK_NAME     = "Advanced Audit Policy"
 CHECK_ORDER    = 23
 CHECK_CATEGORY = ["Domain Hardening"]
+CHECK_WEIGHT   = 10   # max deduction at stake for this check module
 
 
 # ---------------------------------------------------------------------------
