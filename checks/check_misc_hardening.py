@@ -12,6 +12,7 @@ Checks:
 CHECK_NAME = "Miscellaneous Hardening"
 CHECK_ORDER = 19
 CHECK_CATEGORY = ["Domain Hygiene"]
+CHECK_WEIGHT   = 15   # max deduction at stake for this check module
 
 def run_check(connector, verbose=False):
     findings = []
