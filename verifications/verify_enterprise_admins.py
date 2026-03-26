@@ -10,7 +10,7 @@ TOOLS = [
         "tool": "PowerShell",
         "icon": "ps",
         "desc": "List current members of the Enterprise Admins group.",
-        "code": "Get-ADGroupMember -Identity \"Enterprise Admins\" -Recursive \`\n    | Select-Object Name,SamAccountName,objectClass",
+        "code": "Get-ADGroupMember -Identity \"Enterprise Admins\" -Recursive \\`\n    | Select-Object Name,SamAccountName,objectClass",
         "confirm": "Enterprise Admins should only contain the built-in Administrator account (or be empty). Any additional enabled user accounts confirm the finding.",
     },
 ]
@@ -23,7 +23,7 @@ REMEDIATION = {
         },
         {
             "text": "Remove all current non-Administrator members:",
-            "code": "Get-ADGroupMember -Identity \"Enterprise Admins\" \`\n    | Where-Object { $_.SamAccountName -ne \"Administrator\" } \`\n    | ForEach-Object {\n        Remove-ADGroupMember -Identity \"Enterprise Admins\" -Members $_ -Confirm:$false\n    }",
+            "code": "Get-ADGroupMember -Identity \"Enterprise Admins\" \\`\n    | Where-Object { $_.SamAccountName -ne \"Administrator\" } \\`\n    | ForEach-Object {\n        Remove-ADGroupMember -Identity \"Enterprise Admins\" -Members $_ -Confirm:$false\n    }",
         },
         {
             "text": "Grant Enterprise Admins membership only for the duration of a specific forest-level change, then immediately remove and verify.",
