@@ -1749,11 +1749,11 @@ def generate_docx_report(output_file, domain, dc_host, username, protocols, find
         lc = meta_tbl.rows[i].cells[0]
         vc = meta_tbl.rows[i].cells[1]
         _set_cell_bg(lc, "EFF6FF")
-        lc.text = label
-        lc.paragraphs[0].runs[0].bold = True
-        lc.paragraphs[0].runs[0].font.size = Pt(10)
-        vc.text = value
-        vc.paragraphs[0].runs[0].font.size = Pt(10)
+        _lc_run = lc.paragraphs[0].add_run(label)
+        _lc_run.bold = True
+        _lc_run.font.size = Pt(10)
+        _vc_run = vc.paragraphs[0].add_run(value)
+        _vc_run.font.size = Pt(10)
 
     doc.add_paragraph()
     score_para = doc.add_paragraph()
@@ -1837,10 +1837,8 @@ def generate_docx_report(output_file, domain, dc_host, username, protocols, find
             sr3.bold = True
             sr3.font.size = Pt(8)
             sr3.font.color.rgb = SEV_RGB.get(sev, RGBColor(0, 0, 0))
-            trow.cells[1].text = f.get("title", "")
-            trow.cells[1].paragraphs[0].runs[0].font.size = Pt(9)
-            trow.cells[2].text = cats
-            trow.cells[2].paragraphs[0].runs[0].font.size = Pt(9)
+            trow.cells[1].paragraphs[0].add_run(f.get("title", "")).font.size = Pt(9)
+            trow.cells[2].paragraphs[0].add_run(cats).font.size = Pt(9)
             dp = trow.cells[3].paragraphs[0]
             dp.alignment = WD_ALIGN_PARAGRAPH.CENTER
             ded = f.get("deduction", 0)
@@ -1879,8 +1877,8 @@ def generate_docx_report(output_file, domain, dc_host, username, protocols, find
             n = len(details)
             doc.add_heading(f"Details ({n} item{'s' if n != 1 else ''})", level=3)
             for item in details[:50]:
-                p = doc.add_paragraph(str(item), style="List Bullet")
-                p.runs[0].font.size = Pt(9)
+                p = doc.add_paragraph(style="List Bullet")
+                p.add_run(str(item)).font.size = Pt(9)
             if n > 50:
                 doc.add_paragraph(f"... and {n - 50} more items (see HTML or JSON report).")
         if idx < len(sorted_findings):
