@@ -10,7 +10,7 @@ TOOLS = [
         "tool": "PowerShell",
         "icon": "ps",
         "desc": "List all subnets defined in AD Sites and Services and their associated site.",
-        "code": "Get-ADReplicationSubnet -Filter * -Properties Site \`\n    | Select-Object Name,Site,Location,Description \`\n    | Sort-Object Site",
+        "code": "Get-ADReplicationSubnet -Filter * -Properties Site \\`\n    | Select-Object Name,Site,Location,Description \\`\n    | Sort-Object Site",
         "confirm": "Subnets where the <strong>Site</strong> field is empty or null are orphaned — they are not associated with any AD site.",
     },
     {
