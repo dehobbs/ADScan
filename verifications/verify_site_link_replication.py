@@ -10,7 +10,7 @@ TOOLS = [
         "tool": "PowerShell",
         "icon": "ps",
         "desc": "List all site links and their replication intervals.",
-        "code": "Get-ADReplicationSiteLink -Filter * -Properties ReplInterval,Cost,SitesIncluded \`\n    | Select-Object Name,ReplInterval,Cost,SitesIncluded \`\n    | Sort-Object ReplInterval -Descending",
+        "code": "Get-ADReplicationSiteLink -Filter * -Properties ReplInterval,Cost,SitesIncluded \\`\n    | Select-Object Name,ReplInterval,Cost,SitesIncluded \\`\n    | Sort-Object ReplInterval -Descending",
         "confirm": "Site links with <strong>ReplInterval</strong> above <strong>180 minutes</strong> (3 hours) are flagged. The default is 180 minutes; best practice is 15–60 minutes for most environments.",
     },
     {
