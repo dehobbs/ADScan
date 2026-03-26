@@ -356,7 +356,13 @@ def run_check(connector, verbose=False):
                 "Review the debug log for raw nxc smb output. "
                 f"Computer list: {targets_file}"
             ),
-            "details": [f"nxc smb exit code: {rc2}"] + out2.splitlines()[:20],
+            "details": [f"nxc smb exit code: {rc2}"] + [
+                __import__("re").sub(
+                    r'([A-Za-z0-9._-]+\\[A-Za-z0-9._-]+):(\S+)',
+                    r'\1:REDACTED', ln
+                )
+                for ln in out2.splitlines()[:20]
+            ],
         })
 
     # ----------------------------------------------------------------------
