@@ -1,6 +1,7 @@
 CHECK_NAME     = "Passwords in Descriptions"
 CHECK_ORDER    = 61
 CHECK_CATEGORY = ["Account Hygiene"]
+CHECK_WEIGHT   = 0    # info-only check, no deduction possible
 
 import re
 
