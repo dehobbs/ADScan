@@ -1,30 +1,58 @@
 # scoring.toml — ADScan Risk Score Configuration
+# ---------------------------------------------------------------------------
+# Scoring Model: ratio-based (earned / possible * 100)
 #
-# This file controls how many points are deducted from the risk score (starting
-# at 100) for each finding ADScan produces.
+#   Each check module declares a CHECK_WEIGHT (its maximum point contribution).
+#   When a check passes cleanly, its full weight counts as "earned".
+#   When findings are raised, deductions reduce the earned total.
+#   Category and overall scores = earned / possible * 100.
 #
-# Two levels of configuration are available:
+# Priority order for resolving a finding's deduction (highest wins):
+#   1. [overrides]        — exact match on finding title (case-sensitive)
+#   2. [severity_weights] — match on finding severity tier
+#   3. finding["deduction"] — hardcoded value in the check module itself
 #
-#   [severity_weights]
-#       Default deduction applied to every finding of that severity tier.
-#       Change these to shift the entire scoring curve up or down.
-#
-#   [overrides]
-#       Per-finding-title deductions that take precedence over severity_weights.
-#       The key must exactly match the "title" field in the finding — copy it
-#       from a report or from the check file's findings.append({"title": ...}).
-#       Set a value to 0 to suppress a finding from affecting the score entirely
-#       without disabling the check.
-#
-# Priority order (highest to lowest):
-#   1. [overrides] entry for the exact finding title
-#   2. [severity_weights] entry for the finding's severity
-#   3. The hardcoded deduction value baked into the check module itself
-#
-# Severity tiers (case-insensitive): critical, high, medium, low, info
-# Info findings conventionally carry 0 deduction and should stay that way.
+# Check weights by category (for reference)
+# ---------------------------------------------------------------------------
+# ADCS / PKI Vulnerabilities    check_adcs.py                weight=20
+# Account Hygiene               check_account_hygiene.py     weight=20
+#                               check_password_policy.py     weight=20
+#                               check_shadow_credentials.py  (no weight — unweighted)
+#                               check_sid_history.py         (no weight — unweighted)
+# Deprecated Operating Systems  check_deprecated_os.py       weight=20
+# Domain Hygiene                check_domain_controllers.py  weight=20
+#                               check_domain_trusts.py       weight=20
+#                               check_gpo.py                 weight=8
+#                               check_gpp_cpassword.py       weight=20
+#                               check_legacy_frs_sysvol.py   weight=10
+#                               check_misc_hardening.py      weight=15
+#                               check_optional_features.py   weight=10
+#                               check_pre_windows_2000.py    (no weight — unweighted)
+#                               check_replication.py         weight=10
+# Groups Hygiene                check_foreign_security_principals.py  weight=20
+# Kerberos                      check_constrained_delegation.py  weight=20
+#                               check_kerberos.py            weight=20
+#                               check_rbcd_domain_dcs.py     (no weight — unweighted)
+#                               check_rc4_encryption.py      (no weight — unweighted)
+#                               check_unconstrained_delegation.py  weight=25
+# Network Hygiene               check_dns_infrastructure.py  weight=15
+#                               check_orphaned_subnets.py    weight=0  (info-only)
+# Privileged Accounts           check_acl_permissions.py     weight=25
+#                               check_adminsdholder_acl.py   weight=20
+#                               check_laps.py                weight=20
+#                               check_laps_coverage.py       weight=20
+#                               check_privileged_accounts.py weight=20
+#                               check_protected_admin_users.py  (no weight — unweighted)
+#                               check_protected_users_group.py  (no weight — unweighted)
+#                               check_service_accounts.py    (no weight — unweighted)
+# Protocol Security             check_legacy_protocols.py    weight=15
+#                               check_protocol_security.py   (no weight — unweighted)
+#                               check_smb.py                 weight=15
+# ---------------------------------------------------------------------------
 
 [severity_weights]
+# Default deduction per severity tier — applied when no per-title override exists.
+# These mirror the baseline values hardcoded in check modules.
 critical = 20
 high     = 15
 medium   = 8
@@ -32,41 +60,146 @@ low      = 5
 info     = 0
 
 # ---------------------------------------------------------------------------
-# Per-finding overrides
+# [overrides] — Active overrides for findings whose hardcoded deductions
+# diverge from the severity_weights defaults above.
+#
+# Without these entries the engine would fall back to severity_weights, which
+# would under- or over-count those findings relative to what each check module
+# intends.  These are NOT optional tuning — they are required for correctness.
 # ---------------------------------------------------------------------------
-# Uncomment and adjust any entry below, or add your own.
-# Title strings are matched case-sensitively and must be an exact match.
-#
-# Examples:
-#   Raise the impact of unconstrained delegation on user accounts
-#     "User Accounts with Unconstrained Delegation" = 25
-#
-#   Lower the impact of a finding your environment has a compensating control for
-#     "Kerberoastable Service Accounts" = 5
-#
-#   Suppress a finding from the score entirely (it still appears in the report)
-#     "Lockout Observation Window Too Short" = 0
 
 [overrides]
-# "User Accounts with Unconstrained Delegation"                              = 25
-# "Computer Accounts with Unconstrained Delegation"                          = 20
-# "High-Value Kerberoastable Accounts (adminCount=1 + SPN + DONT_EXPIRE)"   = 20
-# "Kerberoastable Service Accounts"                                          = 15
-# "AS-REP Roastable Accounts (DONT_REQ_PREAUTH)"                             = 15
-# "Account Lockout Disabled"                                                 = 20
-# "Passwords Never Expire"                                                   = 15
-# "Password Complexity Disabled"                                             = 15
-# "Minimum Password Length Too Short (< 8)"                                  = 15
-# "Minimum Password Length Below Recommended (< 12)"                         = 8
-# "Maximum Password Age Exceeds 365 Days"                                    = 8
-# "Reversible Password Encryption Enabled"                                   = 20
-# "krbtgt Password Not Rotated in {N} Days"                                  = 20
-# "krbtgt Password Has Never Been Reset"                                      = 20
-# "Privileged Accounts with Non-Expiring Passwords"                          = 15
-# "Stale Privileged Accounts (Inactive > 90 Days)"                           = 15
-# "Excessive Domain Admins Membership"                                        = 8
-# "Ghost Admin Accounts: disabled account(s) with adminCount=1"              = 8
-# "Stale Protected Admin Accounts: account(s) inactive > 90 days"           = 10
-# "Orphaned adminCount=1 Accounts: account(s) no longer in privileged groups"= 8
-# "Tier-0 Privileged Accounts Not in Protected Users"                        = 12
-# "Tier-1 Privileged Accounts Not in Protected Users"                        = 6
+
+# ---------------------------------------------------------------------------
+# Kerberos — Unconstrained Delegation  (check_unconstrained_delegation.py)
+# ---------------------------------------------------------------------------
+# Both findings carry higher deductions than their severity-tier defaults.
+# User accounts are the highest-risk path (full credential theft via TGT
+# capture); computer accounts enable printer-spooler / coerce-auth attacks.
+"User Accounts with Unconstrained Delegation"     = 25  # critical tier — elevated +5 above default (25 vs 20)
+"Computer Accounts with Unconstrained Delegation"  = 20  # high tier    — elevated +5 above default (20 vs 15)
+
+# ---------------------------------------------------------------------------
+# Privileged Accounts — ACL / Permissions  (check_acl_permissions.py)
+# ---------------------------------------------------------------------------
+# DCSync rights on the domain object grant full credential replication — the
+# single most dangerous AD misconfiguration; warranting an above-default score.
+# RBCD is slightly elevated because it enables Kerberos relay chains.
+"DCSync Rights Detected on Domain Object"                 = 25  # critical tier — elevated to 25 (vs default 20)
+"Resource-Based Constrained Delegation (RBCD) Configured"  = 10  # medium tier  — elevated to 10 (vs default 8)
+
+# ---------------------------------------------------------------------------
+# Domain Hygiene — Legacy FRS SYSVOL  (check_legacy_frs_sysvol.py)
+# ---------------------------------------------------------------------------
+# FRS is deprecated but is not an immediate exploitation path; deductions are
+# intentionally lower than severity-tier defaults to reflect operational
+# (not security-critical) risk.
+"SYSVOL Replication: FRS in use — migration to DFSR not started" = 10  # high tier — reduced to 10 (vs default 15)
+"SYSVOL Replication: DFSR Redirected — FRS still present"        = 3   # low tier  — reduced to 3  (vs default 5)
+
+# ---------------------------------------------------------------------------
+# Domain Hygiene — Optional Features / Replication
+# ---------------------------------------------------------------------------
+# Slightly above severity defaults to reflect their operational impact.
+"AD Recycle Bin Not Enabled"               = 10  # medium tier — elevated to 10 (vs default 8)
+"Excessive Site Link Replication Intervals" = 10  # medium tier — elevated to 10 (vs default 8)
+
+# ---------------------------------------------------------------------------
+# Privileged Accounts — Service Accounts  (check_service_accounts.py)
+# ---------------------------------------------------------------------------
+"User Accounts Used as Service Accounts (No gMSA Adoption)" = 10  # medium tier — elevated to 10 (vs default 8)
+
+# ---------------------------------------------------------------------------
+# RC4 / Legacy Kerberos Encryption  (check_rc4_encryption.py)
+# ---------------------------------------------------------------------------
+# The check module uses graduated deductions that are intentionally lower
+# than severity-tier defaults to reflect real-world deployment constraints.
+# Uncomment only if you want to diverge from the module's own values.
+# "DES Encryption Enabled: N account(s)"                — dynamic title, cannot override
+# "RC4 Permitted on Domain Controllers: N DC(s)"        — dynamic title, cannot override
+# "RC4 Permitted on Admin Accounts: N account(s)"       — dynamic title, cannot override
+# "RC4 Permitted on Service Accounts: N account(s)"     — dynamic title, cannot override
+# Module uses: DES=15 (critical), RC4-DCs=10 (high), RC4-Admins=8 (high), RC4-Svc=8 (medium)
+
+# ---------------------------------------------------------------------------
+# Optional tuning — adjust to reflect compensating controls or risk appetite
+# ---------------------------------------------------------------------------
+
+# --- Kerberos attack surface ---
+# "High-Value Kerberoastable Accounts (adminCount=1 + SPN + DONT_EXPIRE)" = 20
+# "Kerberoastable Service Accounts"                                        = 15
+# "AS-REP Roastable Accounts (DONT_REQ_PREAUTH)"                          = 15
+# "Accounts Using DES-Only Kerberos Encryption"                           = 8
+# "Accounts with Constrained Delegation + Protocol Transition (S4U2Self)" = 15
+# "Constrained Delegation Targeting High-Value Services"                  = 15
+
+# --- Password policy ---
+# "Account Lockout Disabled"                          = 20
+# "Reversible Password Encryption Enabled"            = 20
+# "Minimum Password Length Too Short (< 8)"           = 15
+# "Password Complexity Disabled"                      = 15
+# "Passwords Never Expire"                            = 15
+# "Minimum Password Length Below Recommended (< 12)"  = 8
+# "Maximum Password Age Exceeds 365 Days"             = 8
+# "Account Lockout Threshold Too High"                = 8
+# "Lockout Observation Window Too Short"              = 5
+
+# --- Account hygiene ---
+# "Per-Account Reversible Encryption Enabled"         = 20
+# "Accounts With PASSWD_NOTREQD Flag Set"             = 15
+# "Enabled User Accounts That Have Never Logged On"   = 8
+# "Enabled Computer Accounts That Have Never Authenticated" = 5
+
+# --- Privileged accounts ---
+# "krbtgt Password Has Never Been Reset"                          = 20
+# "Passwords Found in Privileged Account Description Fields"      = 20
+# "Privileged Accounts with Non-Expiring Passwords"               = 15
+# "Stale Privileged Accounts (Inactive > 90 Days)"                = 15
+# "Built-in Administrator Account (RID 500) Security Issues"      = 15
+# "Service Accounts With adminCount=1"                            = 15
+# "Excessive Domain Admins Membership"                            = 8
+# "Sensitive Delegated Groups Have Active Members"                = 5
+
+# --- ADCS / PKI ---
+# "ESC8: Potential NTLM Relay to ADCS Web Enrollment Endpoint"                          = 20
+# "ESC10: Certificate Mapping May Not Use Strong Mapping (Verify KB5014754)"             = 20
+# "ESC16: CA Disabling szOID_NTDS_CA_SECURITY_EXT Globally"                             = 20
+# "ESC6: CA Allows Attribute Subject Alternative Name (EDITF_ATTRIBUTESUBJECTALTNAME2)"  = 15
+# "ESC1: Certificate Templates Allow Enrollee-Supplied SAN"                             = 15
+# "ESC2: Any-Purpose / SubCA Certificate Templates with Low-Privilege Enrollment"       = 15
+# "ESC11: CA Does Not Enforce Encrypted Certificate Requests (ICPR Relay Risk)"         = 8
+# "ESC3: Enrollment Agent Templates Allow Certificate Request Delegation"               = 8
+# "ESC9: Templates With CT_FLAG_NO_SECURITY_EXTENSION"                                 = 8
+# "ESC13: Templates With Issuance Policy OIDs (Verify OID-Group Links)"                = 8
+
+# --- Domain hygiene ---
+# "Single Domain Controller Detected"                           = 20
+# "Bidirectional Trust(s) Without SID Filtering Enabled"        = 20
+# "Machine Account Quota Is Non-Zero"                           = 15
+# "Built-in Guest Account Is Enabled"                           = 15
+# "Forest Trust(s) Without SID Filtering"                       = 15
+# "TGT Delegation Enabled Across Trust Boundary"                = 15
+# "Domain Controllers Running Legacy OS"                        = 15
+# "Short Tombstone Lifetime"                                    = 8
+# "Forest Trust(s) Configured (Review Required)"                = 8
+# "External Bidirectional Trusts with Non-Forest Domains"       = 8
+# "Privileged Access Management (PAM) Feature Not Enabled"      = 5
+# "Non-Windows MIT Kerberos Realm Trust(s) Found"               = 5
+# "Domain Trust(s) Using RC4 Encryption"                        = 5
+
+# --- SMB / Protocol security ---
+# "SMBv1 Protocol Detected"                                     = 15
+# "Wildcard DNS Records Found in AD-Integrated DNS"             = 15
+# Note: "SMB Signing Not Enforced: N host(s)" and "SMBv1 Enabled: N host(s)"
+#       are dynamic titles — they cannot be overridden here.
+
+# --- Deprecated OS ---
+# "End-of-Life Workstation OS Detected"                         = 20
+# "End-of-Life Server OS Detected"                              = 20
+# "Near-EOL Server OS Detected (Server 2012/2012 R2)"           = 15
+
+# --- Suppress a finding from the score (still appears in report) ---
+# "Verify LLMNR and NetBIOS-NS Are Disabled"                    = 0
+# "Verify LDAP Signing and Channel Binding Enforcement"         = 0
+# "Verify NTLMv1 and WDigest Are Disabled"                      = 0
+# "Null Session / Anonymous LDAP Bind -- Manual Review Required" = 0
