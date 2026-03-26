@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ADScan Report — Scoring Mock-up (Option 2+3)</title>
+<style>
+/* ── Design tokens matching existing ADScan report ── */
+:root {
+  --bg:#f8fafc; --card-bg:#ffffff;
+  --card-shadow:0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.04);
+  --text-primary:#1e293b; --text-secondary:#475569; --text-muted:#94a3b8;
+  --border:#e2e8f0; --header-bg:#1e293b; --header-text:#f8fafc;
+  --sidebar-bg:#1e293b; --sidebar-text:#cbd5e1; --sidebar-active:#3b82f6;
+  --sidebar-width:280px;
+  --critical:#dc2626; --high:#ea580c; --medium:#d97706; --low:#2563eb; --info:#6b7280;
+  --grade-a:#16a34a; --grade-b:#2563eb; --grade-c:#d97706; --grade-d:#ea580c; --grade-f:#dc2626;
+}
+[data-theme="dark"] {
+  --bg:#0f172a; --card-bg:#1e293b;
+  --card-shadow:0 1px 3px rgba(0,0,0,0.4);
+  --text-primary:#f1f5f9; --text-secondary:#94a3b8; --text-muted:#64748b;
+  --border:#334155; --header-bg:#020617; --header-text:#f1f5f9;
+  --sidebar-bg:#020617; --sidebar-text:#94a3b8; --sidebar-active:#60a5fa;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:var(--bg);color:var(--text-primary);display:flex;flex-direction:column;min-height:100vh;}
+
+/* ── Header ── */
+.header{background:var(--header-bg);color:var(--header-text);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;height:56px;position:sticky;top:0;z-index:100;}
+.header-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;}
+.header-brand .shield{font-size:22px;}
+.header-meta{font-size:12px;color:#94a3b8;}
+.toggle-btn{background:none;border:1px solid #475569;color:#94a3b8;
+  border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;}
+
+/* ── Layout ── */
+.layout{display:flex;flex:1;}
+.sidebar{width:var(--sidebar-width);background:var(--sidebar-bg);
+  padding:16px 0;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto;flex-shrink:0;}
+.sidebar-section{padding:8px 16px 4px;font-size:11px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);}
+.sidebar-item{display:block;padding:8px 20px;font-size:13px;
+  color:var(--sidebar-text);cursor:pointer;border-left:3px solid transparent;}
+.sidebar-item:hover{background:rgba(255,255,255,0.06);}
+.sidebar-item.active{color:var(--sidebar-active);border-left-color:var(--sidebar-active);}
+.sidebar-badge{float:right;font-size:11px;background:rgba(255,255,255,0.1);
+  border-radius:10px;padding:1px 7px;}
+
+/* ── Main content ── */
+.main{flex:1;padding:24px;max-width:960px;}
+
+/* ── Score hero ── */
+.score-hero{background:var(--card-bg);border:1px solid var(--border);
+  border-radius:12px;padding:28px;margin-bottom:24px;
+  box-shadow:var(--card-shadow);display:flex;align-items:center;gap:32px;}
+.gauge-wrap{flex-shrink:0;text-align:center;}
+.gauge-svg{width:140px;height:80px;}
+.gauge-score{font-size:36px;font-weight:800;line-height:1;}
+.gauge-label{font-size:12px;color:var(--text-muted);margin-top:2px;}
+.gauge-grade{display:inline-block;font-size:13px;font-weight:700;
+  padding:3px 10px;border-radius:20px;margin-top:8px;}
+.grade-b{background:#dbeafe;color:#1d4ed8;}
+.score-meta{flex:1;}
+.score-meta h2{font-size:20px;font-weight:700;margin-bottom:6px;}
+.score-meta p{font-size:14px;color:var(--text-secondary);line-height:1.6;}
+.score-breakdown{display:flex;gap:16px;margin-top:14px;flex-wrap:wrap;}
+.score-stat{background:var(--bg);border:1px solid var(--border);
+  border-radius:8px;padding:10px 16px;text-align:center;min-width:90px;}
+.score-stat .val{font-size:22px;font-weight:700;}
+.score-stat .lbl{font-size:11px;color:var(--text-muted);margin-top:2px;}
+.val-critical{color:var(--critical);}
+.val-high{color:var(--high);}
+.val-medium{color:var(--medium);}
+.val-low{color:var(--low);}
+
+/* ── NEW: Category scorecard grid ── */
+.section-title{font-size:16px;font-weight:700;margin-bottom:14px;
+  display:flex;align-items:center;gap:8px;}
+.section-title .badge-new{font-size:10px;font-weight:600;background:#dbeafe;
+  color:#1d4ed8;border-radius:4px;padding:2px 6px;}
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+  gap:14px;margin-bottom:28px;}
+.cat-card{background:var(--card-bg);border:1px solid var(--border);
+  border-radius:10px;padding:16px 18px;box-shadow:var(--card-shadow);}
+.cat-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.cat-name{font-size:13px;font-weight:600;}
+.cat-score-pct{font-size:22px;font-weight:800;}
+.cat-score-grade{font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;margin-left:6px;}
+.grade-a-sm{background:#dcfce7;color:#15803d;}
+.grade-b-sm{background:#dbeafe;color:#1d4ed8;}
+.grade-c-sm{background:#fef9c3;color:#a16207;}
+.grade-d-sm{background:#ffedd5;color:#c2410c;}
+.grade-f-sm{background:#fee2e2;color:#b91c1c;}
+.cat-bar-track{background:var(--border);border-radius:4px;height:6px;margin-bottom:8px;}
+.cat-bar-fill{height:6px;border-radius:4px;transition:width 0.4s ease;}
+.cat-stats{display:flex;gap:10px;flex-wrap:wrap;}
+.cat-stat-pill{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:500;}
+.pill-critical{background:#fef2f2;color:var(--critical);}
+.pill-high{background:#fff7ed;color:var(--high);}
+.pill-medium{background:#fffbeb;color:var(--medium);}
+.pill-pass{background:#f0fdf4;color:#16a34a;}
+.cat-formula{font-size:10px;color:var(--text-muted);margin-top:8px;
+  border-top:1px solid var(--border);padding-top:6px;}
+
+/* ── Score formula explanation ── */
+.formula-box{background:var(--card-bg);border:1px solid var(--border);
+  border-radius:10px;padding:18px 20px;margin-bottom:28px;box-shadow:var(--card-shadow);}
+.formula-box h3{font-size:14px;font-weight:600;margin-bottom:10px;}
+.formula-row{display:flex;align-items:baseline;gap:12px;margin-bottom:6px;flex-wrap:wrap;}
+.formula-eq{font-family:monospace;font-size:13px;background:var(--bg);
+  padding:6px 10px;border-radius:6px;border:1px solid var(--border);}
+.formula-note{font-size:12px;color:var(--text-secondary);}
+.formula-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px;}
+.formula-table th{text-align:left;padding:4px 10px;
+  font-size:11px;text-transform:uppercase;color:var(--text-muted);font-weight:600;}
+.formula-table td{padding:5px 10px;border-top:1px solid var(--border);}
+.formula-table tr:first-child td{border-top:none;}
+
+/* ── Existing findings section (unchanged) ── */
+.findings-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.filter-chips{display:flex;gap:6px;flex-wrap:wrap;}
+.chip{border:1px solid;border-radius:20px;padding:3px 12px;font-size:12px;
+  font-weight:500;cursor:pointer;background:transparent;}
+.chip-critical{border-color:var(--critical);color:var(--critical);}
+.chip-critical.active{background:var(--critical);color:#fff;}
+.chip-high{border-color:var(--high);color:var(--high);}
+.chip-high.active{background:var(--high);color:#fff;}
+.chip-medium{border-color:var(--medium);color:var(--medium);}
+.chip-medium.active{background:var(--medium);color:#fff;}
+.finding-card{background:var(--card-bg);border:1px solid var(--border);
+  border-radius:10px;margin-bottom:12px;overflow:hidden;box-shadow:var(--card-shadow);}
+.finding-header{display:flex;align-items:center;gap:12px;padding:14px 18px;cursor:pointer;}
+.sev-badge{font-size:11px;font-weight:600;padding:2px 9px;border-radius:10px;flex-shrink:0;}
+.badge-critical{background:#fef2f2;color:var(--critical);}
+.badge-high{background:#fff7ed;color:var(--high);}
+.badge-medium{background:#fffbeb;color:var(--medium);}
+.finding-title{font-size:14px;font-weight:600;flex:1;}
+.finding-pts{font-size:12px;color:var(--text-muted);white-space:nowrap;}
+.finding-body{padding:0 18px 16px;border-top:1px solid var(--border);}
+.finding-body p{font-size:13px;color:var(--text-secondary);line-height:1.6;margin-top:10px;}
+
+/* ── Annotation callout ── */
+.callout{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;
+  padding:12px 16px;margin-bottom:20px;font-size:13px;color:#1e40af;line-height:1.6;}
+.callout strong{display:block;margin-bottom:4px;font-size:14px;}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  .layout{flex-direction:column;}
+  .sidebar{width:100%;height:auto;position:static;}
+  .score-hero{flex-direction:column;align-items:flex-start;}
+  .cat-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════ HEADER ═══════════════════════════ -->
+<header class="header">
+  <div class="header-brand">
+    <span class="shield">🛡</span>
+    ADScan — Active Directory Security Report
+  </div>
+  <div style="display:flex;align-items:center;gap:16px;">
+    <span class="header-meta">CORP.LOCAL &nbsp;|&nbsp; 2026-03-26 14:23:01 &nbsp;|&nbsp; DC: 192.168.116.252</span>
+    <button class="toggle-btn" onclick="toggleTheme()">☀ Light</button>
+  </div>
+</header>
+
+<div class="layout">
+
+<!-- ═══════════════════════════ SIDEBAR ═══════════════════════════ -->
+<nav class="sidebar">
+  <div class="sidebar-section">Categories</div>
+  <a class="sidebar-item active">ADCS / PKI Vulnerabilities <span class="sidebar-badge" style="color:#dc2626;">2</span></a>
+  <a class="sidebar-item">Kerberos <span class="sidebar-badge" style="color:#ea580c;">3</span></a>
+  <a class="sidebar-item">Privileged Accounts <span class="sidebar-badge" style="color:#ea580c;">2</span></a>
+  <a class="sidebar-item">Protocol Security <span class="sidebar-badge" style="color:#d97706;">2</span></a>
+  <a class="sidebar-item">Account Hygiene <span class="sidebar-badge" style="color:#d97706;">1</span></a>
+  <a class="sidebar-item">Domain Hardening <span class="sidebar-badge" style="color:#2563eb;">2</span></a>
+  <a class="sidebar-item">Network Hygiene <span class="sidebar-badge" style="color:#2563eb;">1</span></a>
+  <a class="sidebar-item">Domain Hygiene <span class="sidebar-badge" style="color:#6b7280;">1</span></a>
+</nav>
+
+<!-- ═══════════════════════════ MAIN ═══════════════════════════ -->
+<main class="main">
+
+  <!-- ── Score hero ── -->
+  <div class="score-hero">
+    <div class="gauge-wrap">
+      <svg class="gauge-svg" viewBox="0 0 140 80">
+        <!-- track -->
+        <path d="M10,75 A60,60,0,0,1,130,75" fill="none" stroke="#e2e8f0" stroke-width="12" stroke-linecap="round"/>
+        <!-- fill: 62% of arc = 62% of 180deg -->
+        <path d="M10,75 A60,60,0,0,1,130,75" fill="none" stroke="#2563eb" stroke-width="12"
+              stroke-linecap="round" stroke-dasharray="188.5" stroke-dashoffset="71.6"
+              style="transform-origin:70px 75px;"/>
+      </svg>
+      <div style="margin-top:-12px;">
+        <div class="gauge-score" style="color:#2563eb;">62</div>
+        <div class="gauge-label">out of 100</div>
+        <span class="gauge-grade grade-b">B — Good</span>
+      </div>
+    </div>
+    <div class="score-meta">
+      <h2>Overall Security Score: 62 / 100</h2>
+      <p>Score reflects the weighted ratio of checks passed to checks run across all categories.
+         Each category is scored independently — a single category's failures cannot collapse the overall score to zero.</p>
+      <div class="score-breakdown">
+        <div class="score-stat"><div class="val val-critical">2</div><div class="lbl">Critical</div></div>
+        <div class="score-stat"><div class="val val-high">5</div><div class="lbl">High</div></div>
+        <div class="score-stat"><div class="val val-medium">3</div><div class="lbl">Medium</div></div>
+        <div class="score-stat"><div class="val val-low">3</div><div class="lbl">Low</div></div>
+        <div class="score-stat"><div class="val" style="color:#16a34a;">12</div><div class="lbl">Passed</div></div>
+        <div class="score-stat"><div class="val" style="color:var(--text-secondary);">25</div><div class="lbl">Total Checks</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Formula explanation callout (new) ── -->
+  <div class="callout">
+    <strong>&#128202; How the score is calculated (Option 2+3)</strong>
+    Each check contributes a <em>weight</em> based on its severity (critical=20, high=15, medium=8, low=5).
+    The overall score = <strong>points earned / points possible × 100</strong>, where points are earned only
+    for checks that pass. Category sub-scores use the same formula scoped to their checks only.
+    A single category with many failures can no longer reduce the overall score to zero.
+  </div>
+
+  <!-- ── Formula detail box ── -->
+  <div class="formula-box" style="margin-bottom:28px;">
+    <h3>&#9654; Scoring Formula</h3>
+    <div class="formula-row">
+      <div class="formula-eq">overall = Σ(passing weights) / Σ(all weights) × 100</div>
+      <div class="formula-note">Rounded to nearest integer. Floor: 0. Ceiling: 100.</div>
+    </div>
+    <table class="formula-table">
+      <tr><th>Severity</th><th>Weight (points possible)</th><th>Earned if passing</th><th>Earned if failing</th></tr>
+      <tr><td>Critical</td><td>20 pts</td><td>20 pts ✓</td><td>0 pts ✗</td></tr>
+      <tr><td>High</td><td>15 pts</td><td>15 pts ✓</td><td>0 pts ✗</td></tr>
+      <tr><td>Medium</td><td>8 pts</td><td>8 pts ✓</td><td>0 pts ✗</td></tr>
+      <tr><td>Low</td><td>5 pts</td><td>5 pts ✓</td><td>0 pts ✗</td></tr>
+    </table>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       CATEGORY SUB-SCORES  (new section)
+  ═══════════════════════════════════════════════════════════════ -->
+  <div class="section-title">
+    Category Sub-Scores
+    <span class="badge-new">NEW</span>
+  </div>
+
+  <div class="cat-grid">
+
+    <!-- ADCS / PKI -->
+    <div class="cat-card">
+      <div class="cat-card-header">
+        <div class="cat-name">ADCS / PKI Vulnerabilities</div>
+        <div>
+          <span class="cat-score-pct" style="color:var(--critical);">27</span><span style="font-size:13px;color:var(--text-muted);">/100</span>
+          <span class="cat-score-grade grade-f-sm">F</span>
+        </div>
+      </div>
+      <div class="cat-bar-track"><div class="cat-bar-fill" style="width:27%;background:var(--critical);"></div></div>
+      <div class="cat-stats">
+        <span class="cat-stat-pill pill-critical">2 Critical</span>
+        <span class="cat-stat-pill pill-high">1 High</span>
+        <span class="cat-stat-pill pill-pass">0 Passed</span>
+      </div>
+      <div class="cat-formula">0 earned / 55 possible &nbsp;=&nbsp; 27/100 &nbsp;(ESC1, ESC8, weak template ACL)</div>
+    </div>
+
+    <!-- Kerberos -->
+    <div class="cat-card">
+      <div class="cat-card-header">
+        <div class="cat-name">Kerberos</div>
+        <div>
+          <span class="cat-score-pct" style="color:var(--medium);">55</span><span style="font-size:13px;color:var(--text-muted);">/100</span>
+          <span class="cat-score-grade grade-c-sm">C</span>
+        </div>
+      </div>
+      <div class="cat-bar-track"><div class="cat-bar-fill" style="width:55%;background:var(--medium);"></div></div>
+      <div class="cat-stats">
+        <span class="cat-stat-pill pill-high">2 High</span>
+        <span class="cat-stat-pill pill-medium">1 Medium</span>
+        <span class="cat-stat-pill pill-pass">1 Passed</span>
+      </div>
+      <div class="cat-formula">30 earned / 53 possible &nbsp;=&nbsp; 55/100 &nbsp;(Kerberoastable, AS-REP, delegation)</div>
+    </div>
+
+    <!-- Privileged Accounts -->
+    <div class="cat-card">
+      <div class="cat-card-header">
+        <div class="cat-name">Privileged Accounts</div>
+        <div>
+          <span class="cat-score-pct" style="color:var(--high);">43</span><span style="font-size:13px;color:var(--text-muted);">/100</span>
+          <span class="cat-score-grade grade-d-sm">D</span>
+        </div>
+      </div>
+      <div class="cat-bar-track"><div class="cat-bar-fill" style="width:43%;background:var(--high);"></div></div>
+      <div class="cat-stats">
+        <span class="cat-stat-pill pill-high">2 High</span>
+        <span class="cat-stat-pill pill-medium">1 Medium</span>
+        <span class="cat-stat-pill pill-pass">1 Passed</span>
+      </div>
+      <div class="cat-formula">28 earned / 58 possible &nbsp;=&nbsp; 43/100 &nbsp;(DA SPN, stale admin accounts)</div>
+    </div>
+
+    <!-- Protocol Security -->
+    <div class="cat-card">
+      <div class="cat-card-header">
+        <div class="cat-name">Protocol Security</div>
+        <div>
+          <span class="cat-score-pct" style="color:var(--medium);">50</span><span style="font-size:13px;color:var(--text-muted);">/100</span>
+          <span class="cat-score-grade grade-c-sm">C</span>
+        </div>
+      </div>
+      <div class="cat-bar-track"><div class="cat-bar-fill" style="width:50%;background:var(--medium);"></div></div>
+      <div class="cat-stats">
+        <span class="cat-stat-pill pill-medium">1 Medium</span>
+        <span class="cat-stat-pill pill-pass">1 Passed</span>
+      </div>
+      <div class="cat-formula">15 earned / 30 possible &nbsp;=&nbsp; 50/100 &nbsp;(SMB signing, SMBv1 disabled)</div>
+    </div>
+
+    <!-- Account Hygiene -->
+    <div class="cat-card">
+      <div class="cat-card-header">
+        <div class="cat-name">Account Hygiene</div>
+        <div>
+          <span class="cat-score-pct" style="color:var(--medium);">67</span><span style="font-size:13px;color:var(--text-muted);">/100</span>
+          <span class="cat-score-grade grade-c-sm">C</span>
+        </div>
+      </div>
+      <div class="cat-bar-track"><div class="cat-bar-fill" style="width:67%;background:var(--medium);"></div></div>
+      <div class="cat-stats">
+        <span class="cat-stat-pill pill-medium">1 Medium</span>
+        <span class="cat-stat-pill pill-pass">2 Passed</span>
+      </div>
+      <div class="cat-formula">16 earned / 24 possible &nbsp;=&nbsp; 67/100 &nbsp;(lockout policy, stale accounts)</div>
+    </div>
+
+    <!-- Domain Hardening -->
+    <div class="cat-card">
+      <div class="cat-card-header">
+        <div class="cat-name">Domain Hardening</div>
+        <div>
+          <span class="cat-score-pct" style="color:var(--grade-b);">80</span><span style="font-size:13px;color:var(--text-muted);">/100</span>
+          <span class="cat-score-grade grade-b-sm">B</span>
+        </div>
+      </div>
+      <div class="cat-bar-track"><div class="cat-bar-fill" style="width:80%;background:var(--grade-b);"></div></div>
+      <div class="cat-stats">
+        <span class="cat-stat-pill pill-medium">1 Low</span>
+        <span class="cat-stat-pill pill-pass">3 Passed</span>
+      </div>
+      <div class="cat-formula">40 earned / 50 possible &nbsp;=&nbsp; 80/100 &nbsp;(LAPS, audit policy, recycle bin)</div>
+    </div>
+
+    <!-- Network Hygiene -->
+    <div class="cat-card">
+      <div class="cat-card-header">
+        <div class="cat-name">Network Hygiene</div>
+        <div>
+          <span class="cat-score-pct" style="color:var(--grade-a);">100</span><span style="font-size:13px;color:var(--text-muted);">/100</span>
+          <span class="cat-score-grade grade-a-sm">A</span>
+        </div>
+      </div>
+      <div class="cat-bar-track"><div class="cat-bar-fill" style="width:100%;background:var(--grade-a);"></div></div>
+      <div class="cat-stats">
+        <span class="cat-stat-pill pill-pass">2 Passed</span>
+      </div>
+      <div class="cat-formula">30 earned / 30 possible &nbsp;=&nbsp; 100/100 &nbsp;(DNS hardening, legacy protocols)</div>
+    </div>
+
+    <!-- Domain Hygiene -->
+    <div class="cat-card">
+      <div class="cat-card-header">
+        <div class="cat-name">Domain Hygiene</div>
+        <div>
+          <span class="cat-score-pct" style="color:var(--grade-a);">100</span><span style="font-size:13px;color:var(--text-muted);">/100</span>
+          <span class="cat-score-grade grade-a-sm">A</span>
+        </div>
+      </div>
+      <div class="cat-bar-track"><div class="cat-bar-fill" style="width:100%;background:var(--grade-a);"></div></div>
+      <div class="cat-stats">
+        <span class="cat-stat-pill pill-pass">2 Passed</span>
+      </div>
+      <div class="cat-formula">16 earned / 16 possible &nbsp;=&nbsp; 100/100 &nbsp;(domain trusts, foreign principals)</div>
+    </div>
+
+  </div><!-- /cat-grid -->
+
+  <!-- ══════════════════════════════════════════════════════════════
+       FINDINGS  (unchanged format, shown for context)
+  ═══════════════════════════════════════════════════════════════ -->
+  <div class="findings-header">
+    <div class="section-title" style="margin-bottom:0;">Findings</div>
+    <div class="filter-chips">
+      <span class="chip chip-critical active">Critical</span>
+      <span class="chip chip-high active">High</span>
+      <span class="chip chip-medium">Medium</span>
+    </div>
+  </div>
+
+  <div class="finding-card">
+    <div class="finding-header">
+      <span class="sev-badge badge-critical">CRITICAL</span>
+      <span class="finding-title">ADCS: ESC1 — Enrollee Supplies Subject</span>
+      <span class="finding-pts">&#8722;20 pts (0 of 20 earned)</span>
+    </div>
+    <div class="finding-body">
+      <p>Certificate template "UserAuth" allows the enrollee to specify an arbitrary Subject Alternative Name (SAN).
+         Combined with domain authentication, this allows any authenticated user to obtain a certificate for any
+         account including Domain Admins.</p>
+    </div>
+  </div>
+
+  <div class="finding-card">
+    <div class="finding-header">
+      <span class="sev-badge badge-critical">CRITICAL</span>
+      <span class="finding-title">ADCS: ESC8 — NTLM Relay to AD CS HTTP Endpoint</span>
+      <span class="finding-pts">&#8722;20 pts (0 of 20 earned)</span>
+    </div>
+    <div class="finding-body">
+      <p>The Web Enrollment (certsrv) endpoint is accessible without HTTPS and does not enforce Extended Protection
+         for Authentication (EPA), enabling NTLM relay attacks against the CA.</p>
+    </div>
+  </div>
+
+  <div class="finding-card">
+    <div class="finding-header">
+      <span class="sev-badge badge-high">HIGH</span>
+      <span class="finding-title">Kerberoastable Accounts: 3 service accounts vulnerable</span>
+      <span class="finding-pts">&#8722;15 pts (0 of 15 earned)</span>
+    </div>
+    <div class="finding-body">
+      <p>3 service accounts have SPNs registered and are requestable via Kerberos TGS, allowing offline
+         password cracking of their NTLM hashes.</p>
+    </div>
+  </div>
+
+  <div class="finding-card">
+    <div class="finding-header">
+      <span class="sev-badge badge-high">HIGH</span>
+      <span class="finding-title">SMB Signing Not Enforced: 4 host(s) vulnerable</span>
+      <span class="finding-pts">&#8722;15 pts (0 of 15 earned)</span>
+    </div>
+    <div class="finding-body">
+      <p>4 hosts do not require SMB message signing, enabling NTLM relay attacks via Responder + ntlmrelayx.</p>
+    </div>
+  </div>
+
+  <p style="font-size:13px;color:var(--text-muted);margin-top:12px;text-align:center;">
+    Showing 4 of 13 findings — use severity filters above to toggle visibility
+  </p>
+
+</main>
+</div><!-- /layout -->
+
+<script>
+function toggleTheme(){
+  const t=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',t);
+  document.querySelector('.toggle-btn').textContent=t==='dark'?'☀ Light':'🌙 Dark';
+}
+</script>
+</body>
+</html>
