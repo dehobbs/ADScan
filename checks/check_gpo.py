@@ -22,6 +22,7 @@ Risk Deductions:
 CHECK_NAME = "Group Policy Objects"
 CHECK_ORDER = 10
 CHECK_CATEGORY = ["Domain Hygiene"]
+CHECK_WEIGHT   = 8   # max deduction at stake for this check module
 
 _GPO_ATTRS = [
     "cn", "displayName", "distinguishedName",
