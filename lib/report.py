@@ -2109,9 +2109,18 @@ def generate_docx_report(output_file, domain, dc_host, username, protocols, find
                     _display_w = Cm(_img_w_cm)
                 _img_para = doc.add_paragraph()
                 _img_para.paragraph_format.space_before = Pt(4)
-                _img_para.paragraph_format.space_after = Pt(6)
+                _img_para.paragraph_format.space_after = Pt(4)
+                _img_para.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 _img_run = _img_para.add_run()
                 _img_run.add_picture(_buf, width=_display_w)
+                # Bold caption paragraph below image
+                _cap_para = doc.add_paragraph()
+                _cap_para.paragraph_format.space_before = Pt(2)
+                _cap_para.paragraph_format.space_after = Pt(8)
+                _cap_para.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                _cap_run = _cap_para.add_run(f"Figure: Command & Output — {title} (Redacted)")
+                _cap_run.bold = True
+                _cap_run.font.size = Pt(9)
             except Exception as _pil_err:
                 # Fallback: plain styled paragraph if Pillow unavailable
                 _cmd_block_para = doc.add_paragraph()
