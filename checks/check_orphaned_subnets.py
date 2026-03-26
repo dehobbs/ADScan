@@ -1,6 +1,7 @@
 CHECK_NAME = "Orphaned AD Subnets"
 CHECK_ORDER = 70
 CHECK_CATEGORY = ["Network Hygiene"]
+CHECK_WEIGHT   = 0   # info-only check, no deduction possible
 
 def run_check(connector, verbose=False):
     findings = []
