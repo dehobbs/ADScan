@@ -37,6 +37,7 @@ Prerequisites for Certipy section:
 Artifact saved to:
   Reports/Artifacts/adscan_certipy_<domain>_<timestamp>.json
 """
+import datetime
 import glob
 import json
 import os
