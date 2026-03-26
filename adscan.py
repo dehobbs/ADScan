@@ -28,7 +28,7 @@ from lib.connector import ADConnector
 from lib.report import generate_report, generate_json_report, generate_csv_report, generate_docx_report
 from lib.audit_log import AuditLogger
 from lib.debug_log import DebugLogger
-from lib.scoring import ScoringConfig
+from lib.scoring import ScoringConfig, compute_scores
 
 BANNER = r"""
  _    ____  ____
@@ -498,7 +498,6 @@ def main():
     log.info("=" * 60)
 
     findings = []
-    score = scoring.initial_score
 
     for check in checks:
         log.info("")
@@ -529,7 +528,8 @@ def main():
                     _cat = getattr(check, "CHECK_CATEGORY", "Uncategorized")
                     finding.setdefault("category", _cat)
                     finding["deduction"] = scoring.deduction_for(finding)
-                    score = max(0, score - finding["deduction"])
+                    # Attach the check's category to the finding for sub-score grouping
+                    finding.setdefault("check_category", getattr(check, "CHECK_CATEGORY", ["Uncategorised"]))
                     findings.append(finding)
             else:
                 log.info("  [OK] No issues found.")
@@ -552,6 +552,11 @@ def main():
     connector.disconnect()
 
     formats = ["html", "json", "csv", "docx"] if args.format == "all" else [args.format]
+    # Compute ratio-based overall + per-category scores
+    score_data      = compute_scores(findings, scoring)
+    score           = score_data["overall"]
+    category_scores = score_data["categories"]
+
     report_args = dict(
         domain=args.domain,
         dc_host=args.dc_ip,
@@ -559,6 +564,7 @@ def main():
         protocols=protocols,
         findings=findings,
         score=score,
+        category_scores=category_scores,
     )
 
     for fmt in formats:
