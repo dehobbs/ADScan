@@ -10,7 +10,7 @@ TOOLS = [
         "tool": "PowerShell",
         "icon": "ps",
         "desc": "Check if LLMNR is disabled via Group Policy registry value.",
-        "code": "Get-ItemProperty -Path \"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\DNSClient\" \`\n    -Name EnableMulticast -ErrorAction SilentlyContinue",
+        "code": "Get-ItemProperty -Path \"HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\DNSClient\" \\`\n    -Name EnableMulticast -ErrorAction SilentlyContinue",
         "confirm": "A value of <strong>0</strong> means LLMNR is disabled. If the key is absent, LLMNR is enabled by default.",
     },
     {
