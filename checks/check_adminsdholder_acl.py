@@ -1,6 +1,7 @@
 CHECK_NAME = "AdminSDHolder ACL"
 CHECK_ORDER = 63
 CHECK_CATEGORY = ["Privileged Accounts"]
+CHECK_WEIGHT   = 20   # max deduction at stake for this check module
 
 # Well-known SIDs / CN patterns for privileged principals (these are EXPECTED in the AdminSDHolder DACL)
 EXPECTED_PRIVILEGED = {
