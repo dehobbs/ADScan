@@ -29,6 +29,7 @@ from lib.report import generate_report, generate_json_report, generate_csv_repor
 from lib.audit_log import AuditLogger
 from lib.debug_log import DebugLogger
 from lib.scoring import ScoringConfig, compute_scores
+from lib.tools import setup_all_tools, TOOL_REGISTRY
 
 BANNER = r"""
  _    ____  ____
@@ -169,7 +170,8 @@ def parse_args():
             "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin --ccache /tmp/admin.ccache\n"
             "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin -p Pass --checks kerberos,delegation\n"
             "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin -p Pass --skip gpp,smb\n"
-            "  %(prog)s --list-checks"
+            "  %(prog)s --list-checks\n"
+            "  %(prog)s --setup-tools"
         ),
     )
 
@@ -309,6 +311,19 @@ def parse_args():
         default=False,
         help="Print all available check modules (slug, category, name) and exit.",
     )
+
+    setup_group = parser.add_argument_group("Tool Management")
+    setup_group.add_argument(
+        "--setup-tools",
+        dest="setup_tools",
+        action="store_true",
+        default=False,
+        help=(
+            "Install all external CLI tools (certipy-ad, netexec) into isolated\n"
+            "virtual environments via uv and exit. No domain credentials required.\n"
+            "Requires uv: curl -LsSf https://astral.sh/uv/install.sh | sh"
+        ),
+    )
     return parser.parse_args()
 
 
@@ -326,6 +341,20 @@ def main():
     if args.list_checks:
         list_checks()
         sys.exit(0)
+
+    # --setup-tools: install external CLI tools into isolated venvs and exit
+    if args.setup_tools:
+        configure_logging(verbose=True, log_file=None)
+        print(BANNER)
+        print("[*] Installing external tools via uv tool install ...\n")
+        results = setup_all_tools()
+        print(f"\n{'TOOL':<15} {'PACKAGE':<20} {'STATUS'}")
+        print("-" * 60)
+        for slug, path in results.items():
+            spec = TOOL_REGISTRY[slug]
+            status = path if path else "FAILED (see warnings above)"
+            print(f"{spec.exe:<15} {spec.pip_spec:<20} {status}")
+        sys.exit(0 if all(results.values()) else 1)
 
     # Validate required connection args (not needed for --list-checks, already exited above)
     missing = []

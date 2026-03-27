@@ -21,15 +21,16 @@ Findings (from Phase 2 output):
                   All SMBv1:False   -> INFO / PASS finding, 0 points
 
 Prerequisites:
-    nxc (pip install netexec or pipx install netexec)
+    nxc (uv tool install netexec or python adscan.py --setup-tools)
     Active LDAP connection on the connector (required for Phase 1 computer list)
 """
 
 import os
 import re
-import shutil
-import subprocess
-from datetime import datetime  # nosec B404 - subprocess is required to invoke netexec
+import subprocess  # nosec B404 - subprocess is required to invoke netexec
+from datetime import datetime
+
+from lib.tools import ensure_tool
 
 CHECK_NAME     = "SMB Signing Enforcement"
 CHECK_ORDER    = 22  # runs right after Legacy Protocols (21)
@@ -41,8 +42,9 @@ CHECK_WEIGHT   = 15   # max deduction at stake for this check module
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _nxc_available():
-    return shutil.which("nxc") is not None
+def _resolve_nxc():
+    """Return the absolute path to nxc, auto-installing via uv if needed."""
+    return ensure_tool("nxc")
 
 
 def _run_cmd(cmd, timeout=120):
@@ -164,7 +166,8 @@ def run_check(connector, verbose=False):
     # ----------------------------------------------------------------------
     # Pre-flight: check nxc
     # ----------------------------------------------------------------------
-    if not _nxc_available():
+    nxc_exe = _resolve_nxc()
+    if nxc_exe is None:
         findings.append({
             "title": "SMB Signing Enforcement -- NetExec Not Found",
             "severity": "info",
@@ -172,16 +175,17 @@ def run_check(connector, verbose=False):
             "description": (
                 "NetExec (nxc) is required for the SMB sweep "
                 "but was not found on PATH. "
-                "Install with: pip install netexec"
+                "Install with: uv tool install netexec"
             ),
             "recommendation": (
-                "Install NetExec and re-run ADScan to get automated "
-                "per-host SMB signing and SMBv1 results."
+                "Install NetExec (uv tool install netexec or run: "
+                "python adscan.py --setup-tools) and re-run ADScan "
+                "to get automated per-host SMB signing and SMBv1 results."
             ),
             "details": [
                 "nxc not found on PATH.",
-                "Install with: pip install netexec",
-                "Or: pipx install netexec",
+                "Install with: uv tool install netexec",
+                "Or: python adscan.py --setup-tools",
             ],
         })
         return findings
@@ -239,7 +243,7 @@ def run_check(connector, verbose=False):
     # Phase 2: SMB sweep via NetExec
     # ----------------------------------------------------------------------
     smb_auth = _build_nxc_smb_auth_args(connector)
-    smb_cmd  = ["nxc", "smb", targets_file] + smb_auth
+    smb_cmd  = [nxc_exe, "smb", targets_file] + smb_auth
 
     log.debug(" [SMB] Phase 2: sweeping %d host(s) for signing and SMBv1 ...", len(targets))
     # Redact password before logging the command

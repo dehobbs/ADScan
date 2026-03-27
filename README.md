@@ -17,25 +17,24 @@
 
 ## Installation
 
-### Option 1 — pip install (recommended)
+### Option 1 — uv (recommended)
+
+[uv](https://docs.astral.sh/uv/) is a fast Python package manager. If you don't have it yet:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Then install ADScan:
 
 ```bash
 git clone https://github.com/dehobbs/ADScan.git
 cd ADScan
-pip install -r requirements.txt
+uv venv && source .venv/bin/activate
+uv pip install -e .
 ```
 
-> **Kali / externally-managed Python**: If pip blocks the install with an "externally managed environment" error, use a virtual environment:
->
-> ```bash
-> python3 -m venv .venv
-> source .venv/bin/activate
-> pip install -r requirements.txt
-> ```
-
-### Option 2 — editable install with pyproject.toml
-
-Installs ADScan as a package and puts the `adscan` command on your PATH so you can run it from any directory.
+### Option 2 — pip
 
 ```bash
 git clone https://github.com/dehobbs/ADScan.git
@@ -45,12 +44,13 @@ source .venv/bin/activate
 pip install -e .
 ```
 
-To include optional extras:
+> **Kali / externally-managed Python**: If pip blocks the install with an "externally managed environment" error, create a virtual environment first (shown above).
+
+### Optional extras
 
 ```bash
 pip install -e ".[docx]"      # adds Word report export support
 pip install -e ".[kerberos]"  # adds gssapi for Kerberos over LDAP
-pip install -e ".[adcs]"      # adds certipy-ad for ADCS checks
 pip install -e ".[dev]"       # adds pytest, ruff, mypy for development
 ```
 
@@ -60,7 +60,28 @@ After an editable install, `adscan` is available as a command directly:
 adscan -d corp.local --dc-ip 10.10.10.5 -u alice -p 'P@ssw0rd!'
 ```
 
+### External CLI tools
+
+Some checks use external CLI tools that run as subprocesses. These are installed into **isolated virtual environments** via `uv tool install` so their dependencies never conflict with ADScan's own packages.
+
+**One-command setup** (installs all tools at once):
+
+```bash
+python adscan.py --setup-tools
+```
+
+Or install individually:
+
+```bash
+uv tool install certipy-ad    # ADCS/PKI vulnerability scanner (requires Python 3.12+)
+uv tool install netexec        # SMB signing & SMBv1 detection (nxc command)
+```
+
+> These tools are **optional**. If a tool is missing when a check runs, ADScan will attempt to auto-install it via `uv tool install`. If `uv` is not available, the check is skipped gracefully with an informational finding.
+
 ### Requirements
+
+**Core Python libraries** (installed automatically with `pip install -e .`):
 
 | Package | Purpose |
 |---------|---------|
@@ -68,6 +89,13 @@ adscan -d corp.local --dc-ip 10.10.10.5 -u alice -p 'P@ssw0rd!'
 | `impacket` | SMB connectivity, pass-the-hash, Kerberos auth |
 | `pyOpenSSL` | LDAPS certificate handling |
 | `gssapi` | Kerberos GSSAPI bindings for LDAP (optional — only needed for `--kerberos`) |
+
+**External CLI tools** (installed separately via `uv tool install`):
+
+| Tool | Package | Purpose |
+|------|---------|---------|
+| `certipy` | `certipy-ad` | ADCS / PKI vulnerability enumeration (ESC1–ESC16) |
+| `nxc` | `netexec` | SMB signing enforcement & SMBv1 detection |
 
 ---
 
@@ -98,6 +126,8 @@ python adscan.py -d <domain> --dc-ip <dc_ip> -u <username> --ccache /tmp/user.cc
 | `--log-file PATH` | Write all log output (including DEBUG detail) to a file in addition to the console | off |
 | `-o / --output` | Output report path stem | `Reports/adscan_report_<timestamp>` |
 | `-v / --verbose` | Show DEBUG-level detail on the console (finding details, affected objects) | off |
+| `--setup-tools` | Install external CLI tools (certipy-ad, netexec) into isolated venvs via uv and exit | — |
+| `--list-checks` | Print all available check modules and exit | — |
 
 > **Interactive password prompt**: if neither `-p`, `--hash`, nor `--kerberos` is supplied, ADScan prompts for a password without echoing it to the terminal.
 
