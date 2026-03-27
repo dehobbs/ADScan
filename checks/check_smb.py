@@ -290,9 +290,8 @@ def run_check(connector, verbose=False):
         )
     if out2:
         log.debug(" [SMB] nxc smb output (first 30 lines):")
-        import re as _re_smb_out
         for line in out2.splitlines()[:30]:
-            _safe = _re_smb_out.sub(
+            _safe = re.sub(
                 r'([A-Za-z0-9._-]+\\[A-Za-z0-9._-]+):(\S+)',
                 r'\1:REDACTED',
                 line,
@@ -300,9 +299,8 @@ def run_check(connector, verbose=False):
             log.debug("  %s", _safe)
 
     # Build redacted raw output string for DOCX report evidence
-    import re as _re_raw
     _cmd_str = ' '.join(_smb_cmd_log)
-    _out_redacted = _re_raw.sub(
+    _out_redacted = re.sub(
         r'([A-Za-z0-9._-]+\\[A-Za-z0-9._-]+):(\S+)',
         r'\1:REDACTED',
         out2 or "",

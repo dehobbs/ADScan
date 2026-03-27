@@ -64,6 +64,7 @@ Usage inside check files (subprocess example)::
 """
 
 import os
+import re
 import traceback
 from datetime import datetime
 
@@ -220,8 +221,7 @@ class DebugLogger:
         _PASSWORD_FLAGS = {"-p", "--password", "-P", "--secret", "--hashes", "--hash"}
         def _redact_cmd(cmd):
             if isinstance(cmd, str):
-                import re as _re
-                return _re.sub(
+                return re.sub(
                     r'(?<=[\s]|^)(-p|--password|-P|--secret|--hashes|--hash)(\s+)(\S+)',
                     lambda m: m.group(1) + m.group(2) + 'REDACTED',
                     cmd
@@ -249,9 +249,8 @@ class DebugLogger:
         ]
         # Redact credential strings from subprocess output
         # (e.g. nxc prints "domain\\user:password" on [+] success lines)
-        import re as _re_out
         def _redact_output(text):
-            return _re_out.sub(
+            return re.sub(
                 r'([A-Za-z0-9._-]+\\[A-Za-z0-9._-]+):(\S+)',
                 r'\1:REDACTED',
                 text or "",
