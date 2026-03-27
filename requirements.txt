@@ -27,6 +27,8 @@ impacket==0.13.0
 # Certipy-AD - ADCS / PKI vulnerability scanner (required for check_adcs.py)
 # Pinned to 4.x — 5.x requires Python >=3.12 and has breaking API changes.
 # GitHub: https://github.com/ly4k/Certipy
+#certipy-ad==4.8.2
+
 # ---------------------------------------------------------------------------
 # Cryptography toolkit
 # 44.0.3 satisfies certipy-ad 4.8.2 (>=39.0) and pyOpenSSL 25.1.0 (>=41.0.5,<46)
