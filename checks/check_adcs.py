@@ -31,7 +31,7 @@ Additional ESC checks via Certipy (when available):
   Full re-confirmation of ESC1-3, 6, 8-11, 13, 15-16 with ACL context
 
 Prerequisites for Certipy section:
-  pip install certipy-ad
+  uv tool install certipy-ad (or python adscan.py --setup-tools)
   Connector must expose: username, password, domain, dc_host
 
 Artifact saved to:
@@ -40,9 +40,11 @@ Artifact saved to:
 import glob
 import json
 import os
-import shutil
 import subprocess  # nosec B404 - subprocess is required to invoke certipy-ad
 import logging
+
+from lib.tools import ensure_tool
+
 _log = logging.getLogger(__name__)
 
 CHECK_NAME     = "ADCS / PKI Vulnerabilities"
@@ -219,8 +221,9 @@ def _config_dn(base_dn):
 # ---------------------------------------------------------------------------
 # Certipy helpers
 # ---------------------------------------------------------------------------
-def _certipy_available():
-    return shutil.which("certipy-ad") is not None
+def _resolve_certipy():
+    """Return the absolute path to certipy-ad, auto-installing via uv if needed."""
+    return ensure_tool("certipy")
 
 def _get_credential_info(connector):
     username = getattr(connector, "username", None)
@@ -266,11 +269,11 @@ def _is_ldaps_error(stdout, stderr):
     combined = (stdout + stderr).lower()
     return any(pat in combined for pat in _LDAPS_ERROR_PATTERNS)
 
-def _run_certipy(creds, cwd=None, scheme=None):
+def _run_certipy(creds, exe_path="certipy-ad", cwd=None, scheme=None):
     """Invoke certipy-ad find. scheme may be None (default LDAPS) or 'ldap'."""
     upn = f"{creds['username']}@{creds['domain']}"
     cmd = [
-        "certipy-ad",
+        exe_path,
         "find",
         "-u",      upn,
         "-p",      creds["password"],
@@ -809,7 +812,8 @@ def _run_certipy_check(connector, verbose=False):
     log = connector.log
 
     # -- Check Certipy is available ---------------------------------------
-    if not _certipy_available():
+    certipy_exe = _resolve_certipy()
+    if certipy_exe is None:
         findings.append({
             "title":     "Certipy Not Installed - Deep ADCS Check Skipped",
             "severity":  "info",
@@ -817,10 +821,11 @@ def _run_certipy_check(connector, verbose=False):
             "description": (
                 "Certipy (certipy-ad) is not installed or not available on PATH. "
                 "The Certipy-based ADCS deep-enumeration check cannot run. "
-                "Install Certipy with: pip install certipy-ad"
+                "Install with: uv tool install certipy-ad"
             ),
             "recommendation": (
-                "Install Certipy: pip install certipy-ad "
+                "Install Certipy: uv tool install certipy-ad "
+                "(or run: python adscan.py --setup-tools). "
                 "Then re-run ADScan for full ACL-based ESC enumeration (ESC4, ESC7, etc.)."
             ),
             "details": [],
@@ -857,7 +862,7 @@ def _run_certipy_check(connector, verbose=False):
     os.makedirs(artifacts_dir, exist_ok=True)
 
     try:
-        returncode, stdout, stderr = _run_certipy(creds, cwd=artifacts_dir)
+        returncode, stdout, stderr = _run_certipy(creds, exe_path=certipy_exe, cwd=artifacts_dir)
 
         # ----------------------------------------------------------------
         # LDAPS → LDAP fallback
@@ -870,7 +875,7 @@ def _run_certipy_check(connector, verbose=False):
         if _is_ldaps_error(stdout, stderr):
             log.debug("  [Certipy] LDAPS connection failed — retrying with plain LDAP (-scheme ldap)...")
             returncode, stdout, stderr = _run_certipy(
-                creds, cwd=artifacts_dir, scheme="ldap"
+                creds, exe_path=certipy_exe, cwd=artifacts_dir, scheme="ldap"
             )
             ldap_fallback_used = True
 
