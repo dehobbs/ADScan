@@ -261,11 +261,6 @@ def compute_scores(
     # ------------------------------------------------------------------ #
     # Step 2: subtract deductions for failing findings                    #
     # ------------------------------------------------------------------ #
-    total_possible = sum(
-        sum(v["possible"] for v in cat.values())
-        for _ in [None]   # evaluated once after seeding
-    )
-    # Re-derive per-category totals cleanly
     total_possible = 0
     total_earned   = 0
 
