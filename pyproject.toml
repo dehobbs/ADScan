@@ -12,47 +12,51 @@ license-files = ["LICENSE"]
 requires-python = ">=3.10"
 dependencies = [
     "ldap3>=2.10.0rc1",
-        "impacket==0.13.0",
-            "cryptography==44.0.3",
-                "pyasn1==0.4.8",
-                    "pyasn1-modules==0.4.1",
-                        "dnspython==2.8.0",
-                            "requests==2.32.5",
-                                "pyOpenSSL==25.1.0",
-                                    "defusedxml==0.7.1",
-                                    ]
+    "impacket==0.13.0",
+    "cryptography==44.0.3",
+    "pyasn1==0.4.8",
+    "pyasn1-modules==0.4.1",
+    "dnspython==2.8.0",
+    "requests==2.32.5",
+    "pyOpenSSL==25.1.0",
+    "defusedxml==0.7.1",
+]
 
-                                    [project.optional-dependencies]
-                                    docx     = ["python-docx>=1.1.2", "Pillow>=10.0.0"]
-                                    adcs     = ["certipy-ad==4.8.2"]
-                                    kerberos = ["gssapi"]
-                                    dev      = ["pytest>=8.0", "pytest-cov", "ruff", "mypy", "tomli; python_version < '3.11'"]
+[project.optional-dependencies]
+docx     = ["python-docx>=1.1.2", "Pillow>=10.0.0"]
+kerberos = ["gssapi"]
+dev      = ["pytest>=8.0", "pytest-cov", "ruff", "mypy", "tomli; python_version < '3.11'"]
 
-                                    [project.scripts]
-                                    adscan = "adscan:main"
+# NOTE: certipy-ad and netexec are managed as isolated tools via
+#   uv tool install certipy-ad
+#   uv tool install netexec
+# Run `python adscan.py --setup-tools` to install them automatically.
 
-                                    [tool.setuptools]
-                                    py-modules = ["adscan"]
+[project.scripts]
+adscan = "adscan:main"
 
-                                    [tool.setuptools.packages.find]
-                                    include = ["lib*", "checks*", "verifications*"]
+[tool.setuptools]
+py-modules = ["adscan"]
 
-                                    [tool.ruff]
-                                    line-length = 100
-                                    target-version = "py310"
+[tool.setuptools.packages.find]
+include = ["lib*", "checks*", "verifications*"]
 
-                                    [tool.ruff.lint]
-                                    select = ["E", "F", "W", "I"]
-                                    ignore = ["E501"]
+[tool.ruff]
+line-length = 100
+target-version = "py310"
 
-                                    [tool.mypy]
-                                    python_version = "3.10"
-                                    ignore_missing_imports = true
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
 
-                                    [tool.pytest.ini_options]
-                                    testpaths = ["tests"]
-                                    addopts = "--tb=short -q"
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
 
-                                    [tool.coverage.run]
-                                    source = ["lib", "checks"]
-                                    omit = ["verifications/*", "tests/*"]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--tb=short -q"
+
+[tool.coverage.run]
+source = ["lib", "checks"]
+omit = ["verifications/*", "tests/*"]
