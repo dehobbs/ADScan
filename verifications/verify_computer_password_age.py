@@ -28,8 +28,8 @@ TOOLS = [
         "tool": "NetExec",
         "icon": "netexec",
         "desc": "Enumerate computer accounts including password last set dates.",
-        "code": "netexec ldap <DC_IP> -u <username> -p <password> --computers",
-        "confirm": "Review the <strong>pwd_last_set</strong> column for computers with dates older than 30 days.",
+        "code": "nxc ldap <DC_IP> -u <username> -p <password> \\\n  --query \"(objectClass=computer)\" \\\n  \"sAMAccountName description pwdLastSet userAccountControl\"",
+        "confirm": "Review the <strong>pwdLastSet</strong> column for computers with dates older than 30 days.",
     },
     {
         "tool": "ADUC (dsa.msc)",
