@@ -6,7 +6,6 @@ passwords older than
 
 MATCH_KEYS = [
     "passwords older than",
-    "password age",
     "password not changed",
 ]
 
