@@ -30,6 +30,11 @@ CHECK_WEIGHT   = 20   # max deduction at stake for this check module
 
 from datetime import datetime, timezone, timedelta
 
+try:
+    from ldap3.utils.conv import escape_filter_chars as _escape_filter
+except ImportError:
+    def _escape_filter(s): return s  # nosec B308 — ldap3 not installed; searches won't run
+
 # UAC flags
 _UAC_ACCOUNTDISABLE       = 0x2
 _UAC_PASSWD_NOTREQD       = 0x20
@@ -147,7 +152,7 @@ def _get_rid(entry):
 def _resolve_members(connector, group_dn, verbose=False):
     """Return a flat list of user SAMAccountNames who are members of the group DN."""
     entries = connector.ldap_search(
-        search_filter=f"(memberOf={group_dn})",
+        search_filter=f"(memberOf={_escape_filter(str(group_dn))})",
         attributes=_ATTRS_USER,
     )
     return entries or []
@@ -156,7 +161,7 @@ def _resolve_members(connector, group_dn, verbose=False):
 def _search_group(connector, group_name):
     """Find a group by sAMAccountName, return its DN or None."""
     entries = connector.ldap_search(
-        search_filter=f"(&(objectClass=group)(sAMAccountName={group_name}))",
+        search_filter=f"(&(objectClass=group)(sAMAccountName={_escape_filter(str(group_name))}))",
         attributes=["distinguishedName", "sAMAccountName"],
     )
     if entries:

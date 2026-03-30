@@ -18,6 +18,7 @@ try:
     import ldap3
     from ldap3 import Server, Connection, ALL, NTLM, SIMPLE, SASL, GSSAPI, Tls, SUBTREE, BASE, LEVEL
     from ldap3.core.exceptions import LDAPException
+    from ldap3.utils.conv import escape_filter_chars as _escape_filter
     HAS_LDAP3 = True
 except ImportError:
     HAS_LDAP3 = False
@@ -260,7 +261,7 @@ class ADConnector:
             return sid_str
         try:
             results = self.ldap_search(
-                search_filter=f"(objectSid={sid_str})",
+                search_filter=f"(objectSid={_escape_filter(str(sid_str))})",
                 attributes=["sAMAccountName", "distinguishedName"],
             )
             if results:
