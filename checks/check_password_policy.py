@@ -8,6 +8,7 @@ Risk Criteria:
   - Minimum password length < 8        -> high   (-15 pts)
   - Minimum password length < 12       -> medium  (-8 pts)
   - Password complexity disabled       -> high   (-15 pts)
+  - Min password age = 0 (no min age)  -> medium  (-8 pts)
   - Max password age > 365 days        -> medium  (-8 pts)
   - Max password age = 0 (never expire)-> high   (-15 pts)
   - Lockout threshold = 0 (no lockout) -> critical (-20 pts)
@@ -88,11 +89,13 @@ def run_check(connector, verbose=False):
     min_pwd_len           = _get("minPwdLength", 0)
     pwd_history           = _get("pwdHistoryLength", 0)
     pwd_props             = _get("pwdProperties", 0)
+    min_pwd_age_raw       = _get("minPwdAge", 0)
     max_pwd_age_raw       = _get("maxPwdAge", -1)
     lockout_threshold     = _get("lockoutThreshold", 0)
     lockout_window_raw    = _get("lockoutObservationWindow", -1800000000)
     lockout_duration_raw  = _get("lockoutDuration", -1800000000)
 
+    min_pwd_age_days    = _filetime_to_days(min_pwd_age_raw)
     max_pwd_age_days    = _filetime_to_days(max_pwd_age_raw)
     lockout_window_mins = _filetime_to_minutes(lockout_window_raw)
 
@@ -103,6 +106,7 @@ def run_check(connector, verbose=False):
     log.debug("     Password History     : %s", pwd_history)
     log.debug("     Complexity Enabled   : %s", complexity_enabled)
     log.debug("     Reversible Encryption: %s", reversible_enabled)
+    log.debug("     Min Password Age     : %s days (0=no minimum)", min_pwd_age_days)
     log.debug("     Max Password Age     : %s days (0=never expires)", max_pwd_age_days)
     log.debug("     Lockout Threshold    : %s attempts", lockout_threshold)
     log.debug("     Lockout Window       : %s minutes", lockout_window_mins)
@@ -217,6 +221,30 @@ def run_check(connector, verbose=False):
                 "3 of the following: uppercase, lowercase, digits, special characters."
             ),
             "details": [f"pwdProperties = {pwd_props} (complexity bit not set)"],
+        })
+
+    # ----------------------------------------------------------------
+    # Minimum password age
+    # ----------------------------------------------------------------
+    if min_pwd_age_days == 0:
+        findings.append({
+            "title": "Minimum Password Age Not Enforced",
+            "severity": "medium",
+            "deduction": 8,
+            "description": (
+                "The minimum password age is set to 0 days, meaning users can change "
+                "their password immediately and as many times as they like. This "
+                "renders the password history policy ineffective — a user can cycle "
+                "through all remembered passwords in a single session and reuse their "
+                "previous password."
+            ),
+            "recommendation": (
+                "Set the minimum password age to at least 1 day. "
+                "This prevents users from immediately cycling through password history "
+                "to recover their original password, and also slows down post-compromise "
+                "password resets by an attacker attempting to lock out the legitimate user."
+            ),
+            "details": ["minPwdAge = 0 (no minimum password age enforced)"],
         })
 
     # ----------------------------------------------------------------
