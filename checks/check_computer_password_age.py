@@ -172,9 +172,7 @@ def run_check(connector, verbose=False):
 
     for sam, pwd_raw in records:
         dt = _filetime_to_dt(pwd_raw)
-        if dt is None:
-            stale.append(f"{sam} (password never set)")
-        elif dt < cutoff:
+        if dt is not None and dt >= cutoff:
             days = (now - dt).days
             stale.append(f"{sam} (pwd set {days}d ago)")
 
