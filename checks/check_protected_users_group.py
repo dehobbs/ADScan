@@ -21,6 +21,11 @@ Risk Deductions:
   Medium  (-8): Protected Users group does not exist (pre-2012 R2 domain)
 """
 
+try:
+    from ldap3.utils.conv import escape_filter_chars as _escape_filter
+except ImportError:
+    def _escape_filter(s): return s  # nosec B308 — ldap3 not installed; searches won't run
+
 CHECK_NAME = "Protected Users Group Membership"
 CHECK_ORDER = 61
 CHECK_CATEGORY = ["Privileged Accounts"]
@@ -81,7 +86,7 @@ def _get_dn(entry):
 def _find_group_dn(connector, group_name):
     """Return the DN of a group by sAMAccountName, or None if not found."""
     results = connector.ldap_search(
-        search_filter=f"(&(objectClass=group)(sAMAccountName={group_name}))",
+        search_filter=f"(&(objectClass=group)(sAMAccountName={_escape_filter(str(group_name))}))",
         attributes=["distinguishedName"],
     )
     if results:
@@ -92,7 +97,7 @@ def _find_group_dn(connector, group_name):
 def _get_group_members(connector, group_dn):
     """Return list of result entries for enabled users who are direct members of group_dn."""
     results = connector.ldap_search(
-        search_filter=f"(&(objectClass=user)(objectCategory=person)(memberOf={group_dn}))",
+        search_filter=f"(&(objectClass=user)(objectCategory=person)(memberOf={_escape_filter(str(group_dn))}))",
         attributes=["sAMAccountName", "distinguishedName", "userAccountControl"],
     )
     if not results:
@@ -107,7 +112,7 @@ def _get_group_members(connector, group_dn):
 def _get_protected_users_members(connector, protected_users_dn):
     """Return a set of lowercase DNs for all members of Protected Users."""
     results = connector.ldap_search(
-        search_filter=f"(&(objectClass=user)(objectCategory=person)(memberOf={protected_users_dn}))",
+        search_filter=f"(&(objectClass=user)(objectCategory=person)(memberOf={_escape_filter(str(protected_users_dn))}))",
         attributes=["distinguishedName"],
     )
     if not results:

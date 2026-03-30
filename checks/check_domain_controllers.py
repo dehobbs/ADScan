@@ -16,6 +16,11 @@ Risk Deductions:
   Low     (-5) : Permissive RODC PRP
 """
 
+try:
+    from ldap3.utils.conv import escape_filter_chars as _escape_filter
+except ImportError:
+    def _escape_filter(s): return s  # nosec B308 — ldap3 not installed; searches won't run
+
 CHECK_NAME = "Domain Controllers"
 CHECK_ORDER = 13
 CHECK_CATEGORY = ["Domain Hygiene"]
@@ -167,7 +172,7 @@ def run_check(connector, verbose=False):
     # RODC PRP
     for rodc_sam in rodc_list:
         rodc_entries = connector.ldap_search(
-            search_filter=f"(sAMAccountName={rodc_sam})",
+            search_filter=f"(sAMAccountName={_escape_filter(str(rodc_sam))})",
             attributes=["msDS-RevealOnDemandGroup"],
         ) or []
         for rodc_e in rodc_entries:
