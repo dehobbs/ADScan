@@ -15,9 +15,14 @@ TOOLS = [
         "icon": "ps",
         "desc": "Find enabled, non-DC computer accounts whose password has not been set in over 30 days.",
         "code": (
-            "$lldate = [DateTime]::Today.AddDays(-30)\n"
-            "$stalecomputerList = Get-ADComputer -Filter 'PasswordLastSet -lt $lldate' "
-            "-Properties PasswordLastSet\n"
+            "[CmdletBinding()]\n"
+            "param (\n"
+            "    [Parameter(HelpMessage = 'The amount of days since a computer has communicated with a Domain Controller')]\n"
+            "    [int]$days = 30\n"
+            ")\n"
+            "$lldate = [DateTime]::Today.AddDays(-$days)\n"
+            "Write-Verbose \"`$lldate is $lldate\"\n\n"
+            "$stalecomputerList = Get-ADComputer -Filter 'PasswordLastSet -lt $lldate' -Properties PasswordLastSet\n"
             "$stalecomputerList | Select-Object Name, PasswordLastSet"
         ),
         "confirm": "Each listed computer has not rotated its machine account password in over 30 days.",
