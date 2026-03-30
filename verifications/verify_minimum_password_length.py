@@ -18,7 +18,7 @@ TOOLS = [
         "icon": "ps",
         "desc": "Query minimum password length from the default domain password policy.",
         "code": "Get-ADDefaultDomainPasswordPolicy | Select-Object MinPasswordLength",
-        "confirm": "A value below <strong>14</strong> confirms the finding.",
+        "confirm": "A value below <strong>15</strong> confirms the finding.",
     },
     {
         "tool": "net accounts",
@@ -40,11 +40,11 @@ TOOLS = [
 ]
 
 REMEDIATION = {
-    "title": "Set minimum password length to 14+ characters",
+    "title": "Set minimum password length to 15+ characters",
     "steps": [
         {
             "text": "Update via PowerShell:",
-            "code": "Set-ADDefaultDomainPasswordPolicy -Identity <domain.fqdn> -MinPasswordLength 14",
+            "code": "Set-ADDefaultDomainPasswordPolicy -Identity <domain.fqdn> -MinPasswordLength 15",
         },
         {
             "text": "Enforce via Group Policy under <em>Default Domain Policy → Password Policy</em>.",

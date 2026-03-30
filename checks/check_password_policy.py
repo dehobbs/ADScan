@@ -5,8 +5,7 @@ Evaluates the Default Domain Password Policy for weak settings that could
 facilitate brute-force or password-spray attacks.
 
 Risk Criteria:
-  - Minimum password length < 8        -> high   (-15 pts)
-  - Minimum password length < 12       -> medium  (-8 pts)
+  - Minimum password length < 15       -> high   (-15 pts)
   - Password complexity disabled       -> high   (-15 pts)
   - Min password age = 0 (no min age)  -> medium  (-8 pts)
   - Max password age > 365 days        -> medium  (-8 pts)
@@ -170,34 +169,20 @@ def run_check(connector, verbose=False):
     # Minimum password length
     # ----------------------------------------------------------------
     if min_pwd_len is not None:
-        if min_pwd_len < 8:
+        if min_pwd_len < 15:
             findings.append({
-                "title": "Minimum Password Length Too Short (< 8)",
+                "title": "Minimum Password Length Too Short (< 15)",
                 "severity": "high",
                 "deduction": 15,
                 "description": (
                     f"The minimum password length is set to {min_pwd_len} characters. "
-                    "Very short passwords are extremely vulnerable to brute-force attacks, "
+                    "Short passwords are extremely vulnerable to brute-force attacks, "
                     "especially against offline NTLM hash cracking."
                 ),
                 "recommendation": (
-                    "Set the minimum password length to at least 12 characters. "
-                    "Microsoft recommends 14+ characters for privileged accounts."
-                ),
-                "details": [f"minPwdLength = {min_pwd_len}"],
-            })
-        elif min_pwd_len < 12:
-            findings.append({
-                "title": "Minimum Password Length Below Recommended (< 12)",
-                "severity": "medium",
-                "deduction": 8,
-                "description": (
-                    f"The minimum password length is {min_pwd_len} characters. "
-                    "NIST SP 800-63B and Microsoft best practices recommend at least "
-                    "12 characters to resist offline cracking."
-                ),
-                "recommendation": (
-                    "Increase the minimum password length to 12 or more characters."
+                    "Set the minimum password length to at least 15 characters. "
+                    "Microsoft and CIS recommend 15+ characters for domain accounts, "
+                    "and 20+ for privileged accounts."
                 ),
                 "details": [f"minPwdLength = {min_pwd_len}"],
             })
