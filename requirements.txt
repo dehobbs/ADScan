@@ -49,8 +49,8 @@ pyOpenSSL==25.1.0
 # Safe XML parsing — prevents XML bomb / entity expansion attacks (CWE-20 / Bandit B314)
 defusedxml==0.7.1
 
-# Word document export (optional -- only needed for --format docx)
+# Word document export (required for --format docx)
 python-docx>=1.1.2
 
-# Image rendering for DOCX Command & Output blocks (optional -- only needed for --format docx)
+# Image rendering for DOCX Command & Output blocks (required for --format docx)
 Pillow>=10.0.0
