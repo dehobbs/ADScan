@@ -136,10 +136,9 @@ info     = 0
 # --- Password policy ---
 # "Account Lockout Disabled"                          = 20
 # "Reversible Password Encryption Enabled"            = 20
-# "Minimum Password Length Too Short (< 8)"           = 15
+# "Minimum Password Length Too Short (< 15)"          = 15
 # "Password Complexity Disabled"                      = 15
 # "Passwords Never Expire"                            = 15
-# "Minimum Password Length Below Recommended (< 12)"  = 8
 # "Maximum Password Age Exceeds 365 Days"             = 8
 # "Account Lockout Threshold Too High"                = 8
 # "Lockout Observation Window Too Short"              = 5
