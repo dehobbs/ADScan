@@ -226,7 +226,7 @@ def run_check(connector, verbose=False):
     # ----------------------------------------------------------------
     # Minimum password age
     # ----------------------------------------------------------------
-    if min_pwd_age_days == 0:
+    if min_pwd_age_days is None or min_pwd_age_days == 0:
         findings.append({
             "title": "Minimum Password Age Not Enforced",
             "severity": "medium",
