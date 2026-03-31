@@ -95,10 +95,7 @@ def run_check(connector, verbose=False):
 
         if dangerous_members:
             findings.append({
-                "title": (
-                    "Pre-Windows 2000 Compatible Access: "
-                    "Everyone/Anonymous Logon are members — unauthenticated enumeration enabled"
-                ),
+                "title": "Pre-Windows 2000 Compatible Access (broad domain enumeration enabled)",
                 "severity": "critical",
                 "deduction": 20,
                 "description": (
@@ -128,10 +125,7 @@ def run_check(connector, verbose=False):
 
         elif authenticated_members:
             findings.append({
-                "title": (
-                    "Pre-Windows 2000 Compatible Access: "
-                    "Authenticated Users is a member — broad domain enumeration enabled"
-                ),
+                "title": "Pre-Windows 2000 Compatible Access (broad domain enumeration enabled)",
                 "severity": "medium",
                 "deduction": 8,
                 "description": (
@@ -155,7 +149,7 @@ def run_check(connector, verbose=False):
 
         elif other_members:
             findings.append({
-                "title": f"Pre-Windows 2000 Compatible Access: {len(other_members)} member(s) found",
+                "title": "Pre-Windows 2000 Compatible Access (broad domain enumeration enabled)",
                 "severity": "low",
                 "deduction": 5,
                 "description": (
