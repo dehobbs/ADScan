@@ -134,11 +134,15 @@ def run_check(connector, verbose=False):
                 "severity": "medium",
                 "deduction": 8,
                 "description": (
-                    "The 'Pre-Windows 2000 Compatible Access' group contains 'Authenticated Users'. "
-                    "This grants any authenticated domain account (including low-privilege users) "
-                    "broad SAMR/LSARPC read access to enumerate domain objects. "
-                    "While this requires valid credentials, it significantly lowers the bar for "
-                    "post-compromise reconnaissance."
+                    "The 'Pre-Windows 2000 Compatible Access' group has members (listed in the "
+                    "details below). This group grants broad SAMR/LSARPC read access to virtually "
+                    "all user, group, and computer objects in the domain — including account names, "
+                    "group memberships, and SID values. The presence of 'Authenticated Users' means "
+                    "any valid domain credential is sufficient to perform this enumeration. Any "
+                    "additional accounts or groups listed in the details inherit the same read access "
+                    "and should be reviewed to confirm they are required for legacy application "
+                    "compatibility. Membership in this group is frequently exploited during "
+                    "post-compromise reconnaissance to rapidly map the AD environment."
                 ),
                 "recommendation": (
                     "Remove Authenticated Users from this group if legacy compatibility is not required:\n"
