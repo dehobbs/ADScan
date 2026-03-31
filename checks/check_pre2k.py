@@ -26,7 +26,8 @@ import subprocess
 from lib.tools import ensure_tool
 
 _PRE2K_INSTALL = (
-    "Install pre2k with: uv tool install pre2k  "
+    "Install pre2k with: "
+    "uv tool install git+https://github.com/garrettfoster13/pre2k-TS.git  "
     "or run: python adscan.py --setup-tools"
 )
 
