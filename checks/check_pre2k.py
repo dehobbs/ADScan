@@ -7,7 +7,7 @@ enabled, the password is set to the lowercase version of the sAMAccountName
 (minus the trailing '$'). These predictable credentials can be used directly
 for authentication and lateral movement without any prior exploitation.
 
-Uses the pre2k tool (https://github.com/garrettfoster13/pre2k-TS) to
+Uses the pre2k tool (https://github.com/garrettfoster13/pre2k) to
 enumerate computer objects and test whether their password matches the
 pre-Windows 2000 default (account name in lowercase).
 
@@ -27,7 +27,7 @@ from lib.tools import ensure_tool
 
 _PRE2K_INSTALL = (
     "Install pre2k with: "
-    "uv tool install git+https://github.com/garrettfoster13/pre2k-TS.git  "
+    "uv tool install git+https://github.com/garrettfoster13/pre2k.git  "
     "or run: python adscan.py --setup-tools"
 )
 

@@ -107,7 +107,7 @@ REMEDIATION = {
 REFERENCES = [
     {
         "title": "pre2k — Pre-Windows 2000 Computer Account Tool (garrettfoster13)",
-        "url": "https://github.com/garrettfoster13/pre2k-TS",
+        "url": "https://github.com/garrettfoster13/pre2k",
         "tag": "tool",
     },
     {
