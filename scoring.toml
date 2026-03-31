@@ -16,7 +16,9 @@
 # ---------------------------------------------------------------------------
 # ADCS / PKI Vulnerabilities    check_adcs.py                weight=20
 # Account Hygiene               check_account_hygiene.py     weight=20
+#                               check_computer_password_age.py  weight=15
 #                               check_password_policy.py     weight=20
+#                               check_pre2k.py               weight=15
 #                               check_shadow_credentials.py  (no weight — unweighted)
 #                               check_sid_history.py         (no weight — unweighted)
 # Deprecated Operating Systems  check_deprecated_os.py       weight=20
