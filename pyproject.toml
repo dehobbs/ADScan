@@ -32,6 +32,7 @@ dev      = ["pytest>=8.0", "pytest-cov", "ruff", "mypy", "tomli; python_version 
 #   uv tool install certipy-ad     # ADCS/PKI scanner
 #   uv tool install netexec        # SMB signing/SMBv1 detection (nxc command)
 #   uv tool install git+https://github.com/garrettfoster13/pre2k.git  # Pre-Windows 2000 computer account tester
+#   uv tool install git+https://github.com/Ridter/noPac.git           # NoPac (CVE-2021-42278/42287) DC scanner
 # Run `python adscan.py --setup-tools` to install them automatically.
 
 [project.scripts]

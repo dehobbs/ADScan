@@ -72,6 +72,12 @@ TOOL_REGISTRY: dict[str, ToolSpec] = {
         exe="pre2k",
         description="Pre-Windows 2000 computer account password tester",
     ),
+    "nopac-scanner": ToolSpec(
+        package="git+https://github.com/Ridter/noPac.git",
+        exe="scanner",
+        fallback_exe="nopac",
+        description="NoPac (CVE-2021-42278/42287) Domain Controller vulnerability scanner",
+    ),
 }
 
 

@@ -34,6 +34,7 @@
 # Groups Hygiene                check_foreign_security_principals.py  weight=20
 # Kerberos                      check_constrained_delegation.py  weight=20
 #                               check_kerberos.py            weight=20
+#                               check_nopac.py               weight=20
 #                               check_rbcd_domain_dcs.py     (no weight — unweighted)
 #                               check_rc4_encryption.py      (no weight — unweighted)
 #                               check_unconstrained_delegation.py  weight=25
