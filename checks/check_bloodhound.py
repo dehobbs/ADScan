@@ -12,6 +12,11 @@ checks find.
 
 Collection method: All (Group, LocalAdmin, Session, Trusts, ACL, DCOM, RDP,
 PSRemote, ObjectProps, Default)
+
+When dc_host is an IP address, a DNS SRV lookup against the DC is performed
+to resolve the FQDN required by bloodhound-python (-dc flag). The IP is
+then passed as the nameserver (-ns flag) so that hostname resolution works
+without relying on the local system's default DNS.
 """
 
 CHECK_NAME     = "BloodHound Data Collection"
@@ -19,10 +24,48 @@ CHECK_ORDER    = 99
 CHECK_CATEGORY = ["Domain Hygiene"]
 CHECK_WEIGHT   = 0
 
+import ipaddress
 import os
 import subprocess
 
+import dns.resolver
+
 from lib.tools import ensure_tool
+
+
+def _is_ip(value):
+    """Return True if value is an IPv4 or IPv6 address."""
+    try:
+        ipaddress.ip_address(value)
+        return True
+    except ValueError:
+        return False
+
+
+def _resolve_dc_fqdn(domain, dc_ip, log):
+    """Query the DC for _ldap._tcp.dc._msdcs.<domain> SRV records and return
+    the first DC FQDN found.
+
+    Uses dc_ip as the nameserver so the lookup succeeds even when the local
+    system's DNS does not know about the AD domain.
+
+    Returns the FQDN string (without trailing dot), or None on failure.
+    """
+    srv_name = f"_ldap._tcp.dc._msdcs.{domain}"
+    try:
+        resolver = dns.resolver.Resolver(configure=False)
+        resolver.nameservers = [dc_ip]
+        resolver.timeout = 5
+        resolver.lifetime = 10
+        answers = resolver.resolve(srv_name, "SRV")
+        for rdata in answers:
+            fqdn = str(rdata.target).rstrip(".")
+            if fqdn:
+                log.debug("  Resolved DC FQDN via SRV: %s", fqdn)
+                return fqdn
+    except Exception as exc:
+        log.debug("  SRV lookup failed for %s: %s", srv_name, exc)
+    return None
 
 
 def _build_auth_args(connector):
@@ -68,6 +111,26 @@ def run_check(connector, verbose=False):
         log.warning("  [WARN] No domain or DC host configured — skipping BloodHound collection.")
         return findings
 
+    # bloodhound-python requires an FQDN for -dc, not an IP address.
+    # When dc_host is an IP, resolve the DC FQDN via an SRV DNS lookup
+    # directed at the DC itself, then pass the IP as -ns so hostname
+    # resolution works without depending on the local system's DNS.
+    dc_fqdn = dc_host
+    ns_args = []
+    if _is_ip(dc_host):
+        log.info("  [*] dc_host is an IP — resolving DC FQDN via SRV lookup...")
+        fqdn = _resolve_dc_fqdn(domain, dc_host, log)
+        if fqdn:
+            dc_fqdn  = fqdn
+            ns_args  = ["-ns", dc_host]
+            log.info("  [*] Using DC FQDN: %s  (nameserver: %s)", dc_fqdn, dc_host)
+        else:
+            log.warning(
+                "  [WARN] Could not resolve DC FQDN for %s — bloodhound-python may fail. "
+                "Passing IP directly and hoping DNS resolves it.",
+                dc_host,
+            )
+
     artifacts_dir = getattr(connector, "artifacts_dir", "Reports/Artifacts")
     os.makedirs(artifacts_dir, exist_ok=True)
 
@@ -80,7 +143,8 @@ def run_check(connector, verbose=False):
         "--zip",
         "-c", "All",
         "-d", domain,
-        "-dc", dc_host,
+        "-dc", dc_fqdn,
+        *ns_args,
         "-op", run_ts,
         *_build_auth_args(connector),
     ]
@@ -93,7 +157,7 @@ def run_check(connector, verbose=False):
             capture_output=True,
             text=True,
             timeout=600,
-            cwd=artifacts_dir,  # bloodhound-python writes to cwd
+            cwd=artifacts_dir,  # bloodhound-python writes output to cwd
         )  # nosec B603 — validated list, no shell interpolation
     except subprocess.TimeoutExpired:
         findings.append({
@@ -157,7 +221,8 @@ def run_check(connector, verbose=False):
             ),
             "recommendation": (
                 f"Re-run manually: {bh_exe} --zip -c All "
-                f"-d {domain} -u <user> -p <pass> -dc {dc_host}"
+                f"-d {domain} -u <user> -p <pass> -dc {dc_fqdn}"
+                + (f" -ns {dc_host}" if ns_args else "")
             ),
             "details": ([stderr] if stderr else []),
         })
