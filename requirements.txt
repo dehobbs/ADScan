@@ -24,7 +24,7 @@ impacket==0.13.0
 # External CLI tools — installed in isolated venvs via uv (not pip):
 #   uv tool install certipy-ad     # ADCS/PKI scanner (v5.0.4+, Python 3.12+)
 #   uv tool install netexec        # SMB signing/SMBv1 detection (nxc command)
-#   uv tool install git+https://github.com/garrettfoster13/pre2k-TS.git  # Pre-Windows 2000 computer account tester
+#   uv tool install git+https://github.com/garrettfoster13/pre2k.git  # Pre-Windows 2000 computer account tester
 # Or run: python adscan.py --setup-tools
 
 # ---------------------------------------------------------------------------
