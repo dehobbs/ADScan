@@ -28,9 +28,10 @@ dependencies = [
 kerberos = ["gssapi"]
 dev      = ["pytest>=8.0", "pytest-cov", "ruff", "mypy", "tomli; python_version < '3.11'"]
 
-# NOTE: certipy-ad and netexec are managed as isolated tools via
-#   uv tool install certipy-ad
-#   uv tool install netexec
+# NOTE: certipy-ad, netexec, and pre2k are managed as isolated tools via
+#   uv tool install certipy-ad     # ADCS/PKI scanner
+#   uv tool install netexec        # SMB signing/SMBv1 detection (nxc command)
+#   uv tool install pre2k          # Pre-Windows 2000 computer account tester
 # Run `python adscan.py --setup-tools` to install them automatically.
 
 [project.scripts]
