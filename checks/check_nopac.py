@@ -5,9 +5,9 @@ NoPac exploits two vulnerabilities in combination:
   - CVE-2021-42278: machine account sAMAccountName spoofing
   - CVE-2021-42287: Kerberos PAC validation bypass
 
-A key indicator of vulnerability is that a Domain Controller will issue a
-TGT *without* a PAC when requested. A PAC-less TGT is noticeably smaller
-than a PAC-bearing TGT — the noPac scanner detects this size difference.
+Uses NetExec's built-in nopac module to test each Domain Controller.
+NetExec requests a TGT with and without a PAC and compares ticket sizes —
+a smaller PAC-less ticket confirms the DC is unpatched and exploitable.
 
 All domain controllers are enumerated via LDAP and tested individually.
 
@@ -23,12 +23,6 @@ CHECK_WEIGHT   = 20
 import subprocess
 
 from lib.tools import ensure_tool
-
-_NOPAC_INSTALL = (
-    "Install noPac scanner with: "
-    "uv tool install git+https://github.com/Ridter/noPac.git  "
-    "or run: python adscan.py --setup-tools"
-)
 
 _DC_FILTER = "(&(objectClass=computer)(userAccountControl:1.2.840.113556.1.4.803:=8192))"
 
@@ -59,30 +53,39 @@ def _get_dc_hosts(connector):
     return [fallback] if fallback else []
 
 
-def _build_target_arg(connector):
-    """Build the 'domain/user:password' positional argument for scanner."""
+def _build_auth_args(connector):
     domain   = getattr(connector, "domain", "") or ""
     username = getattr(connector, "username", "") or ""
-    password = getattr(connector, "password", "") or ""
-    return f"{domain}/{username}:{password}"
+    password = getattr(connector, "password", None)
+    nt_hash  = getattr(connector, "nt_hash", None)
+    lm_hash  = getattr(connector, "lm_hash", "") or ""
+
+    args = ["-d", domain, "-u", username]
+    if nt_hash:
+        args += ["-H", f"{lm_hash}:{nt_hash}" if lm_hash else nt_hash]
+    elif password:
+        args += ["-p", password]
+    else:
+        args += ["-p", ""]
+    return args
 
 
-def _scan_dc(scanner_exe, target_arg, dc_ip, log):
-    """Run the noPac scanner against a single DC.
+def _scan_dc(nxc_exe, auth_args, dc_ip, log):
+    """Run nxc smb -M nopac against a single DC.
 
-    Returns True if the DC is vulnerable, False if clean, None on error.
+    Returns True if vulnerable, False if clean, None on error/inconclusive.
     """
-    cmd = [scanner_exe, target_arg, "-dc-ip", dc_ip, "-use-ldap"]
+    cmd = [nxc_exe, "smb", dc_ip] + auth_args + ["-M", "nopac"]
     try:
         result = subprocess.run(
             cmd, capture_output=True, text=True, timeout=60
         )  # nosec B603 — validated list, no shell interpolation
         output = result.stdout + result.stderr
     except subprocess.TimeoutExpired:
-        log.warning("  [WARN] noPac scanner timed out for DC: %s", dc_ip)
+        log.warning("  [WARN] nxc nopac module timed out for DC: %s", dc_ip)
         return None
     except Exception as exc:
-        log.warning("  [WARN] noPac scanner error for DC %s: %s", dc_ip, exc)
+        log.warning("  [WARN] nxc nopac module error for DC %s: %s", dc_ip, exc)
         return None
 
     lower = output.lower()
@@ -91,7 +94,7 @@ def _scan_dc(scanner_exe, target_arg, dc_ip, log):
     if "vulnerable" in lower:
         return True
 
-    log.debug("  noPac scanner output for %s did not contain a clear result.", dc_ip)
+    log.debug("  nxc nopac output for %s did not contain a clear result.", dc_ip)
     return None
 
 
@@ -99,20 +102,17 @@ def run_check(connector, verbose=False):
     findings = []
     log      = connector.log
 
-    scanner_exe = ensure_tool("nopac-scanner")
-    if scanner_exe is None:
+    nxc_exe = ensure_tool("nxc")
+    if nxc_exe is None:
         findings.append({
-            "title": "NoPac Vulnerability — Scanner Not Found",
+            "title": "NoPac Vulnerability — NetExec Not Found",
             "severity": "info",
             "deduction": 0,
             "description": (
-                "The noPac scanner is required for this check but was not found on PATH. "
-                "NoPac (CVE-2021-42278/42287) allows a low-privileged domain user to "
-                "escalate to Domain Admin by abusing Kerberos PAC validation. "
-                "A vulnerable DC will issue a TGT without a PAC, producing a "
-                "noticeably smaller ticket than normal."
+                "nxc (NetExec) is required for this check but was not found. "
+                "Install it with: uv tool install netexec"
             ),
-            "recommendation": _NOPAC_INSTALL,
+            "recommendation": "Run: python adscan.py --setup-tools",
             "details": [],
         })
         return findings
@@ -122,13 +122,13 @@ def run_check(connector, verbose=False):
         log.warning("  [WARN] No domain controllers found — skipping NoPac check.")
         return findings
 
-    target_arg  = _build_target_arg(connector)
-    vulnerable  = []
-    errors      = []
+    auth_args  = _build_auth_args(connector)
+    vulnerable = []
+    errors     = []
 
     for dc in dc_hosts:
         log.debug("  Scanning DC for NoPac: %s", dc)
-        result = _scan_dc(scanner_exe, target_arg, dc, log)
+        result = _scan_dc(nxc_exe, auth_args, dc, log)
         if result is True:
             vulnerable.append(dc)
         elif result is None:
@@ -165,13 +165,13 @@ def run_check(connector, verbose=False):
             "severity": "info",
             "deduction": 0,
             "description": (
-                "The noPac scanner did not return a clear result for one or more "
+                "The nxc nopac module did not return a clear result for one or more "
                 "Domain Controllers. This may indicate a network timeout, authentication "
-                "failure, or that the tool output format was not recognised."
+                "failure, or that the module output format was not recognised."
             ),
             "recommendation": (
-                "Re-run the noPac scanner manually against the affected DCs: "
-                f"scanner '<domain>/<user>:<pass>' -dc-ip <DC_IP> -use-ldap"
+                "Re-run the check manually against the affected DCs: "
+                "nxc smb <DC_IP> -d <domain> -u <user> -p <pass> -M nopac"
             ),
             "details": errors,
         })

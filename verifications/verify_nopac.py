@@ -12,18 +12,20 @@ MATCH_KEYS = [
 
 TOOLS = [
     {
-        "tool": "noPac Scanner",
+        "tool": "NetExec",
         "icon": "netexec",
-        "desc": "Request a TGT with and without a PAC and compare ticket sizes to confirm DC vulnerability.",
+        "desc": "Use the nopac module to request a TGT with and without a PAC and compare ticket sizes.",
         "code": (
-            "scanner '<domain>/<username>:<password>' \\\n"
-            "  -dc-ip <DC_IP> \\\n"
-            "  -use-ldap"
+            "nxc smb <DC_IP> \\\n"
+            "  -d <domain> \\\n"
+            "  -u <username> \\\n"
+            "  -p <password> \\\n"
+            "  -M nopac"
         ),
         "confirm": (
-            "If the output contains <strong>[!] DC is vulnerable to noPac</strong>, "
+            "If the output contains a <strong>NOPAC</strong> vulnerable indicator, "
             "the Domain Controller is unpatched. A patched DC will show "
-            "<strong>[-] DC is NOT vulnerable</strong>."
+            "<strong>NOT vulnerable</strong> in the NOPAC module output."
         ),
     },
     {
@@ -60,8 +62,8 @@ REMEDIATION = {
             ),
         },
         {
-            "text": "After patching, verify each DC is no longer vulnerable by re-running the noPac scanner:",
-            "code": "scanner '<domain>/<username>:<password>' -dc-ip <DC_IP> -use-ldap",
+            "text": "After patching, verify each DC is no longer vulnerable by re-running the check:",
+            "code": "nxc smb <DC_IP> -d <domain> -u <username> -p <password> -M nopac",
         },
         {
             "text": (
