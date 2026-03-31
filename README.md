@@ -488,15 +488,113 @@ ADScan/
 
 ## Adding a New Check
 
-1. Create `checks/check_<name>.py` with `CHECK_NAME`, `CHECK_ORDER`,
-   `CHECK_CATEGORY`, `CHECK_WEIGHT`, and `run_check(connector, verbose=False)`
-2. Optionally create `verifications/verify_<name>.py` with `MATCH_KEYS`,
-   `TOOLS`, `REMEDIATION`, and `REFERENCES`
-3. If the check needs an external tool, add a `ToolSpec` to `TOOL_REGISTRY`
-   in `lib/tools.py` and call `ensure_tool()` in the check
+### 1. Create the check module
 
-No registration is needed — files are auto-discovered on the next run.
-See `CONTRIBUTING.md` for the full contribution guide.
+Create `checks/check_<name>.py` with the following module-level attributes and function:
+
+```python
+CHECK_NAME     = "Human-Readable Check Name"
+CHECK_ORDER    = 50          # controls execution order (lower runs first)
+CHECK_CATEGORY = ["Category Name"]
+CHECK_WEIGHT   = 15          # max points this check contributes to the score (0 = info-only)
+
+def run_check(connector, verbose=False):
+    findings = []
+    # ... query connector.ldap_search(), connector.smb_available(), etc.
+    # Return [] for a clean result, or append finding dicts for issues found.
+    findings.append({
+        "title":          "Short Finding Title",
+        "severity":       "high",   # critical / high / medium / low / info
+        "deduction":      15,       # points deducted (overridden by scoring.toml if set)
+        "description":    "What was found and why it matters.",
+        "recommendation": "What to do about it.",
+        "details":        ["optional list", "of detail strings"],
+    })
+    return findings
+```
+
+No registration needed — the file is auto-discovered on the next run.
+
+### 2. Create a verification module (optional)
+
+Create `verifications/verify_<name>.py` to add manual verification steps and
+remediation guidance to the finding cards in the HTML report.
+
+```python
+MATCH_KEYS = ["short finding title"]   # lowercase substrings matched against finding titles
+
+TOOLS = [
+    {
+        "tool":    "NetExec",          # display name shown on the card header
+        "icon":    "netexec",          # netexec | impacket | ps | cmd
+        "desc":    "One-line description of what this command does.",
+        "code":    "nxc smb <DC> -u <user> -p <pass> --shares",
+        "confirm": "Expected output or what to look for.",
+    },
+    {
+        "tool":    "PowerShell",
+        "icon":    "ps",
+        "steps":   ["Open an elevated PowerShell prompt.", "Run the command below."],
+        "code":    "Get-ADUser -Filter * -Properties PasswordNeverExpires | ...",
+        "confirm": "Accounts listed here should be reviewed.",
+    },
+]
+
+REMEDIATION = {
+    "title": "Brief remediation approach",
+    "steps": [
+        {"text": "Step one description.", "code": "optional command or script"},
+        {"text": "Step two description.", "steps": ["sub-step A", "sub-step B"]},
+    ],
+}
+
+REFERENCES = [
+    "https://example.com/relevant-article",
+]
+```
+
+**Icon values** control which tab a tool card appears under in the report:
+- `netexec` or `impacket` → **Linux** tab
+- `ps`, `cmd`, or anything else → **Windows** tab
+
+**Matching**: `MATCH_KEYS` entries are matched as lowercase substrings against
+finding titles. The first match wins, so use specific enough strings to avoid
+collisions with other findings.
+
+### 3. Register an external tool (if needed)
+
+If the check invokes an external CLI tool, add a `ToolSpec` entry to
+`TOOL_REGISTRY` in `lib/tools.py` and call `ensure_tool()` in the check:
+
+```python
+# lib/tools.py — add to TOOL_REGISTRY
+"mytool": ToolSpec(
+    package="mytool-package",
+    exe="mytool",
+    description="What this tool does",
+),
+```
+
+```python
+# checks/check_<name>.py
+from lib.tools import ensure_tool
+
+def run_check(connector, verbose=False):
+    exe = ensure_tool("mytool")
+    if exe is None:
+        return [{"title": "...", "severity": "info", "deduction": 0, ...}]
+    # subprocess.run([exe, ...])
+```
+
+### 4. Add scoring overrides (if needed)
+
+If the default severity-tier deduction is wrong for a finding, add an override
+to `scoring.toml`:
+
+```toml
+[overrides]
+"Your Exact Finding Title" = 20   # overrides the severity-tier default
+```
 
 ---
 
