@@ -21,12 +21,13 @@ CHECK_CATEGORY = ["Account Hygiene"]
 CHECK_WEIGHT   = 15
 
 import os
-import shutil
 import subprocess
 
+from lib.tools import ensure_tool
+
 _PRE2K_INSTALL = (
-    "Install pre2k by cloning https://github.com/garrettfoster13/pre2k-TS.git "
-    "and ensuring the 'pre2k' executable is on your PATH."
+    "Install pre2k with: uv tool install pre2k  "
+    "or run: python adscan.py --setup-tools"
 )
 
 
@@ -75,7 +76,7 @@ def run_check(connector, verbose=False):
     findings = []
     log      = connector.log
 
-    pre2k_exe = shutil.which("pre2k")
+    pre2k_exe = ensure_tool("pre2k")
     if pre2k_exe is None:
         findings.append({
             "title": "Pre-Windows 2000 Computer Accounts — pre2k Not Found",
