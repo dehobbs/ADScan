@@ -29,7 +29,7 @@
 #                               check_legacy_frs_sysvol.py   weight=10
 #                               check_misc_hardening.py      weight=15
 #                               check_optional_features.py   weight=10
-#                               check_pre_windows_2000.py    (no weight — unweighted)
+#                               check_pre_windows_2000.py    weight=20
 #                               check_replication.py         weight=10
 # Groups Hygiene                check_foreign_security_principals.py  weight=20
 # Kerberos                      check_constrained_delegation.py  weight=20

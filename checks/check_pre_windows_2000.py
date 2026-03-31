@@ -1,6 +1,7 @@
-CHECK_NAME = "Pre-Windows 2000 Compatible Access"
-CHECK_ORDER = 68
+CHECK_NAME     = "Pre-Windows 2000 Compatible Access"
+CHECK_ORDER    = 68
 CHECK_CATEGORY = ["Domain Hygiene"]
+CHECK_WEIGHT   = 20
 
 # Well-known SIDs for Everyone and Anonymous Logon
 SID_EVERYONE             = "S-1-1-0"
@@ -156,7 +157,7 @@ def run_check(connector, verbose=False):
             findings.append({
                 "title": f"Pre-Windows 2000 Compatible Access: {len(other_members)} member(s) found",
                 "severity": "low",
-                "deduction": 3,
+                "deduction": 5,
                 "description": (
                     "The 'Pre-Windows 2000 Compatible Access' group has members. "
                     "Review to ensure all memberships are required for legacy application compatibility."
