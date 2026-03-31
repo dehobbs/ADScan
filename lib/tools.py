@@ -72,6 +72,11 @@ TOOL_REGISTRY: dict[str, ToolSpec] = {
         exe="pre2k",
         description="Pre-Windows 2000 computer account password tester",
     ),
+    "bloodhound": ToolSpec(
+        package="bloodhound",
+        exe="bloodhound-python",
+        description="BloodHound AD ingestor — collects graph data for attack path analysis",
+    ),
 }
 
 

@@ -22,7 +22,8 @@
 #                               check_shadow_credentials.py  (no weight — unweighted)
 #                               check_sid_history.py         (no weight — unweighted)
 # Deprecated Operating Systems  check_deprecated_os.py       weight=20
-# Domain Hygiene                check_domain_controllers.py  weight=20
+# Domain Hygiene                check_bloodhound.py           weight=0  (collection only — no scored findings)
+#                               check_domain_controllers.py  weight=20
 #                               check_domain_trusts.py       weight=20
 #                               check_gpo.py                 weight=8
 #                               check_gpp_cpassword.py       weight=20
