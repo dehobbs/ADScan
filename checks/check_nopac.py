@@ -20,6 +20,7 @@ CHECK_ORDER    = 25
 CHECK_CATEGORY = ["Kerberos"]
 CHECK_WEIGHT   = 20
 
+import re
 import subprocess
 
 from lib.tools import ensure_tool
@@ -70,8 +71,29 @@ def _build_auth_args(connector):
     return args
 
 
+def _parse_tgt_sizes(output):
+    """Extract TGT with PAC and TGT without PAC sizes from nxc nopac output.
+
+    Looks for lines of the form:
+        TGT with PAC size 1482
+        TGT without PAC size 1282
+
+    Returns (with_pac_size, without_pac_size) as ints, or (None, None) if
+    either value is not found in the output.
+    """
+    with_pac    = re.search(r"TGT with PAC size\s+(\d+)",    output, re.IGNORECASE)
+    without_pac = re.search(r"TGT without PAC size\s+(\d+)", output, re.IGNORECASE)
+    if with_pac and without_pac:
+        return int(with_pac.group(1)), int(without_pac.group(1))
+    return None, None
+
+
 def _scan_dc(nxc_exe, auth_args, dc_ip, log):
     """Run nxc smb -M nopac against a single DC.
+
+    Compares the TGT with PAC size to the TGT without PAC size:
+      - Equal sizes   → DC is patched (not vulnerable)
+      - Unequal sizes → DC is vulnerable (PAC-less TGT is smaller)
 
     Returns True if vulnerable, False if clean, None on error/inconclusive.
     """
@@ -88,14 +110,16 @@ def _scan_dc(nxc_exe, auth_args, dc_ip, log):
         log.warning("  [WARN] nxc nopac module error for DC %s: %s", dc_ip, exc)
         return None
 
-    lower = output.lower()
-    if "not vulnerable" in lower:
-        return False
-    if "vulnerable" in lower:
-        return True
+    with_pac, without_pac = _parse_tgt_sizes(output)
+    if with_pac is None:
+        log.debug("  nxc nopac output for %s did not contain TGT size values.", dc_ip)
+        return None
 
-    log.debug("  nxc nopac output for %s did not contain a clear result.", dc_ip)
-    return None
+    log.debug(
+        "  %s — TGT with PAC: %d bytes, TGT without PAC: %d bytes",
+        dc_ip, with_pac, without_pac,
+    )
+    return with_pac != without_pac
 
 
 def run_check(connector, verbose=False):
@@ -131,7 +155,9 @@ def run_check(connector, verbose=False):
         result = _scan_dc(nxc_exe, auth_args, dc, log)
         if result is True:
             vulnerable.append(dc)
-        elif result is None:
+        elif result is False:
+            pass  # clean — no finding needed
+        else:
             errors.append(dc)
 
     log.debug("  NoPac vulnerable DCs : %d / %d", len(vulnerable), len(dc_hosts))
