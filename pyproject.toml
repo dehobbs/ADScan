@@ -31,7 +31,8 @@ dev      = ["pytest>=8.0", "pytest-cov", "ruff", "mypy", "tomli; python_version 
 # NOTE: certipy-ad, netexec, and pre2k are managed as isolated tools via
 #   uv tool install certipy-ad     # ADCS/PKI scanner
 #   uv tool install netexec        # SMB signing/SMBv1 detection (nxc command)
-#   uv tool install git+https://github.com/garrettfoster13/pre2k.git  # Pre-Windows 2000 computer account tester# Run `python adscan.py --setup-tools` to install them automatically.
+#   uv tool install git+https://github.com/garrettfoster13/pre2k.git  # Pre-Windows 2000 computer account tester
+#   uv tool install bloodhound                                         # BloodHound AD ingestor (bloodhound-python command)# Run `python adscan.py --setup-tools` to install them automatically.
 
 [project.scripts]
 adscan = "adscan:main"
