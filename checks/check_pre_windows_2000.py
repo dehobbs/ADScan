@@ -53,8 +53,7 @@ def run_check(connector, verbose=False):
         other_members = []
 
         for entry in results:
-            attrs = entry.get("attributes", {}) if isinstance(entry, dict) else {}
-            members = attrs.get("member") or []
+            members = entry.get("member") or []
             if isinstance(members, str):
                 members = [members]
 
