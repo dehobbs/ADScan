@@ -68,7 +68,7 @@ TOOL_REGISTRY: dict[str, ToolSpec] = {
         description="Network enumeration tool (SMB signing, SMBv1)",
     ),
     "pre2k": ToolSpec(
-        package="pre2k",
+        package="git+https://github.com/garrettfoster13/pre2k-TS.git",
         exe="pre2k",
         description="Pre-Windows 2000 computer account password tester",
     ),
