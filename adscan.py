@@ -25,6 +25,7 @@ import os
 from datetime import datetime
 
 from lib.connector import ADConnector
+from lib.spinner import spinner
 from lib.report import generate_report, generate_json_report, generate_csv_report, generate_docx_report
 from lib.audit_log import AuditLogger
 from lib.debug_log import DebugLogger
@@ -347,7 +348,8 @@ def main():
         configure_logging(verbose=True, log_file=None)
         print(BANNER)
         print("[*] Installing external tools via uv tool install ...\n")
-        results = setup_all_tools()
+        with spinner("Installing tools..."):
+            results = setup_all_tools()
         print(f"\n{'TOOL':<15} {'PACKAGE':<20} {'STATUS'}")
         print("-" * 60)
         for slug, path in results.items():
@@ -476,7 +478,9 @@ def main():
     # Attach debug logger so connector.ldap_search() calls dbg.log_ldap() automatically
     connector.debug_log = dbg
 
-    if not connector.connect():
+    with spinner("Connecting to domain controller..."):
+        connected = connector.connect()
+    if not connected:
         log.error("Failed to establish any connection to the Domain Controller.")
         log.error("Check your credentials, DC address, and firewall rules.")
         sys.exit(1)
@@ -536,7 +540,8 @@ def main():
         # Mark the check boundary in the debug log
         dbg.log_check_start(check.CHECK_NAME)
         try:
-            result = check.run_check(connector, verbose=args.verbose)
+            with spinner(check.CHECK_NAME, enabled=not args.verbose):
+                result = check.run_check(connector, verbose=args.verbose)
 
             # Record end of check in debug log
             dbg.log_check_end(check.CHECK_NAME, result)
@@ -607,14 +612,15 @@ def main():
         out_path = f"{output_stem}.{fmt}"
         log.info("")
         log.info("[*] Generating %s report -> %s", fmt.upper(), out_path)
-        if fmt == "html":
-            generate_report(output_file=out_path, **report_args)
-        elif fmt == "json":
-            generate_json_report(output_file=out_path, **report_args)
-        elif fmt == "csv":
-            generate_csv_report(output_file=out_path, **report_args)
-        elif fmt == "docx":
-            generate_docx_report(output_file=out_path, **report_args)
+        with spinner(f"Generating {fmt.upper()} report..."):
+            if fmt == "html":
+                generate_report(output_file=out_path, **report_args)
+            elif fmt == "json":
+                generate_json_report(output_file=out_path, **report_args)
+            elif fmt == "csv":
+                generate_csv_report(output_file=out_path, **report_args)
+            elif fmt == "docx":
+                generate_docx_report(output_file=out_path, **report_args)
         log.info("[+] Saved : %s", out_path)
 
     log.info("")
