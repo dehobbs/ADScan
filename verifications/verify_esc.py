@@ -36,7 +36,7 @@ TOOLS = [
         "tool": "NetExec",
         "icon": "netexec",
         "desc": "Enumerate ADCS certificate authorities and templates.",
-        "code": "netexec ldap <DC_IP> -u <username> -p <password> -M certipy-ad",
+        "code": "netexec ldap <DC_IP> -u <username> -p <password> -M certipy-find",
         "confirm": "Lists Certificate Authorities and templates available for enrollment.",
     },
     {
