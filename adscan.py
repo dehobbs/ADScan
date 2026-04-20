@@ -592,6 +592,21 @@ def main():
     log.info("=" * 60)
     connector.disconnect()
 
+    # Archive ~/.nxc (NetExec scan data) into Artifacts if it exists
+    _nxc_dir = os.path.expanduser("~/.nxc")
+    if os.path.isdir(_nxc_dir):
+        import zipfile
+        _nxc_zip = os.path.join(ARTIFACTS_DIR, f"nxc_{scan_timestamp}.zip")
+        log.info("[*] Archiving ~/.nxc -> %s", _nxc_zip)
+        with spinner("Archiving ~/.nxc..."):
+            with zipfile.ZipFile(_nxc_zip, "w", zipfile.ZIP_DEFLATED) as _zf:
+                for _root, _dirs, _files in os.walk(_nxc_dir):
+                    for _file in _files:
+                        _full = os.path.join(_root, _file)
+                        _arc  = os.path.relpath(_full, os.path.dirname(_nxc_dir))
+                        _zf.write(_full, _arc)
+        log.info("[+] Saved : %s", _nxc_zip)
+
     formats = ["html", "json", "csv", "docx"] if args.format == "all" else [args.format]
     # Compute ratio-based overall + per-category scores
     score_data      = compute_scores(findings, scoring, checks_run=checks_run)
