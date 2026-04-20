@@ -172,12 +172,15 @@ def run_check(connector, verbose=False):
         # Build findings                                                       #
         # ------------------------------------------------------------------ #
         if all_hits:
-            detail_lines = []
+            detail_lines          = []
+            detail_lines_redacted = []
             for h in all_hits:
-                detail_lines.append(
+                base = (
                     f"File: {h['file']} | Element: {h['element']} | "
-                    f"Account: {h['name']} | Plaintext: {h['plaintext']}"
+                    f"Account: {h['name']}"
                 )
+                detail_lines.append(          base + f" | Plaintext: {h['plaintext']}")
+                detail_lines_redacted.append( base +  " | Plaintext: [REDACTED]")
 
             findings.append({
                 "title": f"GPP cpassword (MS14-025): {len(all_hits)} credential(s) found in SYSVOL",
@@ -199,7 +202,8 @@ def run_check(connector, verbose=False):
                     "Groups.xml,Services.xml,Scheduledtasks.xml | "
                     "Select-String -Pattern 'cpassword'"
                 ),
-                "details": detail_lines,
+                "details":          detail_lines,
+                "details_redacted": detail_lines_redacted,
             })
         else:
             findings.append({

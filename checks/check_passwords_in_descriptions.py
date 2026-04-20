@@ -147,15 +147,13 @@ def run_check(connector, verbose=False):
         admin_hits = [f for f in flagged if f["is_admin"]]
         user_hits  = [f for f in flagged if not f["is_admin"]]
 
-        detail_lines = []
+        detail_lines          = []
+        detail_lines_redacted = []
         for f in flagged:
-            tag = "[ADMIN] " if f["is_admin"] else ""
-            # Always redact the full description -- it contains credential material.
-            # The match keyword is also suppressed to avoid leaking the value.
-            detail_lines.append(
-                f"{tag}{f['type'].upper()}: {f['sam']} ({f['status']}) "
-                f"| desc: [[REDACTED]]"
-            )
+            tag  = "[ADMIN] " if f["is_admin"] else ""
+            base = f"{tag}{f['type'].upper()}: {f['sam']} ({f['status']})"
+            detail_lines.append(          base + f" | desc: {f['desc']}")
+            detail_lines_redacted.append( base +  " | desc: [[REDACTED]]")
 
         severity  = "critical" if admin_hits else "high"
         deduction = 20 if admin_hits else 15
@@ -182,7 +180,8 @@ def run_check(connector, verbose=False):
                 "Get-ADUser -Filter * -Properties Description | "
                 "Where-Object {$_.Description -match 'pass|pwd|cred'}"
             ),
-            "details": detail_lines,
+            "details":          detail_lines,
+            "details_redacted": detail_lines_redacted,
         })
 
     except Exception as e:

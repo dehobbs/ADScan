@@ -313,6 +313,18 @@ def parse_args():
         help="Print all available check modules (slug, category, name) and exit.",
     )
 
+    output_group.add_argument(
+        "--unredacted",
+        dest="unredacted",
+        action="store_true",
+        default=False,
+        help=(
+            "Also produce a full unredacted operator report alongside the default "
+            "customer report. Passwords found in GPP and description fields are "
+            "masked in the customer report; the operator report shows them in full."
+        ),
+    )
+
     setup_group = parser.add_argument_group("Tool Management")
     setup_group.add_argument(
         "--setup-tools",
@@ -623,20 +635,26 @@ def main():
         category_scores=category_scores,
     )
 
-    for fmt in formats:
-        out_path = f"{output_stem}.{fmt}"
-        log.info("")
-        log.info("[*] Generating %s report -> %s", fmt.upper(), out_path)
-        with spinner(f"Generating {fmt.upper()} report..."):
-            if fmt == "html":
-                generate_report(output_file=out_path, **report_args)
-            elif fmt == "json":
-                generate_json_report(output_file=out_path, **report_args)
-            elif fmt == "csv":
-                generate_csv_report(output_file=out_path, **report_args)
-            elif fmt == "docx":
-                generate_docx_report(output_file=out_path, **report_args)
-        log.info("[+] Saved : %s", out_path)
+    report_variants = [("", True)]  # (stem_suffix, redact)
+    if args.unredacted:
+        report_variants.append(("_operator", False))
+
+    for suffix, redact in report_variants:
+        label = "CUSTOMER (redacted)" if redact else "OPERATOR (unredacted)"
+        for fmt in formats:
+            out_path = f"{output_stem}{suffix}.{fmt}"
+            log.info("")
+            log.info("[*] Generating %s %s report -> %s", label, fmt.upper(), out_path)
+            with spinner(f"Generating {label} {fmt.upper()} report..."):
+                if fmt == "html":
+                    generate_report(output_file=out_path, redact=redact, **report_args)
+                elif fmt == "json":
+                    generate_json_report(output_file=out_path, redact=redact, **report_args)
+                elif fmt == "csv":
+                    generate_csv_report(output_file=out_path, redact=redact, **report_args)
+                elif fmt == "docx":
+                    generate_docx_report(output_file=out_path, redact=redact, **report_args)
+            log.info("[+] Saved : %s", out_path)
 
     log.info("")
     log.info("[+] Final Score : %s/100", score)

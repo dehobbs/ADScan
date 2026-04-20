@@ -356,7 +356,14 @@ def _severity_badge_html(severity):
 
 
 
-def _finding_card(finding, idx):
+def _get_details(finding, redact):
+    """Return the appropriate details list based on the redact flag."""
+    if redact and "details_redacted" in finding:
+        return finding["details_redacted"]
+    return finding.get("details", [])
+
+
+def _finding_card(finding, idx, redact=False):
     severity = finding.get("severity", "info").lower()
     sev_colors = SEVERITY_COLORS.get(severity, SEVERITY_COLORS["info"])
     accent = sev_colors[0]
@@ -366,23 +373,24 @@ def _finding_card(finding, idx):
     else:
         cat_list = list(category)
 
+    details = _get_details(finding, redact)
     details_html = ""
-    if finding.get("details"):
+    if details:
         items = "".join(
             f"<li style='margin:2px 0;font-family:monospace;font-size:0.85rem;'>"
             f"{html_mod.escape(str(d)).replace('[[REDACTED]]', '<span style=\"color:#e53e3e;font-weight:bold\">REDACTED</span>')}</li>"
-            for d in finding["details"][:50]
+            for d in details[:50]
         )
         more = ""
-        if len(finding["details"]) > 50:
-            more = f"<li><em>... and {len(finding['details']) - 50} more</em></li>"
+        if len(details) > 50:
+            more = f"<li><em>... and {len(details) - 50} more</em></li>"
         details_html = f"""
     <details style='margin-top:12px;'>
       <summary style='cursor:pointer;font-weight:600;color:var(--text-muted);
         font-size:0.7rem;text-transform:uppercase;letter-spacing:0.12em;
         list-style:none;display:flex;align-items:center;gap:6px;user-select:none;'>
         <span style='display:inline-block;transition:transform .2s;font-size:0.65rem;color:{accent}'>&#9660;</span>
-        <span style='color:{accent}'>Affected Objects ({finding.get('affected_count', len(finding['details']))})</span>
+        <span style='color:{accent}'>Affected Objects ({finding.get('affected_count', len(details))})</span>
       </summary>
       <ul style='margin:10px 0 0 16px;padding:0;'>{items}{more}</ul>
     </details>"""
@@ -606,7 +614,7 @@ def _category_scores_html(category_scores):
 </div>"""
 
 
-def generate_report(output_file, domain, dc_host, username, protocols, findings, score, category_scores=None):
+def generate_report(output_file, domain, dc_host, username, protocols, findings, score, category_scores=None, redact=False):
     """Generate a self-contained HTML report dashboard with sidebar navigation."""
     from collections import defaultdict
     scan_time = __import__('datetime').datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -673,7 +681,7 @@ def generate_report(output_file, domain, dc_host, username, protocols, findings,
 
     # ---- Finding cards ----
     if findings:
-        cards_html = "".join(_finding_card(f, i) for i, f in enumerate(findings))
+        cards_html = "".join(_finding_card(f, i, redact=redact) for i, f in enumerate(findings))
     else:
         cards_html = (
             '<div style="text-align:center;padding:60px;color:var(--text-muted);">'
@@ -1708,7 +1716,7 @@ function verifTab(btn, panelId) {
 # ---------------------------------------------------------------------------
 # JSON output
 # ---------------------------------------------------------------------------
-def generate_json_report(output_file, domain, dc_host, username, protocols, findings, score, category_scores=None):
+def generate_json_report(output_file, domain, dc_host, username, protocols, findings, score, category_scores=None, redact=False):
     """Write a machine-readable JSON report."""
     import json
     from datetime import datetime
@@ -1750,8 +1758,8 @@ def generate_json_report(output_file, domain, dc_host, username, protocols, find
                 "deduction":      f.get("deduction", 0),
                 "description":    f.get("description", ""),
                 "recommendation": f.get("recommendation", ""),
-                "affected_count": f.get("affected_count", len(f.get("details", []))),
-                "details":        f.get("details", []),
+                "affected_count": f.get("affected_count", len(_get_details(f, redact))),
+                "details":        _get_details(f, redact),
             }
             for f in findings
         ],
@@ -1764,7 +1772,7 @@ def generate_json_report(output_file, domain, dc_host, username, protocols, find
 # ---------------------------------------------------------------------------
 # CSV output
 # ---------------------------------------------------------------------------
-def generate_csv_report(output_file, domain, dc_host, username, protocols, findings, score, category_scores=None):
+def generate_csv_report(output_file, domain, dc_host, username, protocols, findings, score, category_scores=None, redact=False):
     """Write a flat CSV report — one row per finding."""
     import csv
     from datetime import datetime
@@ -1792,7 +1800,7 @@ def generate_csv_report(output_file, domain, dc_host, username, protocols, findi
             return
 
         for f in findings:
-            details = f.get("details", [])
+            details = _get_details(f, redact)
             sample = " | ".join(str(d) for d in details[:5])
             if len(details) > 5:
                 sample += f" ... (+{len(details) - 5} more)"
@@ -1820,7 +1828,7 @@ def generate_csv_report(output_file, domain, dc_host, username, protocols, findi
 # ---------------------------------------------------------------------------
 # DOCX output
 # ---------------------------------------------------------------------------
-def generate_docx_report(output_file, domain, dc_host, username, protocols, findings, score, category_scores=None):
+def generate_docx_report(output_file, domain, dc_host, username, protocols, findings, score, category_scores=None, redact=False):
     """Write a Microsoft Word (.docx) report using python-docx."""
     try:
         from docx import Document
@@ -2133,7 +2141,7 @@ def generate_docx_report(output_file, domain, dc_host, username, protocols, find
                 _cmd_run.font.size = Pt(7.5)
                 _cmd_run.font.color.rgb = RGBColor(0x1E, 0x29, 0x3B)
 
-        details = f.get("details", [])
+        details = _get_details(f, redact)
         if details:
             n = len(details)
             doc.add_heading(f"Evidence ({n} item{'s' if n != 1 else ''})", level=3)
