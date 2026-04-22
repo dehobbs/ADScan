@@ -40,6 +40,7 @@ Artifact saved to:
 import glob
 import json
 import os
+import re
 import subprocess  # nosec B404 - subprocess is required to invoke certipy-ad
 import logging
 
@@ -221,6 +222,24 @@ def _config_dn(base_dn):
 # ---------------------------------------------------------------------------
 # Certipy helpers
 # ---------------------------------------------------------------------------
+def _build_auth_args(connector):
+    """Build nxc authentication arguments from connector credentials."""
+    domain   = getattr(connector, "domain", "") or ""
+    username = getattr(connector, "username", "") or ""
+    password = getattr(connector, "password", None)
+    nt_hash  = getattr(connector, "nt_hash", None)
+    lm_hash  = getattr(connector, "lm_hash", "") or ""
+
+    args = ["-d", domain, "-u", username]
+    if nt_hash:
+        args += ["-H", f"{lm_hash}:{nt_hash}" if lm_hash else nt_hash]
+    elif password:
+        args += ["-p", password]
+    else:
+        args += ["-p", ""]
+    return args
+
+
 def _resolve_certipy():
     """Return the absolute path to certipy-ad, auto-installing via uv if needed."""
     return ensure_tool("certipy")
@@ -997,31 +1016,182 @@ def _run_certipy_check(connector, verbose=False):
     return findings
 
 # ---------------------------------------------------------------------------
+# NetExec ADCS check
+# ---------------------------------------------------------------------------
+def _run_nxc_adcs_check(connector, verbose=False):
+    """Run NetExec ADCS enumeration (nxc ldap <dc-ip> -M adcs) and return findings."""
+    findings = []
+    log = connector.log
+
+    nxc_exe = ensure_tool("nxc")
+    if nxc_exe is None:
+        findings.append({
+            "title":     "NetExec Not Installed - NXC ADCS Check Skipped",
+            "severity":  "info",
+            "deduction": 0,
+            "description": (
+                "NetExec (nxc) is not installed or not available on PATH. "
+                "Install with: uv tool install netexec"
+            ),
+            "recommendation": "Install NetExec: uv tool install netexec (or run: python adscan.py --setup-tools).",
+            "details": [],
+        })
+        return findings
+
+    dc_ip = getattr(connector, "dc_host", None) or getattr(connector, "dc_ip", None)
+    if not dc_ip:
+        findings.append({
+            "title":     "NXC ADCS Check - Missing DC IP",
+            "severity":  "info",
+            "deduction": 0,
+            "description": "Could not determine DC IP/host from connector.",
+            "recommendation": "Ensure --dc-ip is provided.",
+            "details": [],
+        })
+        return findings
+
+    cmd = [nxc_exe, "ldap", dc_ip] + _build_auth_args(connector) + ["-M", "adcs"]
+
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)  # nosec B603
+        stdout, stderr = result.stdout, result.stderr
+
+        dbg = getattr(connector, "debug_log", None)
+        if dbg:
+            dbg.log_subprocess(
+                cmd=[nxc_exe, "ldap", dc_ip, "-d", getattr(connector, "domain", ""),
+                     "-u", getattr(connector, "username", ""), "-p", "<redacted>", "-M", "adcs"],
+                returncode=result.returncode,
+                stdout=stdout,
+                stderr=stderr,
+            )
+        if verbose:
+            log.debug("  [NXC ADCS stdout]\n%s", stdout[:2000])
+
+        if result.returncode != 0 and not stdout.strip():
+            findings.append({
+                "title":     "NetExec ADCS Check Failed",
+                "severity":  "info",
+                "deduction": 0,
+                "description": f"nxc ldap -M adcs exited with return code {result.returncode}.",
+                "recommendation": f"Run manually: nxc ldap {dc_ip} -u <user> -p <pass> -M adcs",
+                "details": [f"stderr: {stderr[:500]}"] if stderr else [],
+            })
+            return findings
+
+        # Parse output for CA names and ESC findings.
+        # nxc adcs module lines are prefixed with the protocol label, e.g.:
+        #   LDAP   10.0.0.1  389  DC01  [*] Found PKI Enrollment Server: corp-CA
+        #   LDAP   10.0.0.1  389  DC01  [+] ESC1 - VulnTemplate - <reason>
+        combined = stdout + stderr
+        ca_names = []
+        esc_findings: dict[str, list[str]] = {}
+
+        for line in combined.splitlines():
+            # Strip the leading "PROTO  IP  PORT  HOST  " prefix then the [+]/[*] tag
+            payload = re.sub(r'^\S+\s+\S+\s+\S+\s+\S+\s+', '', line).strip()
+            payload = re.sub(r'^\[.\]\s*', '', payload).strip()
+
+            ca_match = re.search(
+                r'(?:PKI Enrollment Server|CA Name|Found CA|CA:)[:\s]+([^\s\[\],]+)',
+                payload, re.IGNORECASE,
+            )
+            if ca_match:
+                ca_names.append(ca_match.group(1).strip())
+
+            esc_match = re.search(r'\b(ESC\d+)\b', payload, re.IGNORECASE)
+            if esc_match:
+                esc_key = esc_match.group(1).upper()
+                esc_findings.setdefault(esc_key, []).append(payload)
+
+        if not ca_names and not esc_findings:
+            no_adcs_signals = ("no adcs", "not found", "no pki", "no enrollment", "no cas")
+            msg = "NetExec ADCS module produced no parseable findings."
+            if any(s in combined.lower() for s in no_adcs_signals):
+                msg = "NetExec found no ADCS Certificate Authorities in this domain."
+            findings.append({
+                "title":     "NXC ADCS - No Findings",
+                "severity":  "info",
+                "deduction": 0,
+                "description": msg,
+                "recommendation": f"Run manually: nxc ldap {dc_ip} -u <user> -p <pass> -M adcs",
+                "details": [f"stdout: {stdout[:500]}"] if stdout.strip() else [],
+            })
+            return findings
+
+        for esc_key, details in esc_findings.items():
+            severity, deduction = _ESC_MAP.get(esc_key, ("medium", 8))
+            findings.append({
+                "title":          f"{esc_key}: {_ESC_DESCRIPTIONS.get(esc_key, 'ADCS vulnerability detected')} [NXC]",
+                "severity":       severity,
+                "deduction":      deduction,
+                "description":    _ESC_DESCRIPTIONS.get(esc_key, f"{esc_key} detected by NetExec ADCS module."),
+                "recommendation": _ESC_RECOMMENDATIONS.get(esc_key, f"Remediate {esc_key}."),
+                "details":        details,
+            })
+
+        if ca_names:
+            findings.append({
+                "title":     "ADCS Certification Authorities Discovered (NXC)",
+                "severity":  "info",
+                "deduction": 0,
+                "description": (
+                    f"NetExec discovered {len(set(ca_names))} Certification "
+                    "Authority/Authorities in this domain."
+                ),
+                "recommendation": (
+                    "Review CA configurations for unnecessary roles and overly permissive ACLs."
+                ),
+                "details": [f"CA: {n}" for n in sorted(set(ca_names))],
+            })
+
+    except subprocess.TimeoutExpired:
+        findings.append({
+            "title":     "NetExec ADCS Check Timed Out",
+            "severity":  "info",
+            "deduction": 0,
+            "description": "nxc ldap -M adcs did not complete within 120 seconds.",
+            "recommendation": "Check network connectivity to the DC and retry.",
+            "details": [f"DC: {dc_ip}"],
+        })
+    except Exception as e:
+        findings.append({
+            "title":     "NetExec ADCS Check - Unexpected Error",
+            "severity":  "info",
+            "deduction": 0,
+            "description": f"An unexpected error occurred while running nxc adcs: {e}",
+            "recommendation": "Review ADScan logs and run nxc manually to diagnose.",
+            "details": [str(e)],
+        })
+
+    return findings
+
+
+# ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
 def run_check(connector, verbose=False):
-    """Run combined LDAP + Certipy ADCS checks.
+    """Run Certipy + NetExec ADCS checks.
 
-    Phase 1: LDAP-based checks (always executed).
-    Phase 2: Certipy-based checks (executed when Certipy is installed
-             and connector credentials are available).
+    Phase 1: LDAP-based checks — muted; uncomment _run_ldap_checks below to re-enable.
+    Phase 2: Certipy-based checks (full ACL-aware ESC enumeration).
+    Phase 3: NetExec ADCS module (nxc ldap -M adcs).
 
-    Findings from both phases are merged and returned as a single list.
-    Duplicate ESC findings (same title) are de-duplicated, preferring the
-    Certipy result which includes ACL context not available via LDAP.
+    Priority: Certipy > NXC for the same ESC number (Certipy has richer ACL context).
+    NXC findings for ESC numbers not covered by Certipy are always included.
     """
-    # Phase 1 - LDAP
-    try:
-        ldap_findings = _run_ldap_checks(connector, verbose=verbose)
-    except Exception as exc:
-        ldap_findings = [{
-            "title":     "ADCS LDAP Check Failed",
-            "severity":  "info",
-            "deduction": 0,
-            "description": f"The LDAP-based ADCS check raised an exception: {exc}",
-            "recommendation": "Check LDAP connectivity and base_dn configuration.",
-            "details": [str(exc)],
-        }]
+    # Phase 1 - LDAP (muted — uncomment to re-enable)
+    # try:
+    #     ldap_findings = _run_ldap_checks(connector, verbose=verbose)
+    # except Exception as exc:
+    #     ldap_findings = [{
+    #         "title":     "ADCS LDAP Check Failed",
+    #         "severity":  "info",
+    #         "deduction": 0,
+    #         "description": f"The LDAP-based ADCS check raised an exception: {exc}",
+    #         "recommendation": "Check LDAP connectivity and base_dn configuration.",
+    #         "details": [str(exc)],
+    #     }]
 
     # Phase 2 - Certipy
     try:
@@ -1036,34 +1206,30 @@ def run_check(connector, verbose=False):
             "details": [str(exc)],
         }]
 
-    # ---------------------------------------------------------------------------
-    # Merge LDAP and Certipy findings.
-    #
-    # The deduplication key is the ESC prefix at the start of the title
-    # (e.g. "ESC1", "ESC6") so that differently-worded titles from LDAP and
-    # Certipy for the same finding are treated as duplicates.
-    # Certipy wins for any ESC it reports (richer ACL context).
-    # LDAP-only findings with no ESC key (weak keys, ACL notes, ESC8/10 notes)
-    # are always kept because Certipy's -vulnerable flag may skip them.
-    # ---------------------------------------------------------------------------
+    # Phase 3 - NetExec ADCS
+    try:
+        nxc_findings = _run_nxc_adcs_check(connector, verbose=verbose)
+    except Exception as exc:
+        nxc_findings = [{
+            "title":     "ADCS NXC Check Failed",
+            "severity":  "info",
+            "deduction": 0,
+            "description": f"The NetExec ADCS check raised an exception: {exc}",
+            "recommendation": "Check NetExec installation and connector credentials.",
+            "details": [str(exc)],
+        }]
 
-    import re as _re
-    _ESC_PREFIX_RE = _re.compile(r'^(ESC\d+)\b', _re.IGNORECASE)
+    # Merge: Certipy takes priority over NXC for the same ESC number.
+    _ESC_PREFIX_RE = re.compile(r'^(ESC\d+)\b', re.IGNORECASE)
 
     def _esc_key(title):
-        """Extract the ESC prefix from a finding title, e.g. 'ESC1' from 'ESC1: ...'."""
         m = _ESC_PREFIX_RE.match(title.strip())
         return m.group(1).upper() if m else None
 
-    # Build set of ESC keys that Certipy reported
     certipy_esc_keys = {k for f in certipy_findings for k in [_esc_key(f["title"])] if k}
 
-    # Keep LDAP findings whose ESC key is NOT covered by Certipy
-    # (or that have no ESC key at all — those are LDAP-only checks)
-    merged = [
-        f for f in ldap_findings
-        if _esc_key(f["title"]) not in certipy_esc_keys
-    ]
+    # Include nxc findings only for ESC numbers certipy did not cover
+    merged = [f for f in nxc_findings if _esc_key(f["title"]) not in certipy_esc_keys]
     merged.extend(certipy_findings)
 
     return merged
