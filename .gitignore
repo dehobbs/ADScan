@@ -47,3 +47,6 @@ Thumbs.db
 # ---- Scoring config override (keep scoring.toml template, ignore local overrides) ----
 # If you want to gitignore a local scoring config, name it scoring.local.toml
 scoring.local.toml
+
+# ---- Claude Code ----
+CLAUDE.md
