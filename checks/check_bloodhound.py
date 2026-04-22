@@ -134,10 +134,6 @@ def run_check(connector, verbose=False):
     artifacts_dir = getattr(connector, "artifacts_dir", "Reports/Artifacts")
     os.makedirs(artifacts_dir, exist_ok=True)
 
-    # Use the scan timestamp as the output file prefix so the ZIP is
-    # identifiable alongside other artifacts from the same scan.
-    run_ts = getattr(connector, "scan_timestamp", "bloodhound")
-
     cmd = [
         bh_exe,
         "--zip",
@@ -145,7 +141,6 @@ def run_check(connector, verbose=False):
         "-d", domain,
         "-dc", dc_fqdn,
         *ns_args,
-        "-op", run_ts,
         *_build_auth_args(connector),
     ]
 
@@ -180,13 +175,15 @@ def run_check(connector, verbose=False):
         })
         return findings
 
-    # Locate the ZIP written to artifacts_dir
+    # Locate the ZIP written to artifacts_dir — bloodhound-python names it
+    # automatically, so just pick the newest ZIP present after the run.
     try:
-        zip_files = sorted(
-            f for f in os.listdir(artifacts_dir)
-            if f.endswith(".zip") and run_ts in f
-        )
-        zip_path = os.path.join(artifacts_dir, zip_files[-1]) if zip_files else None
+        zip_candidates = [
+            os.path.join(artifacts_dir, f)
+            for f in os.listdir(artifacts_dir)
+            if f.endswith(".zip")
+        ]
+        zip_path = max(zip_candidates, key=os.path.getmtime) if zip_candidates else None
     except OSError:
         zip_path = None
 
