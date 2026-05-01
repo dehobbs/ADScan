@@ -35,6 +35,7 @@ import shutil
 import socket
 import subprocess
 import sys
+from contextlib import nullcontext
 
 import dns.resolver
 
@@ -106,25 +107,30 @@ def _build_auth_args(connector):
     return args
 
 
-def _prompt_engine(log):
+def _prompt_engine(connector):
     """Prompt the user to choose between Legacy BloodHound and BloodHound CE.
 
     Returns 'legacy' or 'ce'. Defaults to 'legacy' in non-interactive
-    sessions or on Ctrl+C / EOF.
+    sessions or on Ctrl+C / EOF. Suspends the running spinner (if any)
+    so it doesn't overwrite the prompt while the user is choosing.
     """
+    log = connector.log
     if not sys.stdin.isatty():
         log.info("  [*] Non-interactive session — defaulting to Legacy BloodHound")
         return "legacy"
-    # Leading newline ensures the spinner (which uses \r on stderr) cannot
-    # overwrite the question while the user is reading it.
-    print("\n  Choose BloodHound engine:")
-    print("    [1] Legacy BloodHound              (bloodhound-python)")
-    print("    [2] BloodHound Community Edition   (bloodhound-ce-python)")
-    try:
-        choice = input("  Selection [1/2] (default 1): ").strip()
-    except (EOFError, KeyboardInterrupt):
-        print()
-        return "legacy"
+
+    sp = getattr(connector, "spinner", None)
+    suspend_ctx = sp.suspended() if sp is not None and hasattr(sp, "suspended") else nullcontext()
+
+    with suspend_ctx:
+        print("\n  Choose BloodHound engine:")
+        print("    [1] Legacy BloodHound              (bloodhound-python)")
+        print("    [2] BloodHound Community Edition   (bloodhound-ce-python)")
+        try:
+            choice = input("  Selection [1/2] (default 1): ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return "legacy"
     return "ce" if choice == "2" else "legacy"
 
 
@@ -167,7 +173,7 @@ def run_check(connector, verbose=False):
     findings = []
     log      = connector.log
 
-    engine = _prompt_engine(log)
+    engine = _prompt_engine(connector)
     log.info(
         "  [*] BloodHound engine: %s",
         "Community Edition" if engine == "ce" else "Legacy",

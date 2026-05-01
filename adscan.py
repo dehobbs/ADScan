@@ -552,8 +552,10 @@ def main():
         # Mark the check boundary in the debug log
         dbg.log_check_start(check.CHECK_NAME)
         try:
-            with spinner(check.CHECK_NAME, enabled=not args.verbose):
+            with spinner(check.CHECK_NAME, enabled=not args.verbose) as sp:
+                connector.spinner = sp
                 result = check.run_check(connector, verbose=args.verbose)
+            connector.spinner = None
 
             # Record end of check in debug log
             dbg.log_check_end(check.CHECK_NAME, result)
