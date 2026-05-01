@@ -4,6 +4,7 @@ lib/connector.py - ADScan Connection Manager
 Manages LDAP, LDAPS, and SMB connections to a Domain Controller.
 Supports password, NTLM hash (pass-the-hash), and Kerberos (ccache) auth.
 """
+import atexit
 import os
 import logging
 import socket
@@ -11,6 +12,7 @@ import ssl
 import struct
 import hashlib
 import binascii
+import tempfile
 from datetime import datetime
 
 # Optional imports - graceful degradation if libraries are not installed
@@ -30,6 +32,14 @@ try:
     HAS_IMPACKET = True
 except ImportError:
     HAS_IMPACKET = False
+
+
+def _safe_unlink(path):
+    """Best-effort file deletion; swallow errors (atexit must not raise)."""
+    try:
+        os.unlink(path)
+    except OSError:
+        pass
 
 
 def _entry_to_dict(entry):
@@ -111,6 +121,11 @@ class ADConnector:
         whether LDAP signing and/or LDAPS channel binding are enforced,
         then applies the appropriate ldap3 parameters automatically.
         """
+        # When using Kerberos, make sure libkrb5 has a usable default realm.
+        # If the system krb5.conf is missing or has no default_realm, we
+        # synthesize one from the connector's domain + dc_host.
+        self._ensure_krb5_config()
+
         connected = False
 
         # ── Probe DC security requirements (1-2 second overhead) ──────────
@@ -286,6 +301,84 @@ class ADConnector:
         if self.ccache_path:
             return self.ccache_path
         return os.environ.get("KRB5CCNAME")
+
+    def _ensure_krb5_config(self):
+        """Synthesize a temp krb5.conf when Kerberos is in use and the system
+        config is missing or lacks default_realm.
+
+        Reads the file pointed to by KRB5_CONFIG (or /etc/krb5.conf if unset).
+        If it already declares a non-empty `default_realm` we leave the
+        environment alone. Otherwise we write a minimal config using the
+        connector's own domain (uppercased as the realm) and dc_host as the
+        KDC, set KRB5_CONFIG to point at it, and register an atexit cleanup.
+        """
+        if not self.use_kerberos:
+            return
+
+        existing = os.environ.get("KRB5_CONFIG", "/etc/krb5.conf")
+        try:
+            with open(existing, "r", encoding="utf-8") as fh:
+                for line in fh:
+                    s = line.strip()
+                    if s.startswith("#") or s.startswith(";"):
+                        continue
+                    if s.lower().startswith("default_realm") and "=" in s:
+                        if s.split("=", 1)[1].strip():
+                            self._log.debug(
+                                "  [krb5] %s already specifies default_realm — leaving as-is",
+                                existing,
+                            )
+                            return
+        except (FileNotFoundError, PermissionError, OSError) as exc:
+            self._log.debug("  [krb5] could not read %s: %s", existing, exc)
+
+        if not self.domain or not self.dc_host:
+            self._log.warning(
+                " [WARN] --kerberos used but cannot synthesize krb5.conf "
+                "(missing domain or dc_host). Bind will likely fail.",
+            )
+            return
+
+        realm = self.domain.upper()
+        kdc   = self.dc_host
+        body  = (
+            "[libdefaults]\n"
+            f"    default_realm = {realm}\n"
+            "    dns_lookup_realm = false\n"
+            "    dns_lookup_kdc = false\n"
+            "    rdns = false\n"
+            "    udp_preference_limit = 1\n"
+            "    forwardable = true\n"
+            "\n"
+            "[realms]\n"
+            f"    {realm} = {{\n"
+            f"        kdc = {kdc}\n"
+            f"        admin_server = {kdc}\n"
+            "    }\n"
+            "\n"
+            "[domain_realm]\n"
+            f"    .{self.domain} = {realm}\n"
+            f"    {self.domain} = {realm}\n"
+        )
+
+        fd, path = tempfile.mkstemp(prefix="adscan_krb5_", suffix=".conf")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                fh.write(body)
+        except Exception as exc:
+            self._log.warning(" [WARN] failed to write synthesized krb5.conf: %s", exc)
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+            return
+
+        os.environ["KRB5_CONFIG"] = path
+        atexit.register(_safe_unlink, path)
+        self._log.info(
+            "  [krb5] synthesized config -> %s (realm=%s, kdc=%s)",
+            path, realm, kdc,
+        )
 
     def _probe_dc_requirements(self):
         """Probe the DC to detect whether LDAP signing and/or LDAPS channel
