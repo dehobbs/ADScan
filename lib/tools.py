@@ -75,7 +75,12 @@ TOOL_REGISTRY: dict[str, ToolSpec] = {
     "bloodhound": ToolSpec(
         package="bloodhound",
         exe="bloodhound-python",
-        description="BloodHound AD ingestor — collects graph data for attack path analysis",
+        description="Legacy BloodHound AD ingestor — collects graph data for attack path analysis",
+    ),
+    "bloodhound-ce": ToolSpec(
+        package="bloodhound-ce",
+        exe="bloodhound-ce-python",
+        description="BloodHound Community Edition AD ingestor",
     ),
 }
 

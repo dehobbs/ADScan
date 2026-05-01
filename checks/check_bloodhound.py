@@ -2,9 +2,11 @@
 checks/check_bloodhound.py - BloodHound Data Collection
 
 When the bloodhound step runs, the user is prompted to choose between:
-  [1] Legacy BloodHound (bloodhound-python, installed via uv tool install)
-  [2] BloodHound Community Edition (bloodhound-ce-python, installed via
-      pip install bloodhound-ce)
+  [1] Legacy BloodHound (bloodhound-python)
+  [2] BloodHound Community Edition (bloodhound-ce-python)
+
+Both variants are installed into isolated virtual environments via
+`uv tool install` (managed by lib/tools.py).
 
 The resulting ZIP archive is saved to Reports/Artifacts/ for import into
 BloodHound for graph-based attack path analysis.
@@ -31,7 +33,6 @@ CHECK_WEIGHT   = 0
 
 import ipaddress
 import os
-import shutil
 import socket
 import subprocess
 import sys
@@ -134,41 +135,6 @@ def _prompt_engine(connector):
     return "ce" if choice == "2" else "legacy"
 
 
-def _pip_install_bloodhound_ce(log):
-    """Install bloodhound-ce via pip. Falls back to --break-system-packages
-    on PEP 668 environments (e.g. Kali). Returns True on success."""
-    log.info("  [*] Installing bloodhound-ce via pip...")
-    for extra in ([], ["--break-system-packages"]):
-        cmd = ["pip", "install", *extra, "bloodhound-ce"]
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
-        except Exception as exc:
-            log.warning("  [WARN] pip install bloodhound-ce error: %s", exc)
-            return False
-        if result.returncode == 0:
-            log.info("  [*] bloodhound-ce installed")
-            return True
-        if not extra and "externally-managed" in result.stderr.lower():
-            log.info("  [*] PEP 668 detected — retrying with --break-system-packages")
-            continue
-        log.warning(
-            "  [WARN] pip install bloodhound-ce failed (rc=%d): %s",
-            result.returncode, result.stderr.strip()[:300],
-        )
-        return False
-    return False
-
-
-def _ensure_bloodhound_ce(log):
-    """Return absolute path to bloodhound-ce-python, pip-installing if missing."""
-    path = shutil.which("bloodhound-ce-python")
-    if path:
-        return path
-    if not _pip_install_bloodhound_ce(log):
-        return None
-    return shutil.which("bloodhound-ce-python")
-
-
 def run_check(connector, verbose=False):
     findings = []
     log      = connector.log
@@ -180,9 +146,9 @@ def run_check(connector, verbose=False):
     )
 
     if engine == "ce":
-        bh_exe     = _ensure_bloodhound_ce(log)
+        bh_exe     = ensure_tool("bloodhound-ce")
         tool_label = "bloodhound-ce-python"
-        install_hint = "pip install bloodhound-ce"
+        install_hint = "uv tool install bloodhound-ce  (or: python adscan.py --setup-tools)"
     else:
         bh_exe     = ensure_tool("bloodhound")
         tool_label = "bloodhound-python"
