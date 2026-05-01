@@ -37,14 +37,21 @@ def _build_auth_args(connector):
     password = getattr(connector, "password", None)
     nt_hash  = getattr(connector, "nt_hash", None)
     lm_hash  = getattr(connector, "lm_hash", "") or ""
+    use_kerb = getattr(connector, "use_kerberos", False)
 
     args = ["-u", username]
-    if nt_hash:
+    if use_kerb:
+        # pre2k uses Impacket-style flags: -k tells it to use the ccache
+        # pointed at by KRB5CCNAME, and -no-pass tells it not to prompt.
+        args += ["-k", "-no-pass"]
+    elif nt_hash:
         args += ["-H", f"{lm_hash}:{nt_hash}" if lm_hash else nt_hash]
     elif password:
         args += ["-p", password]
     else:
-        args += ["-p", ""]
+        # Empty password makes pre2k hang trying to bind — bail out before
+        # the subprocess starts. The caller emits an info finding.
+        args = None
     return args
 
 
@@ -100,26 +107,45 @@ def run_check(connector, verbose=False):
         log.warning("  [WARN] No DC host or domain configured — skipping pre2k check.")
         return findings
 
+    auth_args = _build_auth_args(connector)
+    if auth_args is None:
+        findings.append({
+            "title": "Pre-Windows 2000 Computer Accounts — Skipped (No Credentials)",
+            "severity": "info",
+            "deduction": 0,
+            "description": (
+                "pre2k requires a password, NTLM hash, or Kerberos ccache to bind "
+                "to the DC for the LDAP enumeration phase. None were provided to "
+                "ADScan, so this check was skipped to avoid hanging."
+            ),
+            "recommendation": (
+                "Re-scan with -p <password>, --hash <NT>, or --kerberos (with "
+                "KRB5CCNAME or --ccache pointing at a valid ccache)."
+            ),
+            "details": [],
+        })
+        return findings
+
     artifacts_dir = getattr(connector, "artifacts_dir", None) or "."
     log_path = os.path.join(artifacts_dir, "pre2k.log")
 
     cmd = [
         pre2k_exe, "auth",
-        *_build_auth_args(connector),
+        *auth_args,
         "-dc-ip", dc_host,
         "-d", domain,
         "-outputfile", log_path,
     ]
 
     try:
-        subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+        subprocess.run(cmd, capture_output=True, text=True, timeout=120)
         # nosec B603 — command is a validated list, no shell interpolation
     except subprocess.TimeoutExpired:
         findings.append({
             "title": "Pre-Windows 2000 Computer Accounts — Query Timed Out",
             "severity": "info",
             "deduction": 0,
-            "description": "The pre2k command timed out after 180 seconds.",
+            "description": "The pre2k command timed out after 120 seconds.",
             "recommendation": "Check network connectivity to the domain controller.",
             "details": [],
         })
