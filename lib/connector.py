@@ -6,6 +6,7 @@ Supports password, NTLM hash (pass-the-hash), and Kerberos (ccache) auth.
 """
 import atexit
 import os
+import ipaddress
 import logging
 import socket
 import ssl
@@ -125,6 +126,12 @@ class ADConnector:
         # If the system krb5.conf is missing or has no default_realm, we
         # synthesize one from the connector's domain + dc_host.
         self._ensure_krb5_config()
+
+        # When using Kerberos, the SPN must be built from the DC FQDN
+        # (e.g. ldap/dc1.adlab.org), not an IP. If --dc-ip was an IP,
+        # resolve the FQDN via SRV and patch DNS so the FQDN routes to
+        # the IP we already know.
+        self._ensure_kerberos_target()
 
         connected = False
 
@@ -379,6 +386,84 @@ class ADConnector:
             "  [krb5] synthesized config -> %s (realm=%s, kdc=%s)",
             path, realm, kdc,
         )
+
+    @staticmethod
+    def _is_ip(value):
+        try:
+            ipaddress.ip_address(value)
+            return True
+        except (ValueError, TypeError):
+            return False
+
+    def _resolve_dc_fqdn_via_srv(self):
+        """SRV-lookup the DC FQDN using self.dc_host as the nameserver.
+        Returns the first FQDN found, or None on failure."""
+        try:
+            import dns.resolver  # type: ignore
+        except ImportError:
+            self._log.debug("  [krb5] dnspython not installed; cannot resolve DC FQDN")
+            return None
+        srv_name = f"_ldap._tcp.dc._msdcs.{self.domain}"
+        try:
+            resolver = dns.resolver.Resolver(configure=False)
+            resolver.nameservers = [self.dc_host]
+            resolver.timeout = 5
+            resolver.lifetime = 10
+            answers = resolver.resolve(srv_name, "SRV")
+            for rdata in answers:
+                fqdn = str(rdata.target).rstrip(".")
+                if fqdn:
+                    return fqdn
+        except Exception as exc:
+            self._log.debug("  [krb5] SRV lookup failed for %s: %s", srv_name, exc)
+        return None
+
+    def _ensure_kerberos_target(self):
+        """For Kerberos with an IP dc_host, resolve the FQDN via SRV and
+        monkey-patch socket.getaddrinfo so subsequent ldap3/impacket calls
+        keyed on the FQDN still route TCP to the original IP. The FQDN is
+        what GSSAPI uses to construct the SPN (ldap/<fqdn>, cifs/<fqdn>).
+        """
+        if not self.use_kerberos:
+            return
+        if not self._is_ip(self.dc_host):
+            return  # already an FQDN — Kerberos will build the right SPN
+
+        ip = self.dc_host
+        fqdn = self._resolve_dc_fqdn_via_srv()
+        if not fqdn or fqdn == ip:
+            self._log.warning(
+                " [WARN] --kerberos used with IP %s but the DC FQDN could not be "
+                "resolved via SRV. Kerberos will likely fail with "
+                "KDC_ERR_S_PRINCIPAL_UNKNOWN. Pass --dc-ip <fqdn> instead.",
+                ip,
+            )
+            return
+
+        # Patch DNS so the FQDN routes to the IP we already know.
+        if not getattr(socket, "_adscan_dns_patched", False):
+            _original_getaddrinfo = socket.getaddrinfo
+            _adscan_overrides = {}
+
+            def _patched_getaddrinfo(host, *args, **kwargs):
+                target = _adscan_overrides.get(host) or _adscan_overrides.get(
+                    host.rstrip(".") if isinstance(host, str) else host
+                )
+                if target:
+                    return _original_getaddrinfo(target, *args, **kwargs)
+                return _original_getaddrinfo(host, *args, **kwargs)
+
+            socket.getaddrinfo = _patched_getaddrinfo
+            socket._adscan_dns_patched = True
+            socket._adscan_dns_overrides = _adscan_overrides
+        socket._adscan_dns_overrides[fqdn] = ip
+        socket._adscan_dns_overrides[fqdn.rstrip(".")] = ip
+
+        self._log.info(
+            "  [krb5] resolved DC FQDN '%s' -> %s; using FQDN for Kerberos SPN",
+            fqdn, ip,
+        )
+        self.dc_host = fqdn
 
     def _probe_dc_requirements(self):
         """Probe the DC to detect whether LDAP signing and/or LDAPS channel
