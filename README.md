@@ -12,7 +12,7 @@ HTML dashboard report with a risk score and letter grade.
 - **Multi-protocol**: LDAP, LDAPS, SMB (user-selectable; defaults to all three)
 - **Flexible auth**: password, pass-the-hash (NTLM `LM:NT` or `NT`), Kerberos ccache, or interactive prompt
 - **40 security checks** covering critical AD attack surfaces across eight categories
-- **BloodHound integration**: automatic AD graph data collection saved to `Reports/Artifacts/`
+- **BloodHound integration**: choose Legacy BloodHound or BloodHound Community Edition at scan time; ZIP saved to `Reports/Artifacts/`
 - **Risk score**: ratio-based scoring per category, overall score maps to letter grade A–F
 - **HTML report**: self-contained, light/dark mode, severity filter chips, collapsible finding cards with remediation guidance
 - **Multiple export formats**: HTML, JSON, CSV, DOCX
@@ -86,7 +86,8 @@ apt install netexec                                               # Kali / Parro
 pipx install git+https://github.com/Pennyw0rth/NetExec           # other systems
 
 uv tool install git+https://github.com/garrettfoster13/pre2k.git  # Pre-Windows 2000 account tester
-uv tool install bloodhound                                        # BloodHound AD ingestor
+uv tool install bloodhound                                        # Legacy BloodHound AD ingestor
+uv tool install bloodhound-ce                                     # BloodHound Community Edition ingestor
 ```
 
 > Tools are **optional**. If a tool is missing when a check runs, ADScan will
@@ -341,20 +342,38 @@ and `roasting` all match relevant checks.
 
 ## BloodHound Integration
 
-When the `bloodhound` tool is installed, ADScan automatically collects a full
-AD graph snapshot during the scan using `bloodhound-python`. The resulting
-ZIP archive is saved to `Reports/Artifacts/` alongside other scan artifacts.
+ADScan collects a full AD graph snapshot at the end of the scan and saves
+the ZIP archive to `Reports/Artifacts/` alongside other scan artifacts.
 
-The collection runs last (after all security checks) and uses the same
-credentials supplied to ADScan. When `--dc-ip` is an IP address, ADScan
-automatically resolves the DC FQDN via a DNS SRV lookup
-(`_ldap._tcp.dc._msdcs.<domain>`) so `bloodhound-python` receives the
-hostname it requires.
+When the BloodHound step starts, ADScan prompts the operator to choose the
+ingestor variant:
+
+```
+  Choose BloodHound engine:
+    [1] Legacy BloodHound              (bloodhound-python)
+    [2] BloodHound Community Edition   (bloodhound-ce-python)
+  Selection [1/2] (default 1):
+```
+
+Pressing Enter (or running in a non-interactive session, e.g. piped output)
+defaults to **Legacy**. Both variants are installed into their own isolated
+virtual environments via `uv tool install`:
+
+| Choice | Tool slug | Package | Command run |
+|--------|-----------|---------|-------------|
+| Legacy | `bloodhound` | `bloodhound` (PyPI) | `bloodhound-python --zip -c All -d <dom> -dc <fqdn> [-ns <ip>] -u <user> -p <pass>` |
+| Community Edition | `bloodhound-ce` | `bloodhound-ce` (PyPI) | `bloodhound-ce-python -u <user> -p <pass> -c All -d <dom> -dc <fqdn> -ns <dns-ip> --use-ldaps --zip` |
+
+The collection uses the same credentials supplied to ADScan. When `--dc-ip`
+is an IP address, ADScan automatically resolves the DC FQDN via a DNS SRV
+lookup (`_ldap._tcp.dc._msdcs.<domain>`) so the ingestor receives the
+hostname it requires. For BloodHound CE, `-ns` is set to the DC IP (or
+resolved from the DC hostname via system DNS).
 
 Import the ZIP into the BloodHound application to visualise attack paths,
 shortest paths to Domain Admin, and Kerberos delegation chains.
 
-To skip BloodHound collection:
+To skip BloodHound collection entirely:
 
 ```bash
 python adscan.py ... --skip bloodhound
@@ -444,7 +463,8 @@ Python virtual environment via `uv tool install`.
 | `certipy` | `certipy` | `certipy-ad` (PyPI) | ADCS / PKI (ESC1–ESC16) |
 | `nxc` | `nxc` | `netexec` — see [install guide](https://www.netexec.wiki/getting-started/installation/installation-on-unix) | SMB signing, SMBv1, NoPac |
 | `pre2k` | `pre2k` | GitHub: `garrettfoster13/pre2k` | Pre-Windows 2000 computer accounts |
-| `bloodhound` | `bloodhound-python` | `bloodhound` (PyPI) | BloodHound data collection |
+| `bloodhound` | `bloodhound-python` | `bloodhound` (PyPI) | Legacy BloodHound data collection |
+| `bloodhound-ce` | `bloodhound-ce-python` | `bloodhound-ce` (PyPI) | BloodHound Community Edition data collection |
 
 Install all tools at once:
 
