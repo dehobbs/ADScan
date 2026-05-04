@@ -29,15 +29,17 @@ from lib.tools import ensure_tool
 
 
 def _build_auth_args(connector):
-    """Build nxc auth args. Returns None when no usable creds are available."""
-    domain   = getattr(connector, "domain", "") or ""
+    """Build nxc auth args matching: -u <user> -p <pass> | -H <hash> | -k.
+
+    Returns None when no usable creds are available.
+    """
     username = getattr(connector, "username", "") or ""
     password = getattr(connector, "password", None)
     nt_hash  = getattr(connector, "nt_hash", None)
     lm_hash  = getattr(connector, "lm_hash", "") or ""
     use_kerb = getattr(connector, "use_kerberos", False)
 
-    args = ["-d", domain, "-u", username]
+    args = ["-u", username]
     if use_kerb:
         # nxc reads KRB5CCNAME via -k for Kerberos authentication
         args += ["-k"]
@@ -50,35 +52,47 @@ def _build_auth_args(connector):
     return args
 
 
-_PRE2K_LINE_RE = re.compile(
-    r"""\bVALID\b      |   # explicit VALID marker
-        \bvulnerable\b |   # 'is vulnerable' / 'pre2k vulnerable'
-        \bSUCCESS\b    |   # 'Login Success'
+# A success/positive marker on an nxc output line. NetExec varies the wording
+# across releases (and across protocol vs. module lines), so accept several:
+#
+#   PRE2K  10.0.0.1  389  DC01    [+] DOMAIN\COMPUTER1$:computer1
+#   PRE2K  10.0.0.1  389  DC01    [+] COMPUTER1$ is vulnerable
+#   PRE2K  10.0.0.1  389  DC01    VALID CREDENTIALS: COMPUTER1$:computer1
+#   PRE2K  10.0.0.1  389  DC01    SUCCESS: COMPUTER1$ - Login Successful
+_SUCCESS_RE = re.compile(
+    r"""\[\+\]              |   # NetExec success marker
+        \bVALID\b           |   # 'VALID CREDENTIALS'
+        \bvulnerable\b      |   # 'is vulnerable'
+        \bSUCCESS\b         |   # 'SUCCESS'
         Login\s+Successful""",
     re.IGNORECASE | re.VERBOSE,
 )
-_ACCOUNT_RE = re.compile(r"([A-Za-z0-9._\-]+\$)")
+_ACCOUNT_RE = re.compile(r"\b([A-Za-z0-9._\-]+\$)")
 
 
 def _parse_nxc_output(combined):
-    """Extract computer account names that nxc reported as vulnerable.
+    """Return the unique list of computer accounts nxc flagged as vulnerable.
 
-    nxc's pre2k module typically emits a line per matching account, e.g.:
-
-        PRE2K  10.0.0.1  389  DC01    [+] DOMAIN\\COMPUTER1$ is vulnerable!
-        LDAP   10.0.0.1  389  DC01    [+] COMPUTER1$:computer1 - VALID
-
-    Different NetExec versions phrase it differently, so we look for any
-    line containing a 'success' marker AND a SAM-style computer name.
+    Looks for any line that has a success marker AND a SAM-style computer
+    account name (`HOSTNAME$`). Skips lines that mention the connecting
+    user (so the bind-success log line doesn't get treated as a finding).
     """
     vulnerable = []
+    seen = set()
     for line in combined.splitlines():
-        if not _PRE2K_LINE_RE.search(line):
+        if not _SUCCESS_RE.search(line):
+            continue
+        # Only count computer accounts on PRE2K module lines, otherwise the
+        # initial LDAP bind success line ("[+] domain\\admin:Password!") would
+        # be picked up and the connecting user reported as vulnerable.
+        if "PRE2K" not in line.upper():
             continue
         for match in _ACCOUNT_RE.finditer(line):
             name = match.group(1)
-            if name not in vulnerable:
-                vulnerable.append(name)
+            if name in seen:
+                continue
+            seen.add(name)
+            vulnerable.append(name)
     return vulnerable
 
 
@@ -193,7 +207,7 @@ def run_check(connector, verbose=False):
             ),
             "details": vulnerable[:100],
             "discovery_command": (
-                f"nxc ldap {dc_host} -d {domain} -u <user> -p <pass> -M pre2k"
+                f"nxc ldap {dc_host} -u <user> -p <pass> -M pre2k"
             ),
         })
 

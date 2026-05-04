@@ -19,8 +19,7 @@ TOOLS = [
             "A successful login confirms the account still has its original predictable password."
         ),
         "code": (
-            "nxc ldap <DC_IP> \\\n"
-            "  -d <domain> \\\n"
+            "nxc ldap <DC_HOST> \\\n"
             "  -u <username> \\\n"
             "  -p <password> \\\n"
             "  -M pre2k"
@@ -87,7 +86,7 @@ REMEDIATION = {
                 "name as the password):"
             ),
             "code": (
-                "nxc ldap <DC_IP> -d <domain> -u <username> -p <password> -M pre2k\n"
+                "nxc ldap <DC_HOST> -u <username> -p <password> -M pre2k\n"
                 "# Review the output — [+] lines are confirmed vulnerable accounts"
             ),
         },
