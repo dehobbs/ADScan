@@ -5,9 +5,12 @@ Compatible Access group membership finding.
 """
 
 MATCH_KEYS = [
-    "pre-windows 2000",
-    "pre windows 2000",
-    "pre-win2k",
+    # Match only the Pre-Windows 2000 Compatible Access *group* findings
+    # produced by check_pre_windows_2000.py. The Pre-Windows 2000 *computer
+    # accounts* findings (from check_pre2k.py) are handled by verify_pre2k.py.
+    "pre-windows 2000 compatible access",
+    "pre windows 2000 compatible access",
+    "pre-win2k compatible access",
 ]
 
 TOOLS = [

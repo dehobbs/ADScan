@@ -5,7 +5,8 @@ pre-Windows 2000 computer accounts with predictable passwords
 """
 
 MATCH_KEYS = [
-    "pre-windows 2000",
+    "pre-windows 2000 computer",   # check_pre2k titles: "Pre-Windows 2000 Computer Accounts ..."
+    "pre-created computer",        # check_pre2k titles: "Pre-Created Computer Accounts ..."
     "pre2k",
 ]
 
