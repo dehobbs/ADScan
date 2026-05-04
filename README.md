@@ -39,11 +39,28 @@ Before installing ADScan, ensure the following are available on your system:
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
+> Note: `--setup-tools` will auto-install `uv` for you on first run if it
+> is not already on PATH, so you can skip this step when using the pipx
+> install path below.
+
 ---
 
 ## Installation
 
-### 1. Clone and install
+### Quick install (recommended)
+
+```bash
+pipx install git+https://github.com/dehobbs/ADScan.git && adscan --setup-tools
+```
+
+The first command installs ADScan and its Python dependencies into an
+isolated pipx venv and puts the `adscan` binary on PATH. The second
+command bootstraps `uv` (if missing) and installs every external CLI tool
+(`certipy-ad`, `netexec`, `bloodhound`, `bloodhound-ce`) into its own
+isolated venv. After this, `adscan -d ... --dc-ip ... -u ...` works
+anywhere.
+
+### Clone-based install (development)
 
 ```bash
 git clone https://github.com/dehobbs/ADScan.git

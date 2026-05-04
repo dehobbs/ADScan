@@ -24,6 +24,7 @@ Pre-install all registered tools at once (used by ``--setup-tools``)::
 from __future__ import annotations
 
 import logging
+import os
 import shutil
 import subprocess  # nosec B404 — required to invoke uv
 from dataclasses import dataclass
@@ -139,8 +140,71 @@ def setup_all_tools() -> dict[str, str | None]:
     """Install every registered tool and return a slug → path mapping.
 
     Used by the ``--setup-tools`` CLI flag for one-shot provisioning.
+    Bootstraps ``uv`` itself first when it is not already on ``PATH``,
+    so a freshly-pipx-installed ADScan can install everything with a
+    single ``adscan --setup-tools`` invocation.
     """
+    _bootstrap_uv()
     return {slug: ensure_tool(slug) for slug in TOOL_REGISTRY}
+
+
+def _bootstrap_uv() -> str | None:
+    """Return the path to ``uv``, running Astral's official installer when
+    it is missing.
+
+    The installer drops ``uv`` into ``~/.local/bin`` (or ``~/.cargo/bin``
+    on some systems); both are added to ``PATH`` for the current process
+    so subsequent ``shutil.which("uv")`` calls succeed without the user
+    having to re-source their shell rc file.
+    """
+    path = shutil.which("uv")
+    if path:
+        return path
+
+    _log.info("  [tools] uv is not on PATH — running the official installer")
+    _log.info("  [tools] (curl -LsSf https://astral.sh/uv/install.sh | sh)")
+    try:
+        result = subprocess.run(
+            ["sh", "-c", "curl -LsSf https://astral.sh/uv/install.sh | sh"],
+            text=True,
+            timeout=300,
+        )  # nosec B602 — single fixed Astral URL, no user input
+    except FileNotFoundError:
+        _log.warning(
+            "  [tools] sh or curl is not available; install uv manually:\n"
+            "          curl -LsSf https://astral.sh/uv/install.sh | sh"
+        )
+        return None
+    except Exception as exc:
+        _log.warning("  [tools] uv installer failed to launch: %s", exc)
+        return None
+
+    if result.returncode != 0:
+        _log.warning(
+            "  [tools] uv installer exited rc=%d — install uv manually",
+            result.returncode,
+        )
+        return None
+
+    # The installer puts uv in ~/.local/bin or ~/.cargo/bin; add both so the
+    # current process picks it up without sourcing a shell rc file.
+    for extra in (
+        os.path.expanduser("~/.local/bin"),
+        os.path.expanduser("~/.cargo/bin"),
+    ):
+        current = os.environ.get("PATH", "")
+        if extra and extra not in current.split(os.pathsep):
+            os.environ["PATH"] = extra + os.pathsep + current
+
+    path = shutil.which("uv")
+    if path:
+        _log.info("  [tools] uv installed -> %s", path)
+    else:
+        _log.warning(
+            "  [tools] uv installer ran but the binary is not on PATH; "
+            "add ~/.local/bin to your shell PATH and re-run --setup-tools",
+        )
+    return path
 
 
 # ---------------------------------------------------------------------------
