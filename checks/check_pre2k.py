@@ -52,48 +52,57 @@ def _build_auth_args(connector):
     return args
 
 
-# A success/positive marker on an nxc output line. NetExec varies the wording
-# across releases (and across protocol vs. module lines), so accept several:
+# Patterns for the two outcomes we care about, both on PRE2K module lines:
 #
-#   PRE2K  10.0.0.1  389  DC01    [+] DOMAIN\COMPUTER1$:computer1
-#   PRE2K  10.0.0.1  389  DC01    [+] COMPUTER1$ is vulnerable
-#   PRE2K  10.0.0.1  389  DC01    VALID CREDENTIALS: COMPUTER1$:computer1
-#   PRE2K  10.0.0.1  389  DC01    SUCCESS: COMPUTER1$ - Login Successful
-_SUCCESS_RE = re.compile(
-    r"""\[\+\]              |   # NetExec success marker
-        \bVALID\b           |   # 'VALID CREDENTIALS'
-        \bvulnerable\b      |   # 'is vulnerable'
-        \bSUCCESS\b         |   # 'SUCCESS'
-        Login\s+Successful""",
-    re.IGNORECASE | re.VERBOSE,
-)
-_ACCOUNT_RE = re.compile(r"\b([A-Za-z0-9._\-]+\$)")
+#   PRE2K  ...  Pre-created computer account: TEST-PC$
+#       -> account has the pre-Windows 2000 flag (PASSWD_NOTREQD) set,
+#          potentially still using the default predictable password.
+#
+#   PRE2K  ...  [+] TEST-PC$ - SUCCESS!  (or 'Login Successful', 'VALID', etc.)
+#       -> NetExec confirmed the account authenticates with its lowercase
+#          name as the password.
+_ACCOUNT_RE       = re.compile(r"\b([A-Za-z0-9._\-]+\$)")
+_PRE_CREATED_RE   = re.compile(r"Pre-created computer account[: ]\s*([A-Za-z0-9._\-]+\$)", re.IGNORECASE)
+_CONFIRMED_TOKENS = ("VALID", "vulnerable", "SUCCESS", "Login Successful", "Pwn3d", "Login Success")
 
 
 def _parse_nxc_output(combined):
-    """Return the unique list of computer accounts nxc flagged as vulnerable.
+    """Return (pre_created_accounts, confirmed_vulnerable_accounts).
 
-    Looks for any line that has a success marker AND a SAM-style computer
-    account name (`HOSTNAME$`). Skips lines that mention the connecting
-    user (so the bind-success log line doesn't get treated as a finding).
+    pre_created: accounts NetExec flagged as having the pre-Windows 2000
+                 PASSWD_NOTREQD bit set (potentially vulnerable).
+    confirmed:   accounts NetExec verified by successfully authenticating
+                 with the predictable lowercase password.
     """
-    vulnerable = []
-    seen = set()
-    for line in combined.splitlines():
-        if not _SUCCESS_RE.search(line):
-            continue
-        # Only count computer accounts on PRE2K module lines, otherwise the
-        # initial LDAP bind success line ("[+] domain\\admin:Password!") would
-        # be picked up and the connecting user reported as vulnerable.
+    pre_created = []
+    confirmed = []
+    pc_seen, cf_seen = set(), set()
+
+    for raw in combined.splitlines():
+        line = raw.rstrip()
         if "PRE2K" not in line.upper():
             continue
-        for match in _ACCOUNT_RE.finditer(line):
-            name = match.group(1)
-            if name in seen:
-                continue
-            seen.add(name)
-            vulnerable.append(name)
-    return vulnerable
+
+        m = _PRE_CREATED_RE.search(line)
+        if m:
+            name = m.group(1)
+            if name not in pc_seen:
+                pc_seen.add(name)
+                pre_created.append(name)
+            continue
+
+        # Confirmed-vulnerable lines: [+] success marker plus a positive token
+        # AND a SAM-style account name. We require BOTH the [+] marker and a
+        # positive keyword so the LDAP bind success line ("[+] domain\\user:pwd")
+        # cannot leak in (it has no PRE2K prefix, but belt-and-braces).
+        if "[+]" in line and any(tok.lower() in line.lower() for tok in _CONFIRMED_TOKENS):
+            for am in _ACCOUNT_RE.finditer(line):
+                name = am.group(1)
+                if name not in cf_seen:
+                    cf_seen.add(name)
+                    confirmed.append(name)
+
+    return pre_created, confirmed
 
 
 def run_check(connector, verbose=False):
@@ -143,7 +152,10 @@ def run_check(connector, verbose=False):
         })
         return findings
 
-    cmd = [nxc_exe, "ldap", dc_host, *auth_args, "-M", "pre2k"]
+    # --kdcHost forces NetExec's pre2k TGT verification to use the supplied
+    # DC instead of resolving the realm name via the system DNS resolver,
+    # which on lab/internal networks can return a stray public IP.
+    cmd = [nxc_exe, "ldap", dc_host, *auth_args, "--kdcHost", dc_host, "-M", "pre2k"]
 
     try:
         result = subprocess.run(
@@ -181,20 +193,28 @@ def run_check(connector, verbose=False):
         )
 
     combined = (result.stdout or "") + (result.stderr or "")
-    vulnerable = _parse_nxc_output(combined)
-    log.debug("  Pre-2k vulnerable accounts : %d", len(vulnerable))
+    pre_created, confirmed = _parse_nxc_output(combined)
+    log.debug(
+        "  Pre-2k pre-created: %d  confirmed-vulnerable: %d",
+        len(pre_created), len(confirmed),
+    )
 
-    if vulnerable:
+    if confirmed:
+        details = [f"{n}  (CONFIRMED — predictable password works)" for n in confirmed]
+        details += [
+            f"{n}  (pre-created; password not verified)"
+            for n in pre_created if n not in confirmed
+        ]
         findings.append({
             "title": "Pre-Windows 2000 Computer Accounts With Predictable Passwords",
             "severity": "high",
             "deduction": 15,
             "description": (
                 "One or more computer accounts were created with the 'Assign this "
-                "computer account as a pre-Windows 2000 computer' option enabled. "
-                "This sets the machine account password to the lowercase version "
-                "of the computer name, which is trivially guessable. An attacker "
-                "can authenticate as these accounts directly to enumerate domain "
+                "computer account as a pre-Windows 2000 computer' option enabled, "
+                "and at least one was confirmed to authenticate using the lowercase "
+                "version of its account name as the password. An attacker can "
+                "authenticate as these accounts directly to enumerate domain "
                 "resources, perform LDAP queries, or chain into further attacks "
                 "without any prior exploitation."
             ),
@@ -205,7 +225,33 @@ def run_check(connector, verbose=False):
                 "delete it. Audit computer account pre-creation procedures to "
                 "ensure the pre-Windows 2000 checkbox is never used going forward."
             ),
-            "details": vulnerable[:100],
+            "details": details[:100],
+            "discovery_command": (
+                f"nxc ldap {dc_host} -u <user> -p <pass> -M pre2k"
+            ),
+        })
+    elif pre_created:
+        findings.append({
+            "title": "Pre-Created Computer Accounts (Pre-Windows 2000 flag set)",
+            "severity": "medium",
+            "deduction": 8,
+            "description": (
+                f"NetExec found {len(pre_created)} computer account(s) with the "
+                "PASSWD_NOTREQD flag set, indicating they were pre-created with "
+                "the 'Assign this computer account as a pre-Windows 2000 computer' "
+                "option. The default password for these accounts is the lowercase "
+                "version of the account name. NetExec could not confirm whether "
+                "the predictable default is still in place (TGT verification "
+                "failed or was skipped) — manual verification recommended."
+            ),
+            "recommendation": (
+                "Verify whether each account still uses its predictable default "
+                "password. If it does, reset the password (Set-ADAccountPassword) "
+                "or re-join the machine to the domain. Disable or delete accounts "
+                "for decommissioned machines. Stop using the pre-Windows 2000 "
+                "compatibility checkbox going forward."
+            ),
+            "details": pre_created[:100],
             "discovery_command": (
                 f"nxc ldap {dc_host} -u <user> -p <pass> -M pre2k"
             ),
