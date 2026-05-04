@@ -6,7 +6,7 @@ A complete reference for the ADScan codebase: architecture, modules, contracts, 
 
 ## 1. Project Overview
 
-**What it is.** ADScan is a modular Active Directory vulnerability scanner. It connects to a domain controller via LDAP/LDAPS/SMB, runs ~40 security checks (LDAP queries + external tools like Certipy, NetExec, BloodHound, pre2k), computes a ratio-based risk score with per-category sub-scores, and produces HTML/JSON/CSV/DOCX reports with manual verification commands and remediation guidance.
+**What it is.** ADScan is a modular Active Directory vulnerability scanner. It connects to a domain controller via LDAP/LDAPS/SMB, runs ~40 security checks (LDAP queries + external tools like Certipy, NetExec, and BloodHound), computes a ratio-based risk score with per-category sub-scores, and produces HTML/JSON/CSV/DOCX reports with manual verification commands and remediation guidance.
 
 **Top-level directory layout.**
 
@@ -130,9 +130,9 @@ Manages LDAP/LDAPS/SMB connections to a DC. Every check module receives a connec
 | Slug | Package | Exe | Purpose |
 |------|---------|-----|---------|
 | `certipy` | `certipy-ad` | `certipy` | ADCS / PKI vulnerability scanner. Falls back to `certipy-ad` exe name on Kali. |
-| `nxc` | `netexec` | `nxc` | SMB signing / SMBv1 / NoPac / ADCS detection. |
-| `pre2k` | `git+https://github.com/garrettfoster13/pre2k.git` | `pre2k` | Pre-Windows 2000 password tester. |
-| `bloodhound` | `bloodhound` | `bloodhound-python` | BloodHound AD ingestor for graph analysis. |
+| `nxc` | `netexec` | `nxc` | SMB signing / SMBv1 / NoPac / ADCS / Pre-2k detection. |
+| `bloodhound` | `bloodhound` | `bloodhound-python` | Legacy BloodHound AD ingestor for graph analysis. |
+| `bloodhound-ce` | `bloodhound-ce` | `bloodhound-ce-python` | BloodHound Community Edition ingestor. |
 
 **Public API:**
 
@@ -447,7 +447,7 @@ Ordered by `CHECK_ORDER`. Each entry: name • category • weight • method �
 
 #### `check_pre2k.py` — Pre-Windows 2000 Computer Passwords
 - **Category:** Account Hygiene • **Order:** 24 • **Weight:** 15
-- **Method:** Invokes the `pre2k` tool which tries `password = sAMAccountName.lower()` (the legacy default).
+- **Method:** Runs `nxc ldap <dc> -M pre2k`. The NetExec module enumerates computer accounts and tries `password = sAMAccountName.lower()` (the legacy default).
 - **Findings:** High severity for vulnerable accounts.
 
 #### `check_optional_features.py` — AD Recycle Bin / PAM
@@ -643,7 +643,7 @@ Grouped by topic. Each entry: keys → primary tool(s) → core remediation.
 | `verify_unlinked_gpo` | `unlinked group policy` | XML report `<LinksTo>` parsing |
 | `verify_gpp` | `gpp` | nxc gpp_password module, SYSVOL grep cpassword |
 | `verify_laps` | `laps` | nxc LAPS module, ms-Mcs-AdmPwd, LAPSDumper |
-| `verify_pre2k` | `pre-windows 2000`, `pre2k` | pre2k tool, PASSWD_NOTREQD bit check |
+| `verify_pre2k` | `pre-windows 2000`, `pre2k` | nxc pre2k module, PASSWD_NOTREQD bit check |
 | `verify_pre_windows_2000` | `pre-windows 2000`, `pre windows 2000`, `pre-win2k` | Get-ADGroupMember, nxc anonymous LDAP |
 | `verify_deprecated_os` | `deprecated`, `end-of-life`, `windows xp/7/2003/2008`, `eol operating system` | Computer OS enumeration, nxc --gen-relay-list |
 | `verify_duplicate_spn` | `duplicate service principal names`, `duplicate spn` | setspn -X -F, PS SPN grouping |

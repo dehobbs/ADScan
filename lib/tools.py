@@ -67,11 +67,6 @@ TOOL_REGISTRY: dict[str, ToolSpec] = {
         exe="nxc",
         description="Network enumeration tool (SMB signing, SMBv1)",
     ),
-    "pre2k": ToolSpec(
-        package="git+https://github.com/garrettfoster13/pre2k.git",
-        exe="pre2k",
-        description="Pre-Windows 2000 computer account password tester",
-    ),
     "bloodhound": ToolSpec(
         package="bloodhound",
         exe="bloodhound-python",

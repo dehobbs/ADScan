@@ -28,7 +28,6 @@ Before installing ADScan, ensure the following are available on your system:
 | Prerequisite | Version | Purpose |
 |-------------|---------|---------|
 | Python | 3.10+ | Core runtime |
-| Git | any | Required to install pre2k from GitHub |
 | [uv](https://docs.astral.sh/uv/) | any | Installs external CLI tools into isolated venvs |
 
 > **Certipy** (ADCS checks) requires **Python 3.12+** in its own isolated venv. uv
@@ -85,7 +84,6 @@ apt install netexec                                               # Kali / Parro
 # or:
 pipx install git+https://github.com/Pennyw0rth/NetExec           # other systems
 
-uv tool install git+https://github.com/garrettfoster13/pre2k.git  # Pre-Windows 2000 account tester
 uv tool install bloodhound                                        # Legacy BloodHound AD ingestor
 uv tool install bloodhound-ce                                     # BloodHound Community Edition ingestor
 ```
@@ -461,8 +459,7 @@ Python virtual environment via `uv tool install`.
 | Slug | Command | Package | Checks That Use It |
 |------|---------|---------|-------------------|
 | `certipy` | `certipy` | `certipy-ad` (PyPI) | ADCS / PKI (ESC1–ESC16) |
-| `nxc` | `nxc` | `netexec` — see [install guide](https://www.netexec.wiki/getting-started/installation/installation-on-unix) | SMB signing, SMBv1, NoPac |
-| `pre2k` | `pre2k` | GitHub: `garrettfoster13/pre2k` | Pre-Windows 2000 computer accounts |
+| `nxc` | `nxc` | `netexec` — see [install guide](https://www.netexec.wiki/getting-started/installation/installation-on-unix) | SMB signing, SMBv1, NoPac, Pre-Windows 2000 |
 | `bloodhound` | `bloodhound-python` | `bloodhound` (PyPI) | Legacy BloodHound data collection |
 | `bloodhound-ce` | `bloodhound-ce-python` | `bloodhound-ce` (PyPI) | BloodHound Community Edition data collection |
 

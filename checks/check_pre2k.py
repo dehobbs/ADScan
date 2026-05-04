@@ -7,9 +7,11 @@ enabled, the password is set to the lowercase version of the sAMAccountName
 (minus the trailing '$'). These predictable credentials can be used directly
 for authentication and lateral movement without any prior exploitation.
 
-Uses the pre2k tool (https://github.com/garrettfoster13/pre2k) to
-enumerate computer objects and test whether their password matches the
-pre-Windows 2000 default (account name in lowercase).
+Uses NetExec's pre2k LDAP module to enumerate computer objects and test
+whether their password matches the pre-Windows 2000 default (account name
+in lowercase).
+
+    nxc ldap <dc-ip> -u <user> -p <pass> -M pre2k
 
 Risk Criteria:
   - Any computer account with a predictable pre-2k password -> high (-15 pts)
@@ -20,63 +22,63 @@ CHECK_ORDER    = 24
 CHECK_CATEGORY = ["Account Hygiene"]
 CHECK_WEIGHT   = 15
 
-import os
+import re
 import subprocess
 
 from lib.tools import ensure_tool
 
-_PRE2K_INSTALL = (
-    "Install pre2k with: "
-    "uv tool install git+https://github.com/garrettfoster13/pre2k.git  "
-    "or run: python adscan.py --setup-tools"
-)
-
 
 def _build_auth_args(connector):
-    username = getattr(connector, "username", None) or ""
+    """Build nxc auth args. Returns None when no usable creds are available."""
+    domain   = getattr(connector, "domain", "") or ""
+    username = getattr(connector, "username", "") or ""
     password = getattr(connector, "password", None)
     nt_hash  = getattr(connector, "nt_hash", None)
     lm_hash  = getattr(connector, "lm_hash", "") or ""
     use_kerb = getattr(connector, "use_kerberos", False)
 
-    args = ["-u", username]
+    args = ["-d", domain, "-u", username]
     if use_kerb:
-        # pre2k uses Impacket-style flags: -k tells it to use the ccache
-        # pointed at by KRB5CCNAME, and -no-pass tells it not to prompt.
-        args += ["-k", "-no-pass"]
+        # nxc reads KRB5CCNAME via -k for Kerberos authentication
+        args += ["-k"]
     elif nt_hash:
         args += ["-H", f"{lm_hash}:{nt_hash}" if lm_hash else nt_hash]
-    elif password:
+    elif password is not None:
         args += ["-p", password]
     else:
-        # Empty password makes pre2k hang trying to bind — bail out before
-        # the subprocess starts. The caller emits an info finding.
-        args = None
+        return None
     return args
 
 
-def _parse_pre2k_output(log_path):
-    """Parse pre2k output file for successful logins.
+_PRE2K_LINE_RE = re.compile(
+    r"""\bVALID\b      |   # explicit VALID marker
+        \bvulnerable\b |   # 'is vulnerable' / 'pre2k vulnerable'
+        \bSUCCESS\b    |   # 'Login Success'
+        Login\s+Successful""",
+    re.IGNORECASE | re.VERBOSE,
+)
+_ACCOUNT_RE = re.compile(r"([A-Za-z0-9._\-]+\$)")
 
-    pre2k marks successful authentications with a '[+]' prefix:
-        [+] COMPUTER$ - Login Successful!
-    Returns a list of account names (sAMAccountName with '$') that
-    authenticated with their predictable pre-2k password.
+
+def _parse_nxc_output(combined):
+    """Extract computer account names that nxc reported as vulnerable.
+
+    nxc's pre2k module typically emits a line per matching account, e.g.:
+
+        PRE2K  10.0.0.1  389  DC01    [+] DOMAIN\\COMPUTER1$ is vulnerable!
+        LDAP   10.0.0.1  389  DC01    [+] COMPUTER1$:computer1 - VALID
+
+    Different NetExec versions phrase it differently, so we look for any
+    line containing a 'success' marker AND a SAM-style computer name.
     """
     vulnerable = []
-    try:
-        with open(log_path, encoding="utf-8", errors="replace") as fh:
-            for line in fh:
-                stripped = line.strip()
-                if not stripped.startswith("[+]"):
-                    continue
-                # Extract account name — first token after '[+]'
-                parts = stripped.split()
-                if len(parts) >= 2:
-                    account = parts[1].rstrip(":")
-                    vulnerable.append(account)
-    except OSError:
-        pass
+    for line in combined.splitlines():
+        if not _PRE2K_LINE_RE.search(line):
+            continue
+        for match in _ACCOUNT_RE.finditer(line):
+            name = match.group(1)
+            if name not in vulnerable:
+                vulnerable.append(name)
     return vulnerable
 
 
@@ -84,19 +86,21 @@ def run_check(connector, verbose=False):
     findings = []
     log      = connector.log
 
-    pre2k_exe = ensure_tool("pre2k")
-    if pre2k_exe is None:
+    nxc_exe = ensure_tool("nxc")
+    if nxc_exe is None:
         findings.append({
-            "title": "Pre-Windows 2000 Computer Accounts — pre2k Not Found",
+            "title": "Pre-Windows 2000 Computer Accounts — NetExec Not Found",
             "severity": "info",
             "deduction": 0,
             "description": (
-                "The pre2k tool is required for this check but was not found on PATH. "
-                "pre2k tests whether computer accounts were created with the "
-                "'Assign this computer account as a pre-Windows 2000 computer' option, "
-                "which sets a predictable password equal to the account name in lowercase."
+                "NetExec (nxc) is required for this check but was not found on PATH. "
+                "nxc's pre2k module enumerates computer accounts and tests whether "
+                "they have predictable pre-Windows 2000 passwords."
             ),
-            "recommendation": _PRE2K_INSTALL,
+            "recommendation": (
+                "Install NetExec: uv tool install netexec  "
+                "(or run: python adscan.py --setup-tools)"
+            ),
             "details": [],
         })
         return findings
@@ -114,9 +118,8 @@ def run_check(connector, verbose=False):
             "severity": "info",
             "deduction": 0,
             "description": (
-                "pre2k requires a password, NTLM hash, or Kerberos ccache to bind "
-                "to the DC for the LDAP enumeration phase. None were provided to "
-                "ADScan, so this check was skipped to avoid hanging."
+                "nxc requires a password, NTLM hash, or Kerberos ccache to bind "
+                "to the DC. None were provided to ADScan, so this check was skipped."
             ),
             "recommendation": (
                 "Re-scan with -p <password>, --hash <NT>, or --kerberos (with "
@@ -126,28 +129,20 @@ def run_check(connector, verbose=False):
         })
         return findings
 
-    artifacts_dir = getattr(connector, "artifacts_dir", None) or "."
-    log_path = os.path.join(artifacts_dir, "pre2k.log")
-
-    cmd = [
-        pre2k_exe, "auth",
-        *auth_args,
-        "-dc-ip", dc_host,
-        "-d", domain,
-        "-outputfile", log_path,
-    ]
+    cmd = [nxc_exe, "ldap", dc_host, *auth_args, "-M", "pre2k"]
 
     try:
-        subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-        # nosec B603 — command is a validated list, no shell interpolation
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=180,
+        )  # nosec B603 — validated list, no shell interpolation
     except subprocess.TimeoutExpired:
         findings.append({
             "title": "Pre-Windows 2000 Computer Accounts — Query Timed Out",
             "severity": "info",
             "deduction": 0,
-            "description": "The pre2k command timed out after 120 seconds.",
-            "recommendation": "Check network connectivity to the domain controller.",
-            "details": [],
+            "description": "nxc ldap -M pre2k did not complete within 180 seconds.",
+            "recommendation": "Check network connectivity to the domain controller and retry.",
+            "details": [f"DC: {dc_host}"],
         })
         return findings
     except Exception as exc:
@@ -155,13 +150,24 @@ def run_check(connector, verbose=False):
             "title": "Pre-Windows 2000 Computer Accounts — Query Failed",
             "severity": "info",
             "deduction": 0,
-            "description": f"pre2k raised an exception: {exc}",
-            "recommendation": "Check that pre2k is installed correctly and credentials are valid.",
+            "description": f"nxc raised an exception: {exc}",
+            "recommendation": "Check that nxc is installed and credentials are valid.",
             "details": [],
         })
         return findings
 
-    vulnerable = _parse_pre2k_output(log_path)
+    # Log the subprocess invocation (with credential redaction) to the debug log
+    dbg = getattr(connector, "debug_log", None)
+    if dbg:
+        dbg.log_subprocess(
+            cmd=cmd,
+            returncode=result.returncode,
+            stdout=result.stdout,
+            stderr=result.stderr,
+        )
+
+    combined = (result.stdout or "") + (result.stderr or "")
+    vulnerable = _parse_nxc_output(combined)
     log.debug("  Pre-2k vulnerable accounts : %d", len(vulnerable))
 
     if vulnerable:
@@ -170,22 +176,25 @@ def run_check(connector, verbose=False):
             "severity": "high",
             "deduction": 15,
             "description": (
-                "One or more computer accounts were created with the 'Assign this computer "
-                "account as a pre-Windows 2000 computer' option enabled. This sets the "
-                "machine account password to the lowercase version of the computer name, "
-                "which is trivially guessable. An attacker can authenticate as these "
-                "accounts directly to enumerate domain resources, perform LDAP queries, "
-                "or chain into further attacks without any prior exploitation."
+                "One or more computer accounts were created with the 'Assign this "
+                "computer account as a pre-Windows 2000 computer' option enabled. "
+                "This sets the machine account password to the lowercase version "
+                "of the computer name, which is trivially guessable. An attacker "
+                "can authenticate as these accounts directly to enumerate domain "
+                "resources, perform LDAP queries, or chain into further attacks "
+                "without any prior exploitation."
             ),
             "recommendation": (
                 "Reset the password on each affected computer account using "
-                "'Set-ADAccountPassword' or by re-joining the machine to the domain. "
-                "If the account belongs to a decommissioned machine, disable or delete it. "
-                "Audit computer account pre-creation procedures to ensure the pre-Windows "
-                "2000 checkbox is never checked going forward."
+                "Set-ADAccountPassword or by re-joining the machine to the domain. "
+                "If the account belongs to a decommissioned machine, disable or "
+                "delete it. Audit computer account pre-creation procedures to "
+                "ensure the pre-Windows 2000 checkbox is never used going forward."
             ),
             "details": vulnerable[:100],
-            "raw_output": f"Artifact saved to: {log_path}",
+            "discovery_command": (
+                f"nxc ldap {dc_host} -d {domain} -u <user> -p <pass> -M pre2k"
+            ),
         })
 
     return findings

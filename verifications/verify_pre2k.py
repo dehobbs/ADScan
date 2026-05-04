@@ -11,7 +11,7 @@ MATCH_KEYS = [
 
 TOOLS = [
     {
-        "tool": "pre2k",
+        "tool": "NetExec — pre2k module",
         "icon": "netexec",
         "desc": (
             "Enumerate all computer accounts and attempt authentication using the "
@@ -19,18 +19,18 @@ TOOLS = [
             "A successful login confirms the account still has its original predictable password."
         ),
         "code": (
-            "pre2k auth \\\n"
+            "nxc ldap <DC_IP> \\\n"
+            "  -d <domain> \\\n"
             "  -u <username> \\\n"
             "  -p <password> \\\n"
-            "  -dc-ip <DC_IP> \\\n"
-            "  -d <domain> \\\n"
-            "  -outputfile pre2k.log"
+            "  -M pre2k"
         ),
         "confirm": (
-            "Lines prefixed with <strong>[+]</strong> indicate computer accounts that "
-            "authenticated successfully using their lowercase account name as the password. "
-            "For example, a computer named <code>WORKSTATION01$</code> would be tested with "
-            "the password <code>workstation01</code>. Any <strong>[+]</strong> result is a confirmed vulnerable account."
+            "Lines from the <code>PRE2K</code> module marked <strong>[+]</strong> "
+            "indicate computer accounts that authenticated successfully using their "
+            "lowercase account name as the password. For example, a computer named "
+            "<code>WORKSTATION01$</code> is tested with the password "
+            "<code>workstation01</code>. Each [+] result is a confirmed vulnerable account."
         ),
     },
     {
@@ -52,8 +52,8 @@ TOOLS = [
         "confirm": (
             "Each computer returned has the <strong>PASSWD_NOTREQD</strong> flag set, "
             "meaning it was likely created with the pre-Windows 2000 compatibility option. "
-            "Cross-reference this list with pre2k output to confirm which accounts "
-            "still have the predictable default password in place."
+            "Cross-reference this list with the NetExec pre2k module output "
+            "to confirm which accounts still have the predictable default password in place."
         ),
     },
     {
@@ -82,13 +82,13 @@ REMEDIATION = {
     "steps": [
         {
             "text": (
-                "Run pre2k to produce a full list of accounts that are confirmed vulnerable "
-                "(those that authenticate with their lowercase name as the password):"
+                "Use NetExec's pre2k module to produce a full list of accounts that "
+                "are confirmed vulnerable (those that authenticate with their lowercase "
+                "name as the password):"
             ),
             "code": (
-                "pre2k auth -u <username> -p <password> -dc-ip <DC_IP> -d <domain> "
-                "-outputfile pre2k.log\n"
-                "# Review pre2k.log — [+] lines are confirmed vulnerable accounts"
+                "nxc ldap <DC_IP> -d <domain> -u <username> -p <password> -M pre2k\n"
+                "# Review the output — [+] lines are confirmed vulnerable accounts"
             ),
         },
         {
@@ -152,8 +152,8 @@ REMEDIATION = {
 
 REFERENCES = [
     {
-        "title": "pre2k — Pre-Windows 2000 Computer Account Tester (garrettfoster13)",
-        "url": "https://github.com/garrettfoster13/pre2k",
+        "title": "NetExec — pre2k LDAP Module",
+        "url": "https://www.netexec.wiki/ldap-protocol/pre2k",
         "tag": "tool",
     },
     {
