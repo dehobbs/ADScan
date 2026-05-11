@@ -585,20 +585,25 @@ def main():
     findings   = []
     checks_run = []  # metadata for every check that executes (clean or not)
 
+    import time as _time
     for check in checks:
         log.info("")
         log.info("[*] Running: %s", check.CHECK_NAME)
 
         # Mark the check boundary in the debug log
         dbg.log_check_start(check.CHECK_NAME)
+        _check_t0 = _time.monotonic()
         try:
             with spinner(check.CHECK_NAME, enabled=not args.verbose) as sp:
                 connector.spinner = sp
                 result = check.run_check(connector, verbose=args.verbose)
             connector.spinner = None
+            _check_elapsed = _time.monotonic() - _check_t0
 
             # Record end of check in debug log
             dbg.log_check_end(check.CHECK_NAME, result)
+            if _check_elapsed >= 5:
+                log.info("    (took %.1fs)", _check_elapsed)
 
             # Record this check for scoring purposes regardless of outcome
             checks_run.append({

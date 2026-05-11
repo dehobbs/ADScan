@@ -32,10 +32,14 @@ def run_check(connector, verbose=False):
 
     config_dn = "CN=Configuration," + connector.base_dn
 
-    # 1. Wildcard DNS records
+    # 1. Wildcard DNS records.
+    # LDAP filter syntax requires the literal asterisk to be escaped as \2A.
+    # `(dc=*)` (unescaped) means "any node with a dc attribute" — i.e. every
+    # DNS record in the zone — which stalls on large zones. `(dc=\2A)` matches
+    # only records whose dc value is the literal "*" — the wildcards we want.
     dns_base = f"DC=DomainDnsZones,{connector.base_dn}"
     wildcard_records = connector.ldap_search(
-        search_filter="(&(objectClass=dnsNode)(dc=*))",
+        search_filter="(&(objectClass=dnsNode)(dc=\\2A))",
         attributes=["dc", "distinguishedName"],
         search_base=dns_base,
     ) or []

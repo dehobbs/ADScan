@@ -569,7 +569,10 @@ class ADConnector:
                 get_info=ALL, connect_timeout=max(5, self.timeout // 3),
             )
             # Anonymous simple bind — DC will reject with result 8 if signing required
-            probe = Connection(srv, authentication=SIMPLE, auto_bind=False)
+            probe = Connection(
+                srv, authentication=SIMPLE, auto_bind=False,
+                receive_timeout=self.timeout,
+            )
             probe.open()
             probe.bind()
             result["ldap_available"] = True
@@ -608,6 +611,7 @@ class ADConnector:
             probe = Connection(
                 srv, user=user, password=pwd,
                 authentication=NTLM, auto_bind=False,
+                receive_timeout=self.timeout,
             )
             probe.open()
             probe.bind()
@@ -673,6 +677,7 @@ class ADConnector:
                     authentication=SASL,
                     sasl_mechanism=GSSAPI,
                     auto_bind=False,
+                    receive_timeout=self.timeout,
                 )
                 conn.open()
                 conn.bind()
@@ -684,6 +689,7 @@ class ADConnector:
                     password=pwd,
                     authentication=NTLM,
                     auto_bind=False,
+                    receive_timeout=self.timeout,
                 )
                 # When plain LDAP signing is enforced, ldap3.ENCRYPT (sign+seal) satisfies
                 # the Windows "require integrity" policy (LDAP_SERVER_REQUIRE_SIGNING).
