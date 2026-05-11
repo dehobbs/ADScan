@@ -170,19 +170,21 @@ def run_check(connector, verbose=False):
 
     domain  = getattr(connector, "domain", None)
     dc_host = getattr(connector, "dc_host", None)
+    dns_override = getattr(connector, "dns_server", None)
     if not domain or not dc_host:
         log.warning("  [WARN] No domain or DC host configured — skipping BloodHound collection.")
         return findings
 
     # Both ingestors require an FQDN for -dc. When dc_host is an IP, do an
-    # SRV lookup against the DC to get the FQDN.
+    # SRV lookup against the DC (or the operator's --dns-server) to get the FQDN.
     dc_fqdn = dc_host
     if _is_ip(dc_host):
+        ns_for_srv = dns_override or dc_host
         log.info("  [*] dc_host is an IP — resolving DC FQDN via SRV lookup...")
-        fqdn = _resolve_dc_fqdn(domain, dc_host, log)
+        fqdn = _resolve_dc_fqdn(domain, ns_for_srv, log)
         if fqdn:
             dc_fqdn = fqdn
-            log.info("  [*] Using DC FQDN: %s  (nameserver: %s)", dc_fqdn, dc_host)
+            log.info("  [*] Using DC FQDN: %s  (nameserver: %s)", dc_fqdn, ns_for_srv)
         else:
             log.warning(
                 "  [WARN] Could not resolve DC FQDN for %s — collection may fail.",
@@ -194,7 +196,8 @@ def run_check(connector, verbose=False):
 
     # Build engine-specific command
     if engine == "ce":
-        ns_ip = _resolve_dns_ip(dc_host, log)
+        # Prefer the operator-supplied DNS server when --dns-server was passed.
+        ns_ip = dns_override or _resolve_dns_ip(dc_host, log)
         if not ns_ip:
             findings.append({
                 "title": "BloodHound CE Data Collection — Could Not Resolve DNS Server IP",
@@ -204,7 +207,7 @@ def run_check(connector, verbose=False):
                     f"BloodHound CE requires a DNS server IP for the -ns flag, but "
                     f"could not resolve one from dc_host '{dc_host}'."
                 ),
-                "recommendation": "Provide --dc-ip as an IP address (or ensure local DNS resolves it).",
+                "recommendation": "Provide --dns-server <ip> or pass an IP for --dc-ip.",
                 "details": [],
             })
             return findings
@@ -219,7 +222,14 @@ def run_check(connector, verbose=False):
             "--zip",
         ]
     else:
-        ns_args = ["-ns", dc_host] if _is_ip(dc_host) and dc_fqdn != dc_host else []
+        # Legacy bloodhound-python: pass -ns when we have an explicit resolver
+        # (operator override) OR when dc_host was an IP we resolved.
+        if dns_override:
+            ns_args = ["-ns", dns_override]
+        elif _is_ip(dc_host) and dc_fqdn != dc_host:
+            ns_args = ["-ns", dc_host]
+        else:
+            ns_args = []
         cmd = [
             bh_exe,
             "--zip",

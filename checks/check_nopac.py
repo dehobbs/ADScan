@@ -98,6 +98,9 @@ def _scan_dc(nxc_exe, auth_args, dc_ip, log):
     Returns True if vulnerable, False if clean, None on error/inconclusive.
     """
     cmd = [nxc_exe, "smb", dc_ip] + auth_args + ["-M", "nopac"]
+    _dns_server = getattr(connector, "dns_server", None)
+    if _dns_server:
+        cmd += ["--dns-server", _dns_server]
     try:
         result = subprocess.run(
             cmd, capture_output=True, text=True, timeout=60

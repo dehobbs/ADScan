@@ -190,6 +190,18 @@ def parse_args():
         default="all",
         help="Connection protocol(s) to use (default: all)",
     )
+    target_group.add_argument(
+        "-ns", "--dns-server",
+        dest="dns_server",
+        default=None,
+        metavar="IP",
+        help=(
+            "Override the resolver used for every DNS lookup ADScan triggers\n"
+            "(in-process ldap3/impacket calls plus external tools like\n"
+            "nxc / certipy / bloodhound). Typically the DC's IP. Use when\n"
+            "the operator host cannot resolve the AD domain via system DNS."
+        ),
+    )
 
     auth_group = parser.add_argument_group("Authentication")
     auth_group.add_argument("-u", "--username", required=False, help="Username for authentication")
@@ -383,6 +395,17 @@ def main():
         print(f"adscan.py: error: the following arguments are required: {', '.join(missing)}", file=_sys.stderr)
         _sys.exit(2)
 
+    if args.dns_server:
+        import ipaddress as _ip
+        try:
+            _ip.ip_address(args.dns_server)
+        except ValueError:
+            print(
+                f"adscan.py: error: --dns-server expects an IP address, got: {args.dns_server}",
+                file=sys.stderr,
+            )
+            sys.exit(2)
+
 
     # --ccache implies --kerberos even if the flag was not set explicitly
     if args.ccache and not args.kerberos:
@@ -446,6 +469,8 @@ def main():
     if ccache_source:
         log.info("[*] ccache        : %s", ccache_source)
     log.info("[*] Protocol(s)   : %s", ", ".join(p.upper() for p in protocols))
+    if args.dns_server:
+        log.info("[*] DNS server    : %s", args.dns_server)
     log.info("[*] Output Stem   : %s.*", output_stem)
     log.info("[*] Format(s)     : %s", args.format)
     log.info("[*] Artifacts Dir : %s", ARTIFACTS_DIR)
@@ -481,6 +506,7 @@ def main():
         protocols=protocols,
         verbose=args.verbose,
         timeout=args.timeout,
+        dns_server=args.dns_server,
     )
 
     # Attach scan metadata so individual checks can use consistent naming

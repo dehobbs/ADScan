@@ -147,7 +147,17 @@ python adscan.py -d corp.local --dc-ip 10.10.10.5 -u alice -p 'P@ssw0rd!' --form
 
 # Run only Kerberos-related checks
 python adscan.py -d corp.local --dc-ip 10.10.10.5 -u alice -p 'P@ssw0rd!' --checks kerberos
+
+# Override DNS resolver (handy when the operator host can't resolve the AD domain)
+python adscan.py -d corp.local --dc-ip 10.10.10.5 -u alice -p 'P@ss' --dns-server 10.10.10.5
 ```
+
+> The `--dns-server <IP>` flag (alias `-ns`) routes every DNS lookup ADScan
+> triggers through the supplied resolver: in-process `ldap3`/`impacket`
+> hostname binds, SRV lookups for the DC FQDN, and the equivalent flag is
+> forwarded to every external tool ADScan runs (`nxc`, `certipy-ad`,
+> `bloodhound-python`, `bloodhound-ce-python`). Typical value: the DC's
+> own IP.
 
 ---
 

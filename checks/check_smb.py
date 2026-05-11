@@ -244,6 +244,9 @@ def run_check(connector, verbose=False):
     # ----------------------------------------------------------------------
     smb_auth = _build_nxc_smb_auth_args(connector)
     smb_cmd  = [nxc_exe, "smb", targets_file] + smb_auth
+    _dns_server = getattr(connector, "dns_server", None)
+    if _dns_server:
+        smb_cmd += ["--dns-server", _dns_server]
 
     log.debug(" [SMB] Phase 2: sweeping %d host(s) for signing and SMBv1 ...", len(targets))
     # Redact password before logging the command

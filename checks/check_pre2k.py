@@ -156,6 +156,9 @@ def run_check(connector, verbose=False):
     # DC instead of resolving the realm name via the system DNS resolver,
     # which on lab/internal networks can return a stray public IP.
     cmd = [nxc_exe, "ldap", dc_host, *auth_args, "--kdcHost", dc_host, "-M", "pre2k"]
+    _dns_server = getattr(connector, "dns_server", None)
+    if _dns_server:
+        cmd += ["--dns-server", _dns_server]
 
     try:
         result = subprocess.run(

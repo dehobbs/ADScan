@@ -138,6 +138,9 @@ def run_check(connector, verbose=False):
         "--query", "(objectClass=computer)",
         "sAMAccountName pwdLastSet",
     ]
+    _dns_server = getattr(connector, "dns_server", None)
+    if _dns_server:
+        cmd += ["--dns-server", _dns_server]
 
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)

@@ -43,6 +43,31 @@ def _safe_unlink(path):
         pass
 
 
+def _resolve_via(nameserver, host, log):
+    """Look up an A record for *host* against the explicit *nameserver*.
+    Returns the first IP found or None. Module-level helper so the
+    getaddrinfo monkey-patch closure stays cheap."""
+    try:
+        import dns.resolver  # type: ignore
+    except ImportError:
+        return None
+    try:
+        resolver = dns.resolver.Resolver(configure=False)
+        resolver.nameservers = [nameserver]
+        resolver.timeout = 3
+        resolver.lifetime = 5
+        answers = resolver.resolve(host, "A")
+        for rdata in answers:
+            return str(rdata)
+    except Exception as exc:
+        try:
+            log.debug("  [dns] %s -> %s lookup via %s failed: %s",
+                      host, "A", nameserver, exc)
+        except Exception:
+            pass
+    return None
+
+
 def _entry_to_dict(entry):
     """Convert an ldap3 Entry object to a plain dict with .get() support."""
     try:
@@ -86,6 +111,7 @@ class ADConnector:
         protocols=None,
         verbose=False,
         timeout=30,
+        dns_server=None,
     ):
         self.domain = domain
         self.dc_host = dc_host
@@ -97,6 +123,7 @@ class ADConnector:
         self.protocols = protocols or ["ldap", "ldaps", "smb"]
         self.verbose = verbose
         self.timeout = timeout
+        self.dns_server = dns_server
 
         self.ldap_conn = None
         self.smb_conn = None
@@ -126,6 +153,16 @@ class ADConnector:
         # If the system krb5.conf is missing or has no default_realm, we
         # synthesize one from the connector's domain + dc_host.
         self._ensure_krb5_config()
+
+        # Install the socket.getaddrinfo monkey-patch when the operator
+        # passed --dns-server so ldap3 / impacket route hostname lookups
+        # through dnspython against the chosen resolver. Idempotent.
+        if self.dns_server:
+            self._install_dns_resolver()
+            self._log.info(
+                "  [dns] routing in-process hostname lookups through %s",
+                self.dns_server,
+            )
 
         # When using Kerberos, the SPN must be built from the DC FQDN
         # (e.g. ldap/dc1.adlab.org), not an IP. If --dc-ip was an IP,
@@ -396,17 +433,19 @@ class ADConnector:
             return False
 
     def _resolve_dc_fqdn_via_srv(self):
-        """SRV-lookup the DC FQDN using self.dc_host as the nameserver.
-        Returns the first FQDN found, or None on failure."""
+        """SRV-lookup the DC FQDN. Uses self.dns_server if set, otherwise
+        self.dc_host, as the nameserver. Returns the first FQDN found, or
+        None on failure."""
         try:
             import dns.resolver  # type: ignore
         except ImportError:
-            self._log.debug("  [krb5] dnspython not installed; cannot resolve DC FQDN")
+            self._log.debug("  [dns] dnspython not installed; cannot resolve DC FQDN")
             return None
         srv_name = f"_ldap._tcp.dc._msdcs.{self.domain}"
+        nameserver = self.dns_server or self.dc_host
         try:
             resolver = dns.resolver.Resolver(configure=False)
-            resolver.nameservers = [self.dc_host]
+            resolver.nameservers = [nameserver]
             resolver.timeout = 5
             resolver.lifetime = 10
             answers = resolver.resolve(srv_name, "SRV")
@@ -415,7 +454,7 @@ class ADConnector:
                 if fqdn:
                     return fqdn
         except Exception as exc:
-            self._log.debug("  [krb5] SRV lookup failed for %s: %s", srv_name, exc)
+            self._log.debug("  [dns] SRV lookup failed for %s: %s", srv_name, exc)
         return None
 
     def _ensure_kerberos_target(self):
@@ -440,22 +479,7 @@ class ADConnector:
             )
             return
 
-        # Patch DNS so the FQDN routes to the IP we already know.
-        if not getattr(socket, "_adscan_dns_patched", False):
-            _original_getaddrinfo = socket.getaddrinfo
-            _adscan_overrides = {}
-
-            def _patched_getaddrinfo(host, *args, **kwargs):
-                target = _adscan_overrides.get(host) or _adscan_overrides.get(
-                    host.rstrip(".") if isinstance(host, str) else host
-                )
-                if target:
-                    return _original_getaddrinfo(target, *args, **kwargs)
-                return _original_getaddrinfo(host, *args, **kwargs)
-
-            socket.getaddrinfo = _patched_getaddrinfo
-            socket._adscan_dns_patched = True
-            socket._adscan_dns_overrides = _adscan_overrides
+        self._install_dns_resolver()
         socket._adscan_dns_overrides[fqdn] = ip
         socket._adscan_dns_overrides[fqdn.rstrip(".")] = ip
 
@@ -464,6 +488,46 @@ class ADConnector:
             fqdn, ip,
         )
         self.dc_host = fqdn
+
+    def _install_dns_resolver(self):
+        """Install the socket.getaddrinfo monkey-patch (idempotent).
+
+        Resolution order inside the patched function:
+          1. The explicit override dict (Kerberos FQDN -> IP routing).
+          2. If self.dns_server is set and the host is not already an IP,
+             do an A-record lookup against that nameserver via dnspython
+             and call the original getaddrinfo with the resolved IP.
+          3. Fall through to the original getaddrinfo (system DNS).
+
+        Step 2 is what makes ldap3 / impacket bind through the user's
+        chosen resolver when the host system's DNS can't see the AD
+        domain. The patch is installed once per process; subsequent
+        ADConnector instances re-use the same hooks.
+        """
+        if getattr(socket, "_adscan_dns_patched", False):
+            return
+
+        _original_getaddrinfo = socket.getaddrinfo
+        _overrides = {}
+        connector = self
+
+        def _patched_getaddrinfo(host, *args, **kwargs):
+            if isinstance(host, str):
+                target = _overrides.get(host) or _overrides.get(host.rstrip("."))
+                if target:
+                    return _original_getaddrinfo(target, *args, **kwargs)
+
+                dns_server = getattr(connector, "dns_server", None)
+                if dns_server and not connector._is_ip(host):
+                    resolved = _resolve_via(dns_server, host, connector._log)
+                    if resolved:
+                        return _original_getaddrinfo(resolved, *args, **kwargs)
+
+            return _original_getaddrinfo(host, *args, **kwargs)
+
+        socket.getaddrinfo = _patched_getaddrinfo
+        socket._adscan_dns_patched = True
+        socket._adscan_dns_overrides = _overrides
 
     def _probe_dc_requirements(self):
         """Probe the DC to detect whether LDAP signing and/or LDAPS channel
