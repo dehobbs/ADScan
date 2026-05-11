@@ -86,7 +86,7 @@ findings + scores → generate_report() / generate_json_report() / etc.
 
 Manages LDAP/LDAPS/SMB connections to a DC. Every check module receives a connector instance.
 
-**Constructor parameters:** `domain`, `dc_host`, `username`, `password=None`, `ntlm_hash=None`, `use_kerberos=False`, `ccache_path=None`, `protocols=["ldap","ldaps","smb"]`, `verbose=False`, `timeout=30`, `dns_server=None`. NTLM hash is parsed into `(lm_hash, nt_hash)` at construction time via `_parse_ntlm_hash` — supports either `LM:NT` or just `NT` (LM defaults to `aad3b435b51404eeaad3b435b51404ee`).
+**Constructor parameters:** `domain`, `dc_host`, `username`, `password=None`, `ntlm_hash=None`, `use_kerberos=False`, `ccache_path=None`, `protocols=["ldap","ldaps","smb"]`, `verbose=False`, `timeout=30`, `dns_server=None`, `dns_tcp=False`. NTLM hash is parsed into `(lm_hash, nt_hash)` at construction time via `_parse_ntlm_hash` — supports either `LM:NT` or just `NT` (LM defaults to `aad3b435b51404eeaad3b435b51404ee`).
 
 **Public API:**
 

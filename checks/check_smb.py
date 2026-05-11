@@ -247,6 +247,8 @@ def run_check(connector, verbose=False):
     _dns_server = getattr(connector, "dns_server", None)
     if _dns_server:
         smb_cmd += ["--dns-server", _dns_server]
+    if getattr(connector, "dns_tcp", False):
+        smb_cmd += ["--dns-tcp"]
 
     log.debug(" [SMB] Phase 2: sweeping %d host(s) for signing and SMBv1 ...", len(targets))
     # Redact password before logging the command

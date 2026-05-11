@@ -240,6 +240,9 @@ def run_check(connector, verbose=False):
             *_build_auth_args(connector),
         ]
 
+    if getattr(connector, "dns_tcp", False):
+        cmd += ["--dns-tcp"]
+
     log.info("  [*] Starting BloodHound collection (this may take several minutes)...")
 
     try:

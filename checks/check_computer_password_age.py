@@ -141,6 +141,8 @@ def run_check(connector, verbose=False):
     _dns_server = getattr(connector, "dns_server", None)
     if _dns_server:
         cmd += ["--dns-server", _dns_server]
+    if getattr(connector, "dns_tcp", False):
+        cmd += ["--dns-tcp"]
 
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)

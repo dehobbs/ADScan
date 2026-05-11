@@ -150,6 +150,9 @@ python adscan.py -d corp.local --dc-ip 10.10.10.5 -u alice -p 'P@ssw0rd!' --chec
 
 # Override DNS resolver (handy when the operator host can't resolve the AD domain)
 python adscan.py -d corp.local --dc-ip 10.10.10.5 -u alice -p 'P@ss' --dns-server 10.10.10.5
+
+# Force DNS queries over TCP (useful when UDP/53 is blocked or unreliable)
+python adscan.py -d corp.local --dc-ip 10.10.10.5 -u alice -p 'P@ss' --dns-server 10.10.10.5 --dns-tcp
 ```
 
 > The `--dns-server <IP>` flag (alias `-ns`) routes every DNS lookup ADScan
@@ -158,6 +161,10 @@ python adscan.py -d corp.local --dc-ip 10.10.10.5 -u alice -p 'P@ss' --dns-serve
 > forwarded to every external tool ADScan runs (`nxc`, `certipy-ad`,
 > `bloodhound-python`, `bloodhound-ce-python`). Typical value: the DC's
 > own IP.
+>
+> Pair with `--dns-tcp` to force DNS queries over TCP/53 instead of UDP/53.
+> The flag is applied to in-process `dnspython` lookups and forwarded to
+> the same set of external tools.
 
 ---
 

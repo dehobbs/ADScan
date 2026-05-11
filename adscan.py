@@ -202,6 +202,17 @@ def parse_args():
             "the operator host cannot resolve the AD domain via system DNS."
         ),
     )
+    target_group.add_argument(
+        "--dns-tcp",
+        dest="dns_tcp",
+        action="store_true",
+        default=False,
+        help=(
+            "Use TCP instead of UDP for DNS queries. Useful when UDP/53 is\n"
+            "blocked or unreliable. Applied to in-process dnspython lookups\n"
+            "and forwarded to nxc / certipy / bloodhound."
+        ),
+    )
 
     auth_group = parser.add_argument_group("Authentication")
     auth_group.add_argument("-u", "--username", required=False, help="Username for authentication")
@@ -471,6 +482,8 @@ def main():
     log.info("[*] Protocol(s)   : %s", ", ".join(p.upper() for p in protocols))
     if args.dns_server:
         log.info("[*] DNS server    : %s", args.dns_server)
+    if args.dns_tcp:
+        log.info("[*] DNS transport : TCP")
     log.info("[*] Output Stem   : %s.*", output_stem)
     log.info("[*] Format(s)     : %s", args.format)
     log.info("[*] Artifacts Dir : %s", ARTIFACTS_DIR)
@@ -507,6 +520,7 @@ def main():
         verbose=args.verbose,
         timeout=args.timeout,
         dns_server=args.dns_server,
+        dns_tcp=args.dns_tcp,
     )
 
     # Attach scan metadata so individual checks can use consistent naming

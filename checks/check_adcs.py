@@ -288,7 +288,8 @@ def _is_ldaps_error(stdout, stderr):
     combined = (stdout + stderr).lower()
     return any(pat in combined for pat in _LDAPS_ERROR_PATTERNS)
 
-def _run_certipy(creds, exe_path="certipy-ad", cwd=None, scheme=None, dns_server=None):
+def _run_certipy(creds, exe_path="certipy-ad", cwd=None, scheme=None,
+                 dns_server=None, dns_tcp=False):
     """Invoke certipy-ad find. scheme may be None (default LDAPS) or 'ldap'."""
     upn = f"{creds['username']}@{creds['domain']}"
     cmd = [
@@ -304,6 +305,8 @@ def _run_certipy(creds, exe_path="certipy-ad", cwd=None, scheme=None, dns_server
         cmd += ["-ldap-scheme", scheme]
     if dns_server:
         cmd += ["-ns", dns_server]
+    if dns_tcp:
+        cmd += ["-dns-tcp"]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=120, cwd=cwd)  # nosec B603 - cmd is a fully validated list, no shell interpolation
     return result.returncode, result.stdout, result.stderr
 
@@ -883,10 +886,12 @@ def _run_certipy_check(connector, verbose=False):
     os.makedirs(artifacts_dir, exist_ok=True)
 
     dns_server = getattr(connector, "dns_server", None)
+    dns_tcp    = bool(getattr(connector, "dns_tcp", False))
 
     try:
         returncode, stdout, stderr = _run_certipy(
-            creds, exe_path=certipy_exe, cwd=artifacts_dir, dns_server=dns_server,
+            creds, exe_path=certipy_exe, cwd=artifacts_dir,
+            dns_server=dns_server, dns_tcp=dns_tcp,
         )
 
         # ----------------------------------------------------------------
@@ -901,7 +906,7 @@ def _run_certipy_check(connector, verbose=False):
             log.debug("  [Certipy] LDAPS connection failed — retrying with plain LDAP (-scheme ldap)...")
             returncode, stdout, stderr = _run_certipy(
                 creds, exe_path=certipy_exe, cwd=artifacts_dir, scheme="ldap",
-                dns_server=dns_server,
+                dns_server=dns_server, dns_tcp=dns_tcp,
             )
             ldap_fallback_used = True
 
@@ -1061,6 +1066,8 @@ def _run_nxc_adcs_check(connector, verbose=False):
     _dns_server = getattr(connector, "dns_server", None)
     if _dns_server:
         cmd += ["--dns-server", _dns_server]
+    if getattr(connector, "dns_tcp", False):
+        cmd += ["--dns-tcp"]
 
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)  # nosec B603

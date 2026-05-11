@@ -43,7 +43,7 @@ def _safe_unlink(path):
         pass
 
 
-def _resolve_via(nameserver, host, log):
+def _resolve_via(nameserver, host, log, tcp=False):
     """Look up an A record for *host* against the explicit *nameserver*.
     Returns the first IP found or None. Module-level helper so the
     getaddrinfo monkey-patch closure stays cheap."""
@@ -56,13 +56,13 @@ def _resolve_via(nameserver, host, log):
         resolver.nameservers = [nameserver]
         resolver.timeout = 3
         resolver.lifetime = 5
-        answers = resolver.resolve(host, "A")
+        answers = resolver.resolve(host, "A", tcp=bool(tcp))
         for rdata in answers:
             return str(rdata)
     except Exception as exc:
         try:
-            log.debug("  [dns] %s -> %s lookup via %s failed: %s",
-                      host, "A", nameserver, exc)
+            log.debug("  [dns] %s -> %s lookup via %s (%s) failed: %s",
+                      host, "A", nameserver, "tcp" if tcp else "udp", exc)
         except Exception:
             pass
     return None
@@ -112,6 +112,7 @@ class ADConnector:
         verbose=False,
         timeout=30,
         dns_server=None,
+        dns_tcp=False,
     ):
         self.domain = domain
         self.dc_host = dc_host
@@ -124,6 +125,7 @@ class ADConnector:
         self.verbose = verbose
         self.timeout = timeout
         self.dns_server = dns_server
+        self.dns_tcp = dns_tcp
 
         self.ldap_conn = None
         self.smb_conn = None
@@ -448,7 +450,7 @@ class ADConnector:
             resolver.nameservers = [nameserver]
             resolver.timeout = 5
             resolver.lifetime = 10
-            answers = resolver.resolve(srv_name, "SRV")
+            answers = resolver.resolve(srv_name, "SRV", tcp=bool(self.dns_tcp))
             for rdata in answers:
                 fqdn = str(rdata.target).rstrip(".")
                 if fqdn:
@@ -519,7 +521,10 @@ class ADConnector:
 
                 dns_server = getattr(connector, "dns_server", None)
                 if dns_server and not connector._is_ip(host):
-                    resolved = _resolve_via(dns_server, host, connector._log)
+                    resolved = _resolve_via(
+                        dns_server, host, connector._log,
+                        tcp=getattr(connector, "dns_tcp", False),
+                    )
                     if resolved:
                         return _original_getaddrinfo(resolved, *args, **kwargs)
 
