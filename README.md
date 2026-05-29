@@ -659,6 +659,14 @@ to `scoring.toml`:
 
 ---
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for a per-version summary of features,
+fixes, and breaking changes. Release notes for each tag are also available
+under [Releases](https://github.com/dehobbs/ADScan/releases).
+
+---
+
 ## Disclaimer
 
 ADScan is intended for **authorised security assessments only**. Always obtain
