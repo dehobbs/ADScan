@@ -224,6 +224,10 @@ def parse_args():
             "and forwarded to nxc / certipy / bloodhound."
         ),
     )
+    target_group.add_argument(
+        "--timeout", type=int, default=30,
+        help="Connection timeout in seconds (default: 30)",
+    )
 
     auth_group = parser.add_argument_group("Authentication")
     auth_group.add_argument("-u", "--username", required=False, help="Username for authentication")
@@ -281,10 +285,6 @@ def parse_args():
             "affected objects. When --log-file is also given the file always "
             "captures DEBUG output regardless of this flag."
         ),
-    )
-    output_group.add_argument(
-        "--timeout", type=int, default=30,
-        help="Connection timeout in seconds (default: 30)",
     )
     output_group.add_argument(
         "--format",
