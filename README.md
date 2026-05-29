@@ -186,7 +186,9 @@ python adscan.py -d <domain> --dc-ip <dc_ip> -u <user> -p <pass> [options]
 | `--kerberos` | Use Kerberos ticket from `KRB5CCNAME` env var | — |
 | `--ccache PATH` | Path to Kerberos ccache file (implies `--kerberos`) | — |
 | `--protocol` | `ldap` \| `ldaps` \| `smb` \| `all` | `all` |
-| `--timeout SEC` | Connection timeout in seconds | `30` |
+| `-ns / --dns-server IP` | Override the resolver used for every DNS lookup ADScan triggers (in-process and forwarded to nxc / certipy / bloodhound). Typically the DC's IP. | system DNS |
+| `--dns-tcp` | Use TCP instead of UDP for DNS queries. Useful when UDP/53 is blocked or unreliable. | off |
+| `--timeout SEC` | Connection timeout in seconds (also the LDAP stall-detector receive timeout). | `30` |
 
 ### Output
 
@@ -195,6 +197,7 @@ python adscan.py -d <domain> --dc-ip <dc_ip> -u <user> -p <pass> [options]
 | `-o / --output` | Report path stem (extension added automatically) | `Reports/adscan_report_<timestamp>` |
 | `--output-dir DIR` | Directory for all report files | `Reports/` |
 | `--format` | `html` \| `json` \| `csv` \| `docx` \| `all` | `html` |
+| `--unredacted` | Emit both a redacted "customer" report and an unredacted "operator" report (passwords/hashes visible in operator copy). | off |
 | `--log-file PATH` | Write full DEBUG log to a file in addition to console | — |
 | `-v / --verbose` | Show DEBUG-level detail on the console | off |
 
@@ -212,6 +215,7 @@ python adscan.py -d <domain> --dc-ip <dc_ip> -u <user> -p <pass> [options]
 |------|-------------|
 | `--setup-tools` | Install all external CLI tools via `uv tool install` and exit |
 | `--scoring-config PATH` | Use a custom TOML scoring config instead of `scoring.toml` |
+| `-V / --version` | Print the ADScan version and exit |
 
 ---
 
