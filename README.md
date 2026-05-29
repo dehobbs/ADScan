@@ -11,7 +11,7 @@ HTML dashboard report with a risk score and letter grade.
 
 - **Multi-protocol**: LDAP, LDAPS, SMB (user-selectable; defaults to all three)
 - **Flexible auth**: password, pass-the-hash (NTLM `LM:NT` or `NT`), Kerberos ccache, or interactive prompt
-- **40 security checks** covering critical AD attack surfaces across eight categories
+- **40 security checks** covering critical AD attack surfaces across nine categories
 - **BloodHound integration**: choose Legacy BloodHound or BloodHound Community Edition at scan time; ZIP saved to `Reports/Artifacts/`
 - **Risk score**: ratio-based scoring per category, overall score maps to letter grade A–F
 - **HTML report**: self-contained, light/dark mode, severity filter chips, collapsible finding cards with remediation guidance
@@ -79,7 +79,7 @@ pip install -e .
 > **Kali / externally-managed Python**: always create a virtual environment first
 > to avoid the "externally managed environment" pip error.
 
-### 2. Install external CLI tools
+### Install external CLI tools
 
 Some checks invoke external tools as subprocesses. Each tool is installed into
 its **own isolated virtual environment** via `uv tool install` so its
@@ -94,29 +94,29 @@ python adscan.py --setup-tools
 Or install individually:
 
 ```bash
-uv tool install certipy-ad                                        # ADCS/PKI scanner (Python 3.12+ venv)
-
-# NetExec — recommended install via pipx (or apt on Kali/ParrotSec):
-apt install netexec                                               # Kali / ParrotSec / BlackArch
-# or:
-pipx install git+https://github.com/Pennyw0rth/NetExec           # other systems
-
-uv tool install bloodhound                                        # Legacy BloodHound AD ingestor
-uv tool install bloodhound-ce                                     # BloodHound Community Edition ingestor
+uv tool install certipy-ad      # ADCS/PKI scanner (Python 3.12+ venv)
+uv tool install netexec         # SMB / LDAP enumeration (nxc command)
+uv tool install bloodhound      # Legacy BloodHound AD ingestor
+uv tool install bloodhound-ce   # BloodHound Community Edition ingestor
 ```
+
+> **NetExec — alternative install paths**: `nxc` can also be installed via
+> `apt install netexec` on Kali / ParrotSec / BlackArch, or
+> `pipx install git+https://github.com/Pennyw0rth/NetExec` on other systems.
+> If `nxc` is already on PATH from one of these, ADScan will use it directly.
 
 > Tools are **optional**. If a tool is missing when a check runs, ADScan will
 > attempt to auto-install it via `uv tool install`. If `uv` is not on PATH,
 > the check is skipped gracefully with an informational finding.
 
-### 3. Optional Python extras
+### Optional Python extras
 
 ```bash
 pip install -e ".[kerberos]"  # gssapi bindings for Kerberos over LDAP
 pip install -e ".[dev]"       # pytest, ruff, mypy for development
 ```
 
-### 4. Verify the install
+### Verify the install
 
 ```bash
 python adscan.py --list-checks    # should print all 40+ checks
@@ -268,7 +268,7 @@ see all available checks with slugs for use with `--checks` and `--skip`.
 | Domain Password Policy | Minimum length, complexity, lockout, max age |
 | Account Hygiene | Stale, never-logged-on, and PASSWD_NOTREQD accounts |
 | Computer Account Password Age | Machine passwords not rotated in > 30 days |
-| Pre-Windows 2000 Computer Accounts | Computer accounts with predictable default passwords (CVE prerequisite) |
+| Pre-Windows 2000 Computer Accounts | Computer accounts with predictable default passwords (lowercase account name) |
 | Passwords in Descriptions | Cleartext credentials stored in AD description fields |
 | SID History | Accounts with SID history that could allow privilege escalation |
 | Shadow Credentials | msDS-KeyCredentialLink attribute abuse |
