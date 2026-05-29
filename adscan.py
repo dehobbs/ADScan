@@ -115,6 +115,81 @@ def _check_slugs(module):
     return slugs
 
 
+def _preflight_validate(connector, expected_domain, log):
+    """Confirm the bound session is actually usable before running checks.
+
+    `connector.connect()` returns True if at least one protocol successfully
+    bound — but binding is not the same as being able to query the
+    directory. This helper does the minimum amount of probing to detect a
+    degraded session (e.g. a successful bind that nevertheless cannot read
+    rootDSE) and to cross-check the discovered domain against the value
+    the operator supplied via `--domain`. A single visible OK line at this
+    stage saves operators from chasing 40 useless "no LDAP connection"
+    findings when the real problem is upstream.
+
+    Returns True if the scan should proceed, False otherwise.
+    """
+    log.info("")
+    log.info("[*] Pre-flight validation...")
+
+    if not getattr(connector, "ldap_conn", None) and not connector.smb_available():
+        log.error("    [!] No working LDAP or SMB session — cannot proceed")
+        return False
+
+    if not getattr(connector, "ldap_conn", None):
+        log.warning(
+            "    [!] No LDAP — proceeding with SMB-only scan (limited check coverage)",
+        )
+        return True
+
+    # rootDSE is the minimum proof that an LDAP bind is actually usable
+    # for queries. A successful bind that returns nothing here means the
+    # session is degraded (e.g. partial channel binding mismatch) and the
+    # checks will all fail downstream.
+    root_dse = connector.ldap_search(
+        search_base="",
+        search_filter="(objectClass=*)",
+        scope="BASE",
+        attributes=["defaultNamingContext", "dnsHostName", "domainFunctionality"],
+    )
+    if not root_dse:
+        log.error(
+            "    [!] LDAP bound but rootDSE is unreadable — session is degraded.",
+        )
+        log.error(
+            "        The credentials may lack basic read access, or the bind "
+            "did not negotiate the integrity the DC requires.",
+        )
+        return False
+
+    rdse = root_dse[0]
+    naming_ctx = rdse.get("defaultNamingContext", "")
+    dc_fqdn = rdse.get("dnsHostName", "") or connector.dc_host
+    log.info("    [+] LDAP session validated against %s", dc_fqdn)
+
+    if naming_ctx:
+        # Convert e.g. "DC=corp,DC=local" -> "corp.local" and cross-check
+        parts = naming_ctx.split(",")
+        dc_parts = [p.split("=", 1)[1] for p in parts if p.strip().upper().startswith("DC=")]
+        discovered_domain = ".".join(dc_parts).lower()
+        if discovered_domain and expected_domain and discovered_domain != expected_domain.lower():
+            log.warning(
+                "    [!] Domain mismatch: --domain says '%s', DC reports '%s'.",
+                expected_domain, discovered_domain,
+            )
+            log.warning(
+                "        Checks will still run, but some may behave unexpectedly.",
+            )
+        elif discovered_domain:
+            log.info("    [+] Domain confirmed: %s", discovered_domain)
+
+    if connector.smb_available():
+        log.info("    [+] SMB session validated against %s", dc_fqdn)
+
+    log.info("    [+] Ready to scan")
+    return True
+
+
 def load_checks(only=None, skip=None):
     """Dynamically load check modules from the checks/ directory.
 
@@ -546,6 +621,10 @@ def main():
     if not connected:
         log.error("Failed to establish any connection to the Domain Controller.")
         log.error("Check your credentials, DC address, and firewall rules.")
+        sys.exit(1)
+
+    if not _preflight_validate(connector, args.domain, log):
+        log.error("Pre-flight validation failed — aborting before running checks.")
         sys.exit(1)
 
     # ------------------------------------------------------------------
