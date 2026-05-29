@@ -45,7 +45,7 @@ findings + scores → generate_report() / generate_json_report() / etc.
 | `_check_slugs(module)` | Generates the lowercase set of match tokens for `--checks` / `--skip` filtering. Tokens come from the module name (without `check_` prefix), every word of `CHECK_NAME`, and every value in `CHECK_CATEGORY`. |
 | `load_checks(only, skip)` | Walks `checks/` via `pkgutil.iter_modules`, imports each, keeps modules with a `run_check` callable, intersects `only` / `skip` slug sets, returns sorted by `CHECK_ORDER`. |
 | `list_checks()` | Implementation of `--list-checks` — prints a table of all check modules. |
-| `parse_args()` | Builds the argparse parser with five argument groups: Target, Authentication, Output, Check Filtering, Tool Management. |
+| `parse_args()` | Builds the argparse parser with five argument groups: Target, Authentication, Output, Check Filtering, Tool Management. The Target group holds the connection-level flags including `--protocol`, `--dns-server` (alias `-ns`), `--dns-tcp`, and `--timeout`. A top-level `--version` / `-V` action prints the module-level `__version__` constant and exits. |
 | `ensure_reports_dir(path)` | Creates the parent dir of an output path if missing. |
 | `main()` | The orchestration loop (described below). |
 
@@ -62,9 +62,10 @@ findings + scores → generate_report() / generate_json_report() / etc.
 9. **Connect** under a spinner. Exit if no protocol succeeded.
 10. **Parse `--checks`/`--skip` slugs**, call `load_checks()`.
 11. **Per-check loop**:
-    - `dbg.log_check_start(name)` → spinner → `check.run_check(connector, verbose)` → `dbg.log_check_end(name, result)`.
+    - `dbg.log_check_start(name)` → enter `spinner(...)` context, bind it to `connector.spinner` so checks can suspend it around interactive prompts → `check.run_check(connector, verbose)` → exit spinner context → `connector.spinner = None` → `dbg.log_check_end(name, result)`.
     - Append `{categories, weight}` to `checks_run` for ratio scoring.
     - For each finding: log title + severity + deduction; copy `category` + `check_category` onto the finding; replace `finding["deduction"]` with `scoring.deduction_for(finding)` so the report shows the effective value.
+    - If the check took ≥5 s, log the elapsed wall-clock duration on the next line.
     - `audit.record_check(...)` regardless of outcome.
     - On exception: `audit.record_check_error()` + `dbg.log_error()` — never re-raise.
 12. **Disconnect, archive `~/.nxc`** to `Reports/Artifacts/nxc_<ts>.zip` if it exists.
@@ -109,14 +110,21 @@ Manages LDAP/LDAPS/SMB connections to a DC. Every check module receives a connec
   - When signing is enforced and not LDAPS, sets `session_security=ldap3.ENCRYPT` (sign+seal).
   - When LDAPS channel binding is enforced, sets `channel_binding=ldap3.TLS_CHANNEL_BINDING` (requires `ldap3 >= 2.10.0rc1`; older versions get a clear upgrade message).
   - Kerberos path uses `SASL` + `GSSAPI` and sets `KRB5CCNAME` env var.
+  - **Stall detector.** Every `Connection(...)` call passes `receive_timeout=self.timeout`. ldap3 resets the socket-recv timer every time the server sends data, so paged searches keep flowing as long as progress is being made; if the server goes silent for `timeout` seconds the operation errors instead of hanging the scan.
 - `_connect_smb()` — `impacket.SMBConnection` to port 445; supports password / NTLM hash / Kerberos ccache.
 - `_resolve_ccache()` — Priority: explicit `--ccache` path > `KRB5CCNAME` env var.
+- `_ensure_krb5_config()` — When `use_kerberos=True` and the system `krb5.conf` is missing or has no `default_realm`, synthesizes a temp config (`<DOMAIN.UPPER>` as realm, `dc_host` as KDC, `udp_preference_limit=1`, `dns_lookup_*=false`), points `KRB5_CONFIG` env var at it, and registers an `atexit` cleanup. Avoids the "Configuration file does not specify default realm" GSS error on hosts without an AD-aware krb5.conf.
+- `_ensure_kerberos_target()` — When `use_kerberos=True` and `dc_host` is an IP, GSSAPI would build the SPN as `ldap/<ip>` or `cifs/<ip>` and the KDC would respond `KDC_ERR_S_PRINCIPAL_UNKNOWN`. This helper does an SRV lookup against the DC for `_ldap._tcp.dc._msdcs.<domain>`, then calls `_install_dns_resolver` and registers `<fqdn> -> <ip>` in the override dict so subsequent ldap3/impacket connections route TCP to the original IP but build the correct SPN from the FQDN. Replaces `self.dc_host` with the resolved FQDN.
+- `_install_dns_resolver()` — Monkey-patches `socket.getaddrinfo` once per process. Resolution order: (1) the explicit override dict (Kerberos FQDN routing); (2) when `dns_server` is set and the host isn't already an IP, do a dnspython A-record lookup against the operator-supplied resolver (using `dns_tcp` for transport); (3) fall through to the original `getaddrinfo`. This is how `--dns-server` makes ldap3 and impacket bind through the chosen resolver without per-call wiring.
+- `_resolve_dc_fqdn_via_srv()` — SRV lookup with `dns_server` (preferred) or `dc_host` as the nameserver.
 - `_entry_to_dict(entry)` — Converts ldap3 `Entry` to plain dict; collapses single-element lists to scalars; ensures `dn` and `distinguishedName` are present.
 
 **Non-obvious decisions:**
 
 - **Probing is ~1-2 s overhead but prevents wasted bind attempts** on hardened DCs that would otherwise return cryptic 00002028 errors.
 - **`ldap_search` returns dicts, not raw `Entry` objects** — every check module assumes dict-style access.
+- **The DNS monkey-patch is one-shot per process** — guarded by `socket._adscan_dns_patched`. Reusing the same hook for both the Kerberos FQDN→IP override and the `--dns-server` redirect keeps the contract simple.
+- **`receive_timeout` is a stall detector, not a wall-clock cap.** A legitimately slow but progressing paged LDAP search keeps going; a server that has gone silent gets caught quickly.
 - **Graceful degradation** if `ldap3` or `impacket` aren't installed — `HAS_LDAP3` / `HAS_IMPACKET` flags skip the relevant protocol with a warning instead of crashing.
 
 ### 3.2 `lib/tools.py` — External CLI tool manager
@@ -137,12 +145,14 @@ Manages LDAP/LDAPS/SMB connections to a DC. Every check module receives a connec
 **Public API:**
 
 - `ensure_tool(slug)` — Lookup order: primary exe on PATH → fallback exe on PATH → `uv tool install <pip_spec>` → re-check PATH. Returns absolute path or `None` (with a warning containing manual install instructions).
-- `setup_all_tools()` — Installs every tool in the registry. Used by `--setup-tools`.
+- `setup_all_tools()` — Calls `_bootstrap_uv()` first, then installs every tool in the registry. Used by `--setup-tools`.
+- `_bootstrap_uv()` — If `uv` is not already on PATH, runs Astral's official installer (`curl -LsSf https://astral.sh/uv/install.sh | sh`) and prepends `~/.local/bin` and `~/.cargo/bin` to the current process `PATH` so the freshly-installed binary is discoverable without sourcing a shell rc file. Lets the pipx one-liner work on a fresh machine: `pipx install git+https://github.com/dehobbs/ADScan.git && adscan --setup-tools`.
 
 **Non-obvious decisions:**
 
 - **`uv tool install`, not `pip install`** — keeps tool dependencies isolated from ADScan's own venv. Means certipy 5.x's Python 3.12 requirement doesn't break ADScan running on 3.10.
 - **Tools are best-effort.** Checks that need a tool call `ensure_tool` and emit an info-level finding ("X Not Installed") rather than failing.
+- **`_bootstrap_uv` is opt-in via `--setup-tools`.** Mid-scan `ensure_tool` calls do not auto-install uv — they fall back to the existing "uv not on PATH" warning. The auto-install of uv only fires when the operator explicitly runs the setup command.
 
 ### 3.3 `lib/scoring.py` — Ratio-based risk scoring
 
@@ -263,8 +273,11 @@ Records every LDAP query, subprocess invocation, SMB operation, and exception to
 A 2-second-delay spinner that only activates if `sys.stderr.isatty()` is True (so piped output stays clean).
 
 - `Spinner` class — context manager. Displays nothing for the first 2 s, then prints `\r {frame} {label} {elapsed}s ` at 10 Hz using `\r` to overwrite the same line.
-- `_NoOp` class — null context manager.
+- `pause()` / `resume()` / `suspended()` — Lets the active check temporarily hide the spinner around an interactive prompt. `pause()` clears the spinner line and stops drawing; `resume()` continues; `suspended()` is the context-manager form (`with sp.suspended(): choice = input(...)`).
+- `_NoOp` class — null context manager with matching no-op `pause/resume/suspended` so callers don't need to type-check.
 - `spinner(label, delay=2.0, enabled=True)` — Factory that returns Spinner or NoOp depending on TTY + `enabled`.
+
+**Integration with checks.** `adscan.py:main` binds the active spinner to `connector.spinner` for the duration of each check (and clears it after). Checks that need to prompt the operator (e.g. `check_bloodhound.py:_prompt_engine`) read `connector.spinner` and wrap their `input()` call in `sp.suspended()` so the spinner doesn't overwrite the question.
 
 ---
 
@@ -481,7 +494,7 @@ Ordered by `CHECK_ORDER`. Each entry: name • category • weight • method �
 
 | Module | Order | Purpose |
 |--------|-------|---------|
-| `check_bloodhound.py` | 99 | Runs `bloodhound-python --zip -c All`; resolves IP→FQDN via SRV DNS lookup if needed. Outputs ZIP only (no scored findings). |
+| `check_bloodhound.py` | 99 | Prompts the operator to choose between Legacy BloodHound (`bloodhound-python`) and BloodHound Community Edition (`bloodhound-ce-python`); non-interactive sessions default to Legacy. The prompt suspends the spinner via `connector.spinner.suspended()` so the question isn't overwritten. Both ingestors install via `uv tool install`. Resolves IP→FQDN via SRV DNS lookup when needed. Outputs ZIP only (no scored findings). |
 | `check_protected_admin_users.py` | 60 | Detects ghost admins (disabled but adminCount=1), stale admins, orphaned adminCount. |
 | `check_passwords_in_descriptions.py` | 61 | Description-field credential scan. ✅ Provides `details_redacted`. |
 | `check_protected_users_group.py` | 61 | Tier-0 / Tier-1 members not in Protected Users. |
@@ -744,7 +757,7 @@ Anchor points for someone modifying the codebase:
 3. **`pkgutil.iter_modules` auto-discovers checks AND verifications.** New modules drop in without registration. The cost is import-time errors are silent (warning to stderr only).
 4. **First-match-wins matching** in `VERIFICATION_DB`. Order of MATCH_KEYS in modules is significant when keys could overlap (e.g. `"laps"` matches everything containing "laps").
 5. **Ratio-based scoring, not deduction-from-100.** A clean check earns its full weight; a failing check loses earned but still contributes to possible. Categories with no checks run get 100 (not 0).
-6. **`details` vs `details_redacted` is a critical contract.** Any check producing credential material in `details` must also produce `details_redacted`. The report's redact path falls back to `details` if the redacted key is missing — silently leaking credentials. (Currently a known bug in `check_privileged_accounts.py`.)
+6. **`details` vs `details_redacted` is a critical contract.** Any check producing credential material in `details` must also produce `details_redacted`. The report's redact path falls back to `details` if the redacted key is missing — silently leaking credentials. Three checks currently exercise this contract: `check_gpp_cpassword.py`, `check_passwords_in_descriptions.py`, and `check_privileged_accounts.py`. New checks that surface credential strings must include the matching `details_redacted`.
 7. **External tools install via `uv tool install`**, not pip. Keeps tool dependencies isolated. Tools are best-effort — checks emit info findings if the tool is missing.
 8. **DebugLogger redacts credentials at the boundary.** `_PASSWORD_FLAGS` is the single point of failure — adding a tool with a different password flag spelling will leak passwords to the debug log.
 9. **AuditLogger never logs credentials**, only auth method labels.
@@ -755,7 +768,12 @@ Anchor points for someone modifying the codebase:
     - Inside the check: the contract says catch and return info-finding.
     - In `adscan.py:main()`: a try/except wraps `check.run_check()` and logs to audit + debug, never re-raising.
 14. **CHECK_ORDER values aren't all sequential.** Some checks (e.g. `check_foreign_security_principals.py = 67`) use higher numbers to run later. CHECK_ORDER 99 is reserved for `check_bloodhound.py` to ensure it runs last.
-15. **Connector decoration in `main()`** — `artifacts_dir`, `scan_timestamp`, `debug_log` are attached after construction. Lets `ADConnector` stay focused on protocol/auth without knowing about output paths or logging.
+15. **Connector decoration in `main()`** — `artifacts_dir`, `scan_timestamp`, `debug_log`, and (during each check) `spinner` are attached after construction. Lets `ADConnector` stay focused on protocol/auth without knowing about output paths, logging, or terminal output.
+16. **Kerberos against a DC supplied as an IP.** GSSAPI builds the SPN as `ldap/<host>` straight from `connector.dc_host`. When `dc_host` is an IP the SPN doesn't match anything AD has registered. `_ensure_kerberos_target` does an SRV lookup, monkey-patches `socket.getaddrinfo` so the FQDN routes back to the original IP, and rewrites `connector.dc_host` to the FQDN. Both ldap3 and impacket get the right SPN; TCP still goes to the right address.
+17. **krb5.conf synthesis.** On a host that has no `/etc/krb5.conf` or no `default_realm`, GSSAPI fails with "Configuration file does not specify default realm" before any bind is attempted. `_ensure_krb5_config` writes a temp config using `domain.upper()` as the realm and `dc_host` as the KDC and points `KRB5_CONFIG` at it. Operator hosts without an AD-aware krb5.conf can run `--kerberos` scans without touching `/etc/krb5.conf`.
+18. **`--dns-server` propagates two ways.** In-process: the `_install_dns_resolver` monkey-patch sends ldap3/impacket lookups through dnspython against the chosen resolver. Out-of-process: each check that runs a subprocess (`nxc`, `certipy-ad`, `bloodhound-python`, `bloodhound-ce-python`) appends the appropriate per-tool nameserver flag. Different tools use different flag spellings — `nxc` uses `--dns-server`, certipy uses `-ns`.
+19. **LDAP timeout is a stall detector, not a wall clock.** `--timeout` flows into the ldap3 `Connection(receive_timeout=...)` kwarg, which is reset every time the server sends data. Legitimately slow but progressing searches in large environments continue; only true silence triggers the timeout. The DNS wildcard query in `check_dns_infrastructure.py` was the canonical case that motivated this: the original filter `(dc=*)` returned every DNS record in the zone, and a wall-clock cap would have killed both that broken query and many legitimate ones. The filter is now properly escaped (`dc=\\2A`); the receive-timeout backstop catches future broad queries without false positives.
+20. **BloodHound engine selector.** `check_bloodhound.py` prompts the operator at the BloodHound step to choose between Legacy BloodHound and BloodHound Community Edition. The prompt wraps `input()` in `connector.spinner.suspended()` so the spinner stops drawing during the question. Non-interactive sessions (no TTY) silently default to Legacy.
 
 ---
 
