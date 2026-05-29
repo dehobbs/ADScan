@@ -32,7 +32,11 @@ from lib.debug_log import DebugLogger
 from lib.scoring import ScoringConfig, compute_scores
 from lib.tools import setup_all_tools, TOOL_REGISTRY
 
-BANNER = r"""
+# Project version. Keep in sync with pyproject.toml on every bump —
+# both values are part of any release commit.
+__version__ = "1.2.0"
+
+BANNER = rf"""
  _    ____  ____
 / \  |  _ \/ ___|
 / _ \ | | | \___ \
@@ -41,7 +45,7 @@ BANNER = r"""
 \___\__,_|_| |_|
 
 Active Directory Vulnerability Scanner
-Version 1.2 | github.com/dehobbs/ADScan
+Version {__version__} | github.com/dehobbs/ADScan
 """
 
 # Default output directory for reports
@@ -172,8 +176,15 @@ def parse_args():
             "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin -p Pass --checks kerberos,delegation\n"
             "  %(prog)s -d corp.local -dc-ip 192.168.1.10 -u admin -p Pass --skip gpp,smb\n"
             "  %(prog)s --list-checks\n"
-            "  %(prog)s --setup-tools"
+            "  %(prog)s --setup-tools\n"
+            "  %(prog)s --version"
         ),
+    )
+    parser.add_argument(
+        "-V", "--version",
+        action="version",
+        version=f"ADScan {__version__}",
+        help="Print the ADScan version and exit",
     )
 
     target_group = parser.add_argument_group("Target")
