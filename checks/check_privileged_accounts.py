@@ -296,6 +296,17 @@ def run_check(connector, verbose=False):
         if _description_has_password(e)
     ]
     if desc_passwords:
+        # The `details` list contains <sam>: <description> strings whose
+        # description body is the leaked credential. The redacted (customer)
+        # report MUST replace the description portion with a placeholder so
+        # the plaintext never appears in any report the customer receives;
+        # the operator (`--unredacted`) report still shows the original.
+        # See lib/report.py:_get_details for how the report selects between
+        # `details` and `details_redacted`.
+        desc_passwords_redacted = [
+            (line.split(":", 1)[0] + ": [[REDACTED]]") if ":" in line else line
+            for line in desc_passwords
+        ]
         findings.append({
             "title": "Passwords Found in Privileged Account Description Fields",
             "severity": "critical",
@@ -311,7 +322,8 @@ def run_check(connector, verbose=False):
                 "and rotate the credentials. Audit all accounts — not just privileged ones "
                 "— for this pattern using: (description=*pass*)"
             ),
-            "details": desc_passwords,
+            "details":          desc_passwords,
+            "details_redacted": desc_passwords_redacted,
         })
 
     # -----------------------------------------------------------------------
