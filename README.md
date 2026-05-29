@@ -11,7 +11,7 @@ HTML dashboard report with a risk score and letter grade.
 
 - **Multi-protocol**: LDAP, LDAPS, SMB (user-selectable; defaults to all three)
 - **Flexible auth**: password, pass-the-hash (NTLM `LM:NT` or `NT`), Kerberos ccache, or interactive prompt
-- **40 security checks** covering critical AD attack surfaces across nine categories
+- **40 security checks** covering critical AD attack surfaces across ten categories
 - **BloodHound integration**: choose Legacy BloodHound or BloodHound Community Edition at scan time; ZIP saved to `Reports/Artifacts/`
 - **Risk score**: ratio-based scoring per category, overall score maps to letter grade A–F
 - **HTML report**: self-contained, light/dark mode, severity filter chips, collapsible finding cards with remediation guidance
@@ -282,7 +282,7 @@ see all available checks with slugs for use with `--checks` and `--skip`.
 | Constrained Delegation | S4U2Self/S4U2Proxy delegation with protocol transition |
 | RC4 / Legacy Kerberos Encryption | RC4 and DES encryption permitted on accounts and DCs |
 | RBCD on Domain Object / DCs | Resource-based constrained delegation misconfiguration |
-| NoPac (CVE-2021-42278/42287) | PAC validation bypass — checks all DCs via nxc nopac module |
+| NoPac (CVE-2021-42278/42287) Vulnerability | PAC validation bypass — checks all DCs via nxc nopac module |
 
 ### Privileged Accounts
 
@@ -316,7 +316,7 @@ see all available checks with slugs for use with `--checks` and `--skip`.
 | Optional Features | AD Recycle Bin, PAM feature status |
 | Replication Health | Site link intervals, replication failures |
 | Miscellaneous Hardening | Machine account quota, null sessions, guest account |
-| Legacy FRS SYSVOL | FRS vs DFSR replication status |
+| Legacy FRS SYSVOL Replication | FRS vs DFSR replication status |
 | Pre-Windows 2000 Compatible Access | Group membership (Everyone, Anonymous, Authenticated Users) |
 | BloodHound Data Collection | Full AD graph snapshot — ZIP saved to `Reports/Artifacts/` |
 
@@ -339,11 +339,17 @@ see all available checks with slugs for use with `--checks` and `--skip`.
 |-------|--------------|
 | Foreign Security Principals in Privileged Groups | Cross-forest principals in DA/EA/BA/Schema Admins |
 
-### Audit & Hardening
+### Domain Hardening
 
 | Check | What it tests |
 |-------|--------------|
 | Advanced Audit Policy | Presence and coverage of advanced audit subcategories |
+
+### Deprecated Operating Systems
+
+| Check | What it tests |
+|-------|--------------|
+| Deprecated Operating Systems | Enabled computers running EOL Windows workstation/server OS (XP, 7, 8, 2003, 2008/R2, 2012/R2) |
 
 ---
 
