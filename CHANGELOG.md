@@ -7,7 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- New check **Fine-Grained Password Policies (PSO)**
+  (`check_fine_grained_password_policy.py`): enumerates every
+  `msDS-PasswordSettings` object and flags any PSO whose settings are weaker than
+  recommended (lockout, length, complexity, expiry, reversible encryption). A
+  weak PSO linked to a privileged principal is escalated to at least High. The
+  Default Domain Password Policy check does not see PSO-based exemptions. Ships a
+  verification/remediation module and unit tests.
+- New check **Print Spooler Service on Domain Controllers**
+  (`check_print_spooler.py`): uses the NetExec `spooler` module to detect the
+  Print Spooler (MS-RPRN) running on each DC — the PrinterBug / SpoolSample
+  coercion primitive that chains into ESC8 / RBCD / unconstrained-delegation
+  relay. Enumerates DCs via LDAP, forwards ADScan's DNS overrides to `nxc`, and
+  ships a verification/remediation module and unit tests.
+- New check **WebClient (WebDAV) Coercion Surface**
+  (`check_webclient_webdav.py`): sweeps domain computers with the NetExec
+  `webdav` module to find hosts running the WebClient service — the HTTP
+  coercion primitive whose unsigned authentication can be relayed to AD CS Web
+  Enrollment (ESC8) or LDAP (RBCD). Enumerates computers via LDAP (same two-phase
+  pattern as the SMB signing check), flags enabled hosts as High, and ships a
+  verification/remediation module and unit tests.
+- **First unit test suite** (`tests/`, with a root `conftest.py`) covering the
+  three checks above.
 
 ## [1.3.1] — 2026-05-29
 

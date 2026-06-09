@@ -17,6 +17,7 @@
 # ADCS / PKI Vulnerabilities    check_adcs.py                weight=20
 # Account Hygiene               check_account_hygiene.py     weight=20
 #                               check_computer_password_age.py  weight=15
+#                               check_fine_grained_password_policy.py  weight=15
 #                               check_password_policy.py     weight=20
 #                               check_pre2k.py               weight=15
 #                               check_shadow_credentials.py  (no weight — unweighted)
@@ -50,8 +51,10 @@
 #                               check_protected_users_group.py  (no weight — unweighted)
 #                               check_service_accounts.py    (no weight — unweighted)
 # Protocol Security             check_legacy_protocols.py    weight=15
+#                               check_print_spooler.py       weight=15
 #                               check_protocol_security.py   (no weight — unweighted)
 #                               check_smb.py                 weight=15
+#                               check_webclient_webdav.py    weight=15
 # ---------------------------------------------------------------------------
 
 [severity_weights]
@@ -147,6 +150,12 @@ info     = 0
 # "Account Lockout Threshold Too High"                = 8
 # "Lockout Observation Window Too Short"              = 5
 
+# --- Fine-Grained Password Policies (check_fine_grained_password_policy.py) ---
+# Finding titles are dynamic ("Weak Fine-Grained Password Policy: <PSO name>"),
+# so they cannot be targeted by [overrides] — the engine falls back to the
+# severity tier of each finding (worst weakness in the PSO; escalated to at least
+# High when linked to a privileged principal).
+
 # --- Account hygiene ---
 # "Per-Account Reversible Encryption Enabled"         = 20
 # "Accounts With PASSWD_NOTREQD Flag Set"             = 15
@@ -195,6 +204,10 @@ info     = 0
 # "Wildcard DNS Records Found in AD-Integrated DNS"             = 15
 # Note: "SMB Signing Not Enforced: N host(s)" and "SMBv1 Enabled: N host(s)"
 #       are dynamic titles — they cannot be overridden here.
+# Note: "Print Spooler Service Enabled on Domain Controller(s): N DC(s)"
+#       (check_print_spooler.py) and "WebClient (WebDAV) Service Enabled: N host(s)"
+#       (check_webclient_webdav.py) are also dynamic titles — both score at their
+#       High severity tier (-15) and cannot be targeted by [overrides].
 
 # --- Deprecated OS ---
 # "End-of-Life Workstation OS Detected"                         = 20

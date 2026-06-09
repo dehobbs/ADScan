@@ -11,7 +11,7 @@ HTML dashboard report with a risk score and letter grade.
 
 - **Multi-protocol**: LDAP, LDAPS, SMB (user-selectable; defaults to all three)
 - **Flexible auth**: password, pass-the-hash (NTLM `LM:NT` or `NT`), Kerberos ccache, or interactive prompt
-- **40 security checks** covering critical AD attack surfaces across ten categories
+- **43 security checks** covering critical AD attack surfaces across ten categories
 - **BloodHound integration**: choose Legacy BloodHound or BloodHound Community Edition at scan time; ZIP saved to `Reports/Artifacts/`
 - **Risk score**: ratio-based scoring per category, overall score maps to letter grade A–F
 - **HTML report**: self-contained, light/dark mode, severity filter chips, collapsible finding cards with remediation guidance
@@ -270,6 +270,7 @@ see all available checks with slugs for use with `--checks` and `--skip`.
 | Check | What it tests |
 |-------|--------------|
 | Domain Password Policy | Minimum length, complexity, lockout, max age |
+| Fine-Grained Password Policies (PSO) | PSOs (`msDS-PasswordSettings`) weaker than the default domain policy; weak PSOs linked to privileged principals |
 | Account Hygiene | Stale, never-logged-on, and PASSWD_NOTREQD accounts |
 | Computer Account Password Age | Machine passwords not rotated in > 30 days |
 | Pre-Windows 2000 Computer Accounts | Computer accounts with predictable default passwords (lowercase account name) |
@@ -308,6 +309,8 @@ see all available checks with slugs for use with `--checks` and `--skip`.
 | SMB Signing Enforcement | SMB signing enforcement and SMBv1 detection across all hosts |
 | Legacy Protocols | NTLM, WDigest, LLMNR, NetBIOS-NS configuration |
 | Protocol Security | LDAP signing and channel binding enforcement |
+| Print Spooler on Domain Controllers | Print Spooler (MS-RPRN) enabled on DCs — PrinterBug coercion → relay to ADCS/LDAP/unconstrained delegation |
+| WebClient (WebDAV) Coercion Surface | Hosts running the WebClient service — HTTP coercion → relay to ADCS Web Enrollment (ESC8) or LDAP (RBCD) |
 
 ### Domain Hygiene
 
