@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "adscan"
-version = "1.3.1"
-description = "Modular Active Directory vulnerability scanner — LDAP/LDAPS/SMB, 40 security checks, HTML report with risk score"
+version = "1.3.2"
+description = "Modular Active Directory vulnerability scanner — LDAP/LDAPS/SMB, 43 security checks, HTML report with risk score"
 readme = "README.md"
 license = "GPL-3.0-only"
 license-files = ["LICENSE"]

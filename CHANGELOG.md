@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [1.3.2] — 2026-06-09
+
 ### Added
 
 - New check **Fine-Grained Password Policies (PSO)**
@@ -83,7 +87,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Kerberos against arbitrary lab DCs.** ADScan now synthesizes a usable `krb5.conf` on the fly when the host system has none or omits a `default_realm`. When `--dc-ip` is an IP, the DC FQDN is resolved via SRV and `socket.getaddrinfo` is monkey-patched so the FQDN routes to the original IP. GSSAPI builds the correct service principal name (`ldap/<fqdn>`, `cifs/<fqdn>`) instead of failing with `KDC_ERR_S_PRINCIPAL_UNKNOWN`. Both ldap3 and impacket TCP connections still go to the right address.
 - **Verification key disambiguation** between `verify_pre2k.py` and `verify_pre_windows_2000.py` so each check's findings route to the correct verification module regardless of import order.
 
-[Unreleased]: https://github.com/dehobbs/ADScan/compare/v1.3.1...HEAD
+[Unreleased]: https://github.com/dehobbs/ADScan/compare/v1.3.2...HEAD
+[1.3.2]: https://github.com/dehobbs/ADScan/releases/tag/v1.3.2
 [1.3.1]: https://github.com/dehobbs/ADScan/releases/tag/v1.3.1
 [1.3.0]: https://github.com/dehobbs/ADScan/releases/tag/v1.3.0
 [1.2.0]: https://github.com/dehobbs/ADScan/releases/tag/v1.2.0

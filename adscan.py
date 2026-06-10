@@ -34,7 +34,7 @@ from lib.tools import setup_all_tools, TOOL_REGISTRY
 
 # Project version. Keep in sync with pyproject.toml on every bump —
 # both values are part of any release commit.
-__version__ = "1.3.1"
+__version__ = "1.3.2"
 
 BANNER = rf"""
  _    ____  ____
