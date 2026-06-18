@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _Nothing yet._
 
+## [1.3.3] — 2026-06-18
+
+### Added
+
+- **Generic check preflight hook**: a check module may now define an optional
+  `preflight(connector)` function. `adscan.run_preflight()` invokes every loaded
+  check's hook (in `CHECK_ORDER`) before the scan loop, so interactive setup
+  happens up front and the scan then runs unattended. A hook that raises is
+  logged and skipped so it cannot abort the scan. Covered by unit tests.
+
+### Changed
+
+- **BloodHound engine prompt moved to the start of the run.** The Legacy vs
+  Community Edition question is now asked up front via `check_bloodhound`'s
+  `preflight()` hook instead of mid-scan when the collection step is reached.
+  The operator answers once and can walk away; data collection still runs last
+  (`CHECK_ORDER 99`) — only the prompt moved. The prompt is skipped entirely
+  when BloodHound is excluded via `--checks`/`--skip`, and non-interactive
+  sessions still default to Legacy.
+
 ## [1.3.2] — 2026-06-09
 
 ### Added
