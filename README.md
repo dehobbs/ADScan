@@ -390,8 +390,9 @@ and `roasting` all match relevant checks.
 ADScan collects a full AD graph snapshot at the end of the scan and saves
 the ZIP archive to `Reports/Artifacts/` alongside other scan artifacts.
 
-When the BloodHound step starts, ADScan prompts the operator to choose the
-ingestor variant:
+ADScan prompts the operator to choose the ingestor variant **up front**, at the
+start of the run (before the checks begin), so the scan can then run unattended.
+The collection itself still happens last:
 
 ```
   Choose BloodHound engine:
@@ -401,7 +402,9 @@ ingestor variant:
 ```
 
 Pressing Enter (or running in a non-interactive session, e.g. piped output)
-defaults to **Legacy**. Both variants are installed into their own isolated
+defaults to **Legacy**. The prompt is skipped entirely when BloodHound is
+excluded via `--skip bloodhound` or a `--checks` list that omits it. (This is
+implemented with the generic [preflight hook](#5-add-a-preflight-hook-optional).) Both variants are installed into their own isolated
 virtual environments via `uv tool install`:
 
 | Choice | Tool slug | Package | Command run |
@@ -659,6 +662,34 @@ to `scoring.toml`:
 [overrides]
 "Your Exact Finding Title" = 20   # overrides the severity-tier default
 ```
+
+### 5. Add a preflight hook (optional)
+
+If a check needs to collect interactive input or set up shared state **before**
+the scan starts — so the operator answers any prompts up front and the scan then
+runs unattended — define an optional module-level `preflight(connector)`
+function. Before the scan loop, ADScan calls the `preflight()` hook of every
+loaded check (in `CHECK_ORDER`); checks without one are skipped, and a hook that
+raises is logged and skipped so it cannot abort the scan.
+
+This decouples *asking* from *running*: the hook runs at the start, while the
+check's `run_check()` still executes in its normal `CHECK_ORDER` slot. Stash
+anything the hook gathers on the `connector` so `run_check()` can read it later.
+
+```python
+def preflight(connector):
+    # Asked up front, before any check runs.
+    connector.my_choice = _prompt_user(connector)
+
+def run_check(connector, verbose=False):
+    # Runs in CHECK_ORDER as usual; read what preflight stashed.
+    # Fall back to prompting if the hook never ran (e.g. standalone use).
+    choice = getattr(connector, "my_choice", None) or _prompt_user(connector)
+    ...
+```
+
+The BloodHound check uses this so its engine prompt appears at the start of the
+run even though collection happens last (`CHECK_ORDER 99`).
 
 ---
 
