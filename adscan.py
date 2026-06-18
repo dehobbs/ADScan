@@ -139,6 +139,35 @@ def load_checks(only=None, skip=None):
     return sorted(checks, key=lambda m: getattr(m, "CHECK_ORDER", 99))
 
 
+def run_preflight(checks, connector, log):
+    """Run each loaded check's optional preflight(connector) hook before the
+    main scan loop.
+
+    A check defines a module-level ``preflight(connector)`` when it needs to
+    collect interactive input or set up shared state up front -- so the
+    operator answers any prompts before the unattended scan begins rather
+    than mid-run. Hooks run in CHECK_ORDER (the same order checks execute).
+    A hook that raises is logged and skipped so it cannot abort the scan.
+    """
+    for check in checks:
+        hook = getattr(check, "preflight", None)
+        if hook is None:
+            continue
+        try:
+            hook(connector)
+        except Exception as e:
+            log.warning(
+                "[WARN] preflight for %s raised an exception and was skipped: %s",
+                getattr(check, "CHECK_NAME", check.__name__),
+                e,
+            )
+            log.debug(
+                "Traceback for %s preflight:",
+                getattr(check, "CHECK_NAME", check.__name__),
+                exc_info=True,
+            )
+
+
 def list_checks():
     """Print all available check modules with their name, slug, category, and order."""
     checks_path = os.path.join(os.path.dirname(__file__), "checks")
@@ -592,6 +621,10 @@ def main():
     log.info("[+] Loaded %d check module(s)", len(checks))
     log.info("")
     log.info("=" * 60)
+
+    # Run any check preflight hooks (interactive setup) before the scan loop
+    # so the operator answers prompts up front and the scan runs unattended.
+    run_preflight(checks, connector, log)
 
     findings   = []
     checks_run = []  # metadata for every check that executes (clean or not)

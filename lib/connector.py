@@ -130,6 +130,9 @@ class ADConnector:
         self.ldap_conn = None
         self.smb_conn = None
         self.debug_log = None
+        # Engine choice captured by check_bloodhound.preflight() before the
+        # scan loop; None until a preflight hook populates it.
+        self.bloodhound_engine = None
         self._log = logging.getLogger("adscan")
 
         self.base_dn = self._domain_to_dn(domain)

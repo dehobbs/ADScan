@@ -1,9 +1,13 @@
 """
 checks/check_bloodhound.py - BloodHound Data Collection
 
-When the bloodhound step runs, the user is prompted to choose between:
+The user is prompted to choose between:
   [1] Legacy BloodHound (bloodhound-python)
   [2] BloodHound Community Edition (bloodhound-ce-python)
+
+This prompt is presented up front via the preflight() hook (before the scan
+loop) so the operator answers it once and the scan then runs unattended. The
+actual collection still runs last (CHECK_ORDER 99) in run_check().
 
 Both variants are installed into isolated virtual environments via
 `uv tool install` (managed by lib/tools.py).
@@ -135,11 +139,26 @@ def _prompt_engine(connector):
     return "ce" if choice == "2" else "legacy"
 
 
+def preflight(connector):
+    """Pre-scan hook: ask which BloodHound engine to use and stash the choice.
+
+    ADScan calls every loaded check's optional preflight() before the scan
+    loop, so the operator answers any interactive prompts up front and the
+    scan then runs unattended. The chosen engine is stored on the connector;
+    run_check (which executes last, at CHECK_ORDER 99) reads it instead of
+    prompting mid-run. Collection still happens at the end -- only the
+    question moves to the start.
+    """
+    connector.bloodhound_engine = _prompt_engine(connector)
+
+
 def run_check(connector, verbose=False):
     findings = []
     log      = connector.log
 
-    engine = _prompt_engine(connector)
+    # Use the engine chosen by preflight() up front. Fall back to prompting
+    # here if the hook never ran (e.g. the check is invoked standalone).
+    engine = getattr(connector, "bloodhound_engine", None) or _prompt_engine(connector)
     log.info(
         "  [*] BloodHound engine: %s",
         "Community Edition" if engine == "ce" else "Legacy",
