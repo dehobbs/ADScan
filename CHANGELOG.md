@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _Nothing yet._
 
+## [1.3.4] — 2026-06-18
+
+### Fixed
+
+- **AdminSDHolder ACL check: multiple correctness fixes** that together caused
+  both false positives and missed findings:
+  - ACE trustee SIDs were rendered with `str(sid)` (raw hex blob, e.g.
+    `0105…00020000`) instead of `formatCanonical()`. This defeated every
+    name/RID match, so **every** principal — including Domain Admins and
+    SYSTEM — was flagged. Now converted to canonical `S-1-5-…` form.
+  - Well-known privileged groups (Domain Admins, Enterprise Admins, Schema
+    Admins, Domain Controllers, Administrators) are now recognized by their SID
+    **RID**, so they are excluded even when SID→name resolution is unavailable.
+  - The access-right mask constants were mislabeled: `0x00020000` (READ_CONTROL,
+    a *read* right) was treated as `WriteDACL` and included in the "dangerous"
+    mask, so any principal with normal **read** access was flagged as having
+    write. Corrected to the real Win32/ADS write bits (WriteProperty, WriteDACL,
+    WriteOwner, GenericWrite, GenericAll).
+  - **Authenticated Users** and **Everyone** were removed from the
+    expected-privileged allowlist — they should only ever have read access, so
+    write access for them is now correctly reported instead of suppressed.
+- **SID resolution: well-known SIDs now resolve to friendly names.**
+  `ADConnector.resolve_sid()` consults a static well-known-SID table first, so
+  reports show e.g. `Authenticated Users` / `SYSTEM` / `Administrators` instead
+  of `S-1-5-11` / `S-1-5-18` / `S-1-5-32-544` (these have no queryable directory
+  object and cannot be resolved via LDAP). Benefits every check that resolves
+  SIDs.
+
 ## [1.3.3] — 2026-06-18
 
 ### Added

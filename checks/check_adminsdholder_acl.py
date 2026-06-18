@@ -3,14 +3,31 @@ CHECK_ORDER = 63
 CHECK_CATEGORY = ["Privileged Accounts"]
 CHECK_WEIGHT   = 20   # max deduction at stake for this check module
 
-# Well-known SIDs / CN patterns for privileged principals (these are EXPECTED in the AdminSDHolder DACL)
+# Well-known RIDs of privileged groups that are EXPECTED to hold rights on
+# AdminSDHolder. These groups use domain-relative (S-1-5-21-<domain>-<RID>)
+# or BUILTIN (S-1-5-32-<RID>) SIDs, so they are matched by RID -- recognition
+# does NOT depend on resolving the SID to a name. Well-known group RIDs are
+# all < 1000; user/custom objects get RIDs >= 1000, so matching the trailing
+# RID against this set never collides with a real account.
+EXPECTED_RIDS = {
+    512: "Domain Admins",
+    516: "Domain Controllers",
+    518: "Schema Admins",
+    519: "Enterprise Admins",
+    544: "Administrators",  # BUILTIN\\Administrators (S-1-5-32-544)
+}
+
+# Well-known SIDs / CN patterns for privileged principals that are EXPECTED to
+# hold *write* access on AdminSDHolder. Low-privilege principals such as
+# Everyone (S-1-1-0) and Authenticated Users (S-1-5-11) are deliberately NOT
+# listed: they should only ever have read access, so write access for them is a
+# genuine finding that must be reported (their normal read access is filtered
+# out by DANGEROUS_MASK below, not by this allowlist).
 EXPECTED_PRIVILEGED = {
     # Well-known SIDs
     "S-1-5-18",        # SYSTEM
     "S-1-5-32-544",    # BUILTIN\\Administrators
     "S-1-3-0",         # Creator Owner
-    "S-1-1-0",         # Everyone (usually read-only)
-    "S-1-5-11",        # Authenticated Users (usually read-only)
     # CN patterns (matched case-insensitively in the trustee name)
     "domain admins",
     "enterprise admins",
@@ -21,29 +38,52 @@ EXPECTED_PRIVILEGED = {
     "exchange windows permissions",  # Exchange-managed, may be expected
 }
 
-# ACE flags that indicate write / dangerous permissions
-# These are the ldap3 / impacket ACE right masks
+# ACE right bits that represent dangerous WRITE access (Win32 / ADS_RIGHTS).
+# NOTE: 0x00020000 is READ_CONTROL (a *read* right) and must NOT appear here --
+# treating it as WriteDACL caused every principal with normal read access
+# (e.g. Authenticated Users) to be falsely flagged.
 WRITE_RIGHTS = {
-    0x00020000: "WriteDACL",
-    0x00040000: "WriteOwner",
-    0x00000020: "WriteProperty (all)",
-    0x00000028: "WriteProperty",
-    0x000F01FF: "GenericAll / FullControl",
-    0x10000000: "GenericAll",
-    0x00040000: "WriteOwner",
+    0x00000020: "WriteProperty",  # ADS_RIGHT_DS_WRITE_PROP
+    0x00040000: "WriteDACL",      # WRITE_DAC
+    0x00080000: "WriteOwner",     # WRITE_OWNER
+    0x10000000: "GenericAll",     # GENERIC_ALL
+    0x40000000: "GenericWrite",   # GENERIC_WRITE
 }
 
 # Bit mask for any write-like access
 DANGEROUS_MASK = (
-    0x00020000 |  # WriteDACL
-    0x00040000 |  # WriteOwner
-    0x00000020 |  # WriteProperty
-    0x10000000    # GenericAll
+    0x00000020 |  # WriteProperty (ADS_RIGHT_DS_WRITE_PROP)
+    0x00040000 |  # WriteDACL     (WRITE_DAC)
+    0x00080000 |  # WriteOwner    (WRITE_OWNER)
+    0x40000000 |  # GenericWrite  (GENERIC_WRITE)
+    0x10000000    # GenericAll    (GENERIC_ALL)
 )
+
+
+def _rid_of(sid):
+    """Return the trailing RID of a SID string as an int, or None.
+
+    e.g. 'S-1-5-21-...-512' -> 512, 'S-1-5-32-544' -> 544. Returns None for
+    empty input or anything without an integer final component.
+    """
+    if not sid:
+        return None
+    tail = str(sid).rsplit("-", 1)[-1]
+    try:
+        return int(tail)
+    except ValueError:
+        return None
 
 
 def _is_expected(trustee_name, trustee_sid):
     """Return True if the trustee is an expected privileged principal."""
+    # RID-based match first: recognizes Domain Admins / Enterprise Admins /
+    # Schema Admins / Domain Controllers / Administrators even when the SID
+    # could not be resolved to a name (their domain-relative SIDs are not in
+    # the absolute-SID allowlist below, so name resolution would otherwise be
+    # the only thing keeping them out of the findings).
+    if _rid_of(trustee_sid) in EXPECTED_RIDS:
+        return True
     if trustee_sid:
         for s in EXPECTED_PRIVILEGED:
             if trustee_sid.startswith(s):
@@ -115,7 +155,14 @@ def run_check(connector, verbose=False):
 
                         mask = ace["Ace"]["Mask"]["Mask"]
                         sid_obj = ace["Ace"]["Sid"]
-                        trustee_sid = str(sid_obj)
+                        # Use the canonical S-1-5-... form. str(sid_obj) returns
+                        # the hex of the binary SID, which neither resolve_sid nor
+                        # _is_expected can match -- causing every principal
+                        # (Domain Admins, SYSTEM, etc.) to be flagged.
+                        try:
+                            trustee_sid = sid_obj.formatCanonical()
+                        except Exception:
+                            trustee_sid = str(sid_obj)
                         trustee_name = trustee_sid  # fallback
 
                         # Try to resolve SID to name via connector
